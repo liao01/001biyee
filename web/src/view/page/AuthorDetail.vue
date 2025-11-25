@@ -1,30 +1,51 @@
 <template>
-    {{ userId }}
-    <a-card class="user-detail-card" bordered>
-      <div class="user-header">
-        <a-avatar
-            :src="user.avatar ? baseUrl + user.avatar : defaultAvatar"
-            :size="100"
-            class="avatar"
-        />
-        <div class="user-info">
-          <h2 class="username">{{ user.username }}</h2>
-          <p class="bio">{{ user.bio || '这个人很神秘，什么也没留下~' }}</p>
+  <div class="user-page">
+
+    <!-- 顶部用户信息 -->
+    <div class="user-header-wrapper">
+      <a-avatar
+          :src="user.avatar ? baseUrl + user.avatar : defaultAvatar"
+          :size="100"
+          class="avatar"
+      />
+      <div class="user-info">
+        <h2>{{ user.username }}</h2>
+        <p>小红书号：{{ user.userCode }} | IP属地：{{ user.location || '未填写' }}</p>
+        <div class="user-stats">
+          <span>{{ user.following }} 关注</span>
+          <span>{{ user.follower }} 粉丝</span>
+          <span>{{ user.likes }} 获赞与收藏</span>
         </div>
       </div>
+      <a-button type="primary" class="follow-btn">关注</a-button>
+    </div>
 
-      <a-divider />
+    <!-- 笔记/收藏切换 -->
+    <a-tabs v-model:active-key="activeTab" class="tab-bar">
+      <a-tab-pane key="notes" tab="笔记"></a-tab-pane>
+      <a-tab-pane key="favorites" tab="收藏"></a-tab-pane>
+    </a-tabs>
 
-      <a-descriptions title="个人信息" column="2" bordered>
-        <a-descriptions-item label="用户名">{{ user.username }}</a-descriptions-item>
-        <a-descriptions-item label="性别">{{ genderText(user.gender) }}</a-descriptions-item>
-        <a-descriptions-item label="生日">{{ formatDate(user.birthday) }}</a-descriptions-item>
-        <a-descriptions-item label="所在地">{{ user.location || '未填写' }}</a-descriptions-item>
-      </a-descriptions>
-    </a-card>
+    <!-- 瀑布流 -->
+    <div class="waterfall-wrapper">
+      <Waterfall :list="cardList" :width="240" :gutter="16">
+        <template #item="{ item }">
+          <a-card hoverable style="width: 240px" @click="showCardModal(item)">
+            <template #cover>
+              <img :src="baseUrl + item.raw.imageUrls?.split(',')[0]" :alt="item.title" />
+            </template>
+            <a-card-meta :title="item.title">
+              <template #description>{{ item.description }}</template>
+            </a-card-meta>
+          </a-card>
+        </template>
+      </Waterfall>
+    </div>
 
-
+    <CardFile ref="cardFileRef" />
+  </div>
 </template>
+
 
 
 <script setup>
@@ -32,12 +53,17 @@ import { ref, onMounted } from 'vue'
 import { message } from 'ant-design-vue'
 import axios from 'axios'
 import store from "../../store/index.js";
+import {Waterfall} from "vue-waterfall-plugin-next";
+import CardFile from "../../components/card/card-file.vue";
 
 const baseUrl = 'http://localhost:8080/lyw'
 // 用户数据
 const user = ref({})
 const userId = ref(null)
 const cardList = ref([])
+const cardFileRef = ref(null)
+
+const MAX_LENGTH = 10
 
 onMounted(() => {
   userId.value = sessionStorage.getItem('authorId');
@@ -96,37 +122,78 @@ const formatDate = (isoDate) => {
   const date = new Date(isoDate)
   return date.toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' })
 }
+
+const showCardModal = (item) => {
+  const fullItem = {
+    title: item.raw.postTitle,
+    description: item.raw.postContent,
+    images: item.raw.imageUrls?.split(',') || [],
+    membername: item.raw.membername,
+    postTime: item.raw.postTime,
+    postId: item.raw.postId,
+    userId: item.raw.userId,
+    avatar: item.raw.avatar,
+  }
+
+  axios.post("http://localhost:8080/lyw/web/postview/save", {
+    postId : item.raw.postId
+  }).then(response => {
+    const data = response.data;
+    if (data.success) {
+      message.success("记录成功!");
+      console.log("登录返回数据", data.content);
+    } else {
+      message.error(data.message)
+    }
+  })
+
+  cardFileRef.value.showModal(fullItem)
+
+}
 </script>
 
 <style scoped>
-.user-detail-card {
-  max-width: 700px;
-  margin: 40px auto;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  border-radius: 16px;
-  padding: 20px;
-  background-color: #fff;
-}
-
-.user-header {
+.user-header-wrapper {
   display: flex;
   align-items: center;
+  padding: 20px;
   gap: 20px;
+  border-bottom: 1px solid #f0f0f0;
 }
 
-.avatar {
-  border: 2px solid #f0f0f0;
-}
-
-.user-info .username {
+.user-info h2 {
   margin: 0;
-  font-size: 22px;
+  font-size: 24px;
   font-weight: bold;
 }
 
-.user-info .bio {
-  margin-top: 6px;
+.user-info p {
+  margin: 4px 0;
   color: #888;
 }
+
+.user-stats {
+  margin-top: 8px;
+  display: flex;
+  gap: 12px;
+  color: #555;
+}
+
+.follow-btn {
+  margin-left: auto;
+}
+
+.tab-bar {
+  margin-top: 16px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.waterfall-wrapper {
+  padding: 20px;
+  display: flex;
+  justify-content: center;
+  background-color: transparent; /* 去掉背景颜色 */
+}
+
 </style>
 
