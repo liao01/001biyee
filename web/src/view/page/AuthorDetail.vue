@@ -10,7 +10,7 @@
       />
       <div class="user-info">
         <h2>{{ user.username }}</h2>
-        <p>小红书号：{{ user.userCode }} | IP属地：{{ user.location || '未填写' }}</p>
+        <p> IP属地：{{ user.location || '未填写' }}</p>
         <div class="user-stats">
           <span>{{ user.following }} 关注</span>
           <span>{{ user.follower }} 粉丝</span>
@@ -45,7 +45,6 @@
     <CardFile ref="cardFileRef" />
   </div>
 </template>
-
 
 
 <script setup>
