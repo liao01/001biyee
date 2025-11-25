@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.jiawa.lyw.mapper.PostMapperCust">
+    <select id="findAll" resultType="com.jiawa.lyw.resp.PostResp">
+        SELECT
+            p.id AS post_id,
+            p.title AS post_title,
+            p.content AS post_content,
+            m.name AS membername,
+            up.avatar AS avatar,                   -- ✅ 新增头像
+            p.create_time AS post_time,
+            GROUP_CONCAT(DISTINCT t.name) AS tag_title,
+            GROUP_CONCAT(DISTINCT pi.image_url) AS image_urls,
+            p.user_id AS userId
+        FROM post p
+                 LEFT JOIN member m ON p.user_id = m.id
+                 LEFT JOIN user_profile up ON p.user_id = up.user_id   -- ✅ 关联头像
+                 LEFT JOIN post_tag pt ON p.id = pt.post_id
+                 LEFT JOIN tag t ON pt.tag_id = t.id
+                 LEFT JOIN post_image pi ON p.id = pi.post_id
+        WHERE p.status = '1'
+        GROUP BY p.id, p.title, p.content, m.name, up.avatar, p.create_time
+        ORDER BY p.create_time DESC;
+    </select>
+
+
+    <select id="searchPostsByKeyword" parameterType="com.jiawa.lyw.req.PostSearchReq"  resultType="com.jiawa.lyw.resp.PostResp">
+        <bind name="kw" value="'%' + keyword + '%'" />
+        SELECT
+        p.id AS post_id,
+        p.title AS post_title,
+        p.content AS post_content,
+        p.user_id AS user_id,
+        m.name AS member_name,
+        up.avatar AS avatar,                     -- ✅ 新增头像
+        p.create_time AS post_time,
+        GROUP_CONCAT(DISTINCT t.name) AS tag_title,
+        GROUP_CONCAT(DISTINCT pi.image_url) AS image_urls
+        FROM post p
+        LEFT JOIN member m ON p.user_id = m.id
+        LEFT JOIN user_profile up ON p.user_id = up.user_id   -- ✅ 关联头像
+        LEFT JOIN post_tag pt ON p.id = pt.post_id
+        LEFT JOIN tag t ON pt.tag_id = t.id
+        LEFT JOIN post_image pi ON p.id = pi.post_id
+        WHERE (p.title LIKE #{kw} OR p.content LIKE #{kw})
+        AND p.status = '1'
+        GROUP BY p.id, p.title, p.content, p.user_id, m.name, up.avatar, p.create_time
+        ORDER BY p.create_time DESC;
+    </select>
+
+    <select id="selectPostDetailsByUserId" resultType="com.jiawa.lyw.resp.PostUserResp">
+        SELECT
+            p.id AS post_id,
+            p.title AS post_title,
+            p.content AS post_content,
+            m.name AS member_name,
+            up.avatar AS avatar,                     -- ✅ 新增头像
+            p.create_time AS post_time,
+            GROUP_CONCAT(DISTINCT t.name) AS tag_title,
+            GROUP_CONCAT(DISTINCT pi.image_url) AS image_urls
+        FROM post p
+                 LEFT JOIN member m ON p.user_id = m.id
+                 LEFT JOIN user_profile up ON p.user_id = up.user_id   -- ✅ 关联头像
+                 LEFT JOIN post_tag pt ON p.id = pt.post_id
+                 LEFT JOIN tag t ON pt.tag_id = t.id
+                 LEFT JOIN post_image pi ON p.id = pi.post_id
+        WHERE p.user_id = #{userId}
+          AND p.status = '1'
+        GROUP BY p.id, p.title, p.content, m.name, up.avatar, p.create_time
+        ORDER BY p.create_time DESC
+    </select>
+
+    <select id="UserPostQuery" resultType="com.jiawa.lyw.resp.PostResp">
+        SELECT
+            p.id AS post_id,
+            p.title AS post_title,
+            p.content AS post_content,
+            m.name AS membername,
+            up.avatar AS avatar,                   -- ✅ 新增头像
+            p.create_time AS post_time,
+            GROUP_CONCAT(DISTINCT t.name) AS tag_title,
+            GROUP_CONCAT(DISTINCT pi.image_url) AS image_urls,
+            p.user_id AS userId
+        FROM post p
+                 LEFT JOIN member m ON p.user_id = m.id
+                 LEFT JOIN user_profile up ON p.user_id = up.user_id   -- ✅ 关联头像
+                 LEFT JOIN post_tag pt ON p.id = pt.post_id
+                 LEFT JOIN tag t ON pt.tag_id = t.id
+                 LEFT JOIN post_image pi ON p.id = pi.post_id
+        WHERE p.user_id = #{userId}
+          AND p.status = '1'
+        GROUP BY p.id, p.title, p.content, m.name, up.avatar, p.create_time
+        ORDER BY p.create_time DESC;
+    </select>
+</mapper>

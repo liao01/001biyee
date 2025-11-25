@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.jiawa.lyw.mapper.PostViewMapperCust">
+    <select id="selectRecentViewedPosts" parameterType="long" resultType="com.jiawa.lyw.resp.PostViewResp">
+        SELECT
+        p.id AS post_id,
+        p.title AS post_title,
+        p.content AS post_content,
+        p.user_id AS user_id,
+        m.name AS member_name,
+        MAX(u.avatar) AS avatar,   <!-- 使用聚合 -->
+        GROUP_CONCAT(DISTINCT pi.image_url) AS image_urls,
+        pv.view_time AS last_view_time
+        FROM post_view pv
+        JOIN post p ON pv.post_id = p.id
+        JOIN member m ON p.user_id = m.id
+        LEFT JOIN user_profile u ON p.user_id = u.user_id
+        LEFT JOIN post_image pi ON p.id = pi.post_id
+        WHERE pv.user_id = #{userId}
+        AND pv.view_time = (
+        SELECT MAX(v2.view_time)
+        FROM post_view v2
+        WHERE v2.post_id = pv.post_id AND v2.user_id = pv.user_id
+        ) AND p.status = '1'
+        GROUP BY p.id, p.title, p.content, m.name, pv.view_time, p.user_id
+        ORDER BY pv.view_time DESC
+    </select>
+
+</mapper>

@@ -1,0 +1,60 @@
+package com.jiawa.lyw.service;
+
+import cn.hutool.core.util.IdUtil;
+import com.jiawa.lyw.context.LoginMemberContext;
+import com.jiawa.lyw.domain.PostView;
+import com.jiawa.lyw.domain.PostViewExample;
+import com.jiawa.lyw.mapper.PostViewMapper;
+import com.jiawa.lyw.mapper.PostViewMapperCust;
+import com.jiawa.lyw.req.PostViewReq;
+import com.jiawa.lyw.resp.PostViewResp;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import java.util.Date;
+import java.util.List;
+
+@Service
+@Slf4j
+public class PostViewService {
+    @Autowired
+    private PostViewMapper postViewMapper;
+    @Autowired
+    private PostViewMapperCust postViewMapperCust;
+
+    public void save(PostViewReq postViewReq) {
+        PostViewExample postViewExample = new PostViewExample();
+        PostViewExample.Criteria criteria = postViewExample.createCriteria();
+        criteria.andPostIdEqualTo(postViewReq.getPostId());
+
+        List<PostView> postViews = postViewMapper.selectByExample(postViewExample);
+
+        if (postViews.size() == 0) {
+            log.info("不存在记录:{}",postViewReq.getPostId());
+            PostView postView = new PostView();
+            postView.setId(IdUtil.getSnowflakeNextId());
+            postView.setPostId(postViewReq.getPostId());
+            postView.setUserId(LoginMemberContext.getId());
+            postView.setViewTime(new Date());
+            postViewMapper.insert(postView);
+        }else {
+            // 已有浏览记录，只更新时间
+            log.info("已存在记录:{}",postViewReq.getPostId());
+            PostView postView = postViews.get(0); // 获取已有记录
+            postView.setViewTime(new Date());
+
+            PostViewExample updateExample = new PostViewExample();
+            PostViewExample.Criteria updateCriteria = updateExample.createCriteria();
+            updateCriteria.andIdEqualTo(postView.getId());
+
+            postViewMapper.updateByExampleSelective(postView, updateExample);
+        }
+        log.info("记录结束:{}",postViewReq.getPostId());
+    }
+
+    public List<PostViewResp> findAll(){
+        List<PostViewResp> postViewResps = postViewMapperCust.selectRecentViewedPosts(LoginMemberContext.getId());
+        return postViewResps;
+    }
+}

@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.jiawa.lyw.mapper.UserActionMapperCust">
+
+    <select id="selectFavoritePostsByUserId" parameterType="long" resultType="com.jiawa.lyw.resp.PostFavoriteResp">
+        SELECT
+        p.id AS post_id,
+        p.title AS post_title,
+        p.content AS post_content,
+        m.name AS membername,
+        MAX(u.avatar) AS avatar,                     <!-- ✅ 用户头像 -->
+        GROUP_CONCAT(DISTINCT t.name) AS tag_title,
+        GROUP_CONCAT(DISTINCT pi.image_url) AS image_urls,
+        p.create_time AS post_time,
+        p.user_id AS user_id,
+        MAX(ua.create_time) AS favorite_time        <!-- ✅ 最新收藏时间 -->
+        FROM user_action ua
+        LEFT JOIN post p ON ua.post_id = p.id
+        LEFT JOIN member m ON p.user_id = m.id
+        LEFT JOIN user_profile u ON p.user_id = u.user_id   <!-- 加上头像表 -->
+        LEFT JOIN post_tag pt ON p.id = pt.post_id
+        LEFT JOIN tag t ON pt.tag_id = t.id
+        LEFT JOIN post_image pi ON p.id = pi.post_id
+        WHERE ua.user_id = #{userId}
+        AND ua.action_type = 'favorite'
+        AND p.status = '1'
+        GROUP BY
+        p.id,
+        p.title,
+        p.content,
+        m.name,
+        p.create_time,
+        p.user_id
+        ORDER BY favorite_time DESC;    <!-- 按聚合后的时间排序 -->
+    </select>
+
+</mapper>

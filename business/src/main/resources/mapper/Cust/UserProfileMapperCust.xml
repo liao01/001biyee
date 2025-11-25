@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.jiawa.lyw.mapper.UserProfileMapperCust">
+    <select id="selectUserProfile" parameterType="long" resultType="com.jiawa.lyw.resp.UserProfileResp">
+        SELECT
+            m.id AS user_id,
+            m.name AS username,
+            up.avatar,
+            up.gender,
+            up.birthday,
+            up.bio,
+            up.location
+        FROM member m
+                 LEFT JOIN user_profile up ON m.id = up.user_id
+        WHERE m.id = #{userId}
+    </select>
+</mapper>

@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.jiawa.lyw.mapper.UserFollowMapperCust">
+    <select id="getUserFollowTrendLast30Days" resultType="com.jiawa.lyw.resp.StatisticDateResp">
+        SELECT
+            DATE_FORMAT(create_time, '%m-%d') AS date,
+            COUNT(*) AS new_followed_count
+        FROM user_follow
+        WHERE create_time >= DATE_SUB(CURDATE(), INTERVAL 29 DAY)
+          AND status = 1
+          AND follow_id = #{userId}
+        GROUP BY DATE_FORMAT(create_time, '%m-%d')
+        ORDER BY date;
+    </select>
+
+    <select id="countYesterdayNewFollowers" parameterType="long" resultType="int">
+        SELECT COUNT(*)
+        FROM user_follow
+        WHERE follow_id = #{userId}
+          AND status = 1
+          AND DATE(create_time) = DATE_SUB(CURDATE(), INTERVAL 1 DAY)
+    </select>
+
+    <select id="countYesterdayUnfollowers" parameterType="long" resultType="int">
+        SELECT COUNT(*)
+        FROM user_follow
+        WHERE follow_id = #{userId}
+          AND status = 0
+          AND DATE(create_time) = DATE_SUB(CURDATE(), INTERVAL 1 DAY)
+    </select>
+
+    <select id="getFollowingListByUserId" parameterType="long" resultType="com.jiawa.lyw.resp.UserFollowPesp">
+        SELECT
+            uf.user_id AS followId,
+            m.name AS username,
+            uf.create_time AS createTime
+        FROM user_follow uf
+                 JOIN member m ON uf.user_id = m.id
+        WHERE uf.follow_id = #{followId}
+          AND uf.status = 1
+        ORDER BY uf.create_time DESC
+    </select>
+
+</mapper>
