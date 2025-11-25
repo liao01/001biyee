@@ -51,8 +51,9 @@ public class PostController {
         return new CommonResp<>();
     }
 
-    @GetMapping("/post-UserPostQuery")
+    @PostMapping("/post-UserPostQuery")
     public CommonResp<List<PostResp>> selectPostDetailsByPostId(@Valid @RequestBody UserPostQueryReq req){
+        System.out.println("收到的 userId = " + req.getUserid());
         List<PostResp> list = postService.selectPostDetailsByPostId(req);
         return new CommonResp<>(list);
     }

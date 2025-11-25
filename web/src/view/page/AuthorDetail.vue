@@ -22,6 +22,8 @@
         <a-descriptions-item label="所在地">{{ user.location || '未填写' }}</a-descriptions-item>
       </a-descriptions>
     </a-card>
+
+
 </template>
 
 
@@ -35,6 +37,7 @@ const baseUrl = 'http://localhost:8080/lyw'
 // 用户数据
 const user = ref({})
 const userId = ref(null)
+const cardList = ref([])
 
 onMounted(() => {
   userId.value = sessionStorage.getItem('authorId');
@@ -53,6 +56,25 @@ onMounted(() => {
   }).catch(err => {
     console.error(err)
     message.error('请求失败')
+  })
+
+  axios.post("http://localhost:8080/lyw/web/post/post-UserPostQuery", {
+    userid: userId.value
+  }).then(response => {
+    const data = response.data;
+    if (data.success) {
+      cardList.value = (data.content || []).map(post => ({
+        raw: post,
+        title: post.postTitle,
+        description: post.postContent.length > MAX_LENGTH
+            ? post.postContent.substring(0, MAX_LENGTH) + '...'
+            : post.postContent,
+        membername: post.postMembername,
+        postTime: post.postTime
+      }))
+    } else {
+      message.error(data.message)
+    }
   })
 })
 
