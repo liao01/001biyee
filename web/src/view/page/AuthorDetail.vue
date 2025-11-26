@@ -17,14 +17,7 @@
           <span>{{ user.likes }} 获赞与收藏</span>
         </div>
       </div>
-      <a-button type="primary" class="follow-btn">关注</a-button>
     </div>
-
-    <!-- 笔记/收藏切换 -->
-    <a-tabs v-model:active-key="activeTab" class="tab-bar">
-      <a-tab-pane key="notes" tab="笔记"></a-tab-pane>
-      <a-tab-pane key="favorites" tab="收藏"></a-tab-pane>
-    </a-tabs>
 
     <!-- 瀑布流 -->
     <div class="waterfall-wrapper">
@@ -155,9 +148,12 @@ const showCardModal = (item) => {
 .user-header-wrapper {
   display: flex;
   align-items: center;
+  justify-content: center;   /* 水平居中 */
+  flex-direction: column;    /* 改为上下排列 */
   padding: 20px;
   gap: 20px;
   border-bottom: 1px solid #f0f0f0;
+  text-align: center;        /* 文本居中 */
 }
 
 .user-info h2 {
@@ -194,5 +190,17 @@ const showCardModal = (item) => {
   background-color: transparent; /* 去掉背景颜色 */
 }
 
+.tab-bar {
+  margin-top: 16px;
+  border-bottom: 1px solid #f0f0f0;
+
+  display: flex;
+  justify-content: center;   /* 水平居中 */
+}
+
+/* 让 Tabs 本身宽度适配内容，而不是撑满 */
+.tab-bar .ant-tabs-nav {
+  margin: 0 auto !important;
+}
 </style>
 
