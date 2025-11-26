@@ -202,4 +202,10 @@ public class UserFollowService {
         }
         return list30;
     }
+
+    /**
+     * 当前作者的粉丝总数
+     * @param int
+     */
+
 }

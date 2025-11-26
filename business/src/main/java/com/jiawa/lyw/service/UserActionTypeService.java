@@ -133,4 +133,22 @@ public class UserActionTypeService {
         List<PostFavoriteResp> list = userActionMapperCust.selectFavoritePostsByUserId(LoginMemberContext.getId());
         return list;
     }
+    /**
+     * 查询当前用户点赞总数
+     *
+     * @return
+     */
+    public Integer getCurrentUserLikeCount(Long userId) {
+        log.info("查询Post点赞总数数,{}",userId);
+        UserActionExample userActionExample = new UserActionExample();
+        UserActionExample.Criteria criteria = userActionExample.createCriteria();
+        criteria.andUserIdEqualTo(userId);
+        criteria.andActionTypeEqualTo(UserActionTypeEnum.LIKE.getCode());
+        List<UserAction> userActions = userActionMapper.selectByExample(userActionExample);
+
+        Integer count = userActions.size();
+        return count;
+
+    }
+
 }

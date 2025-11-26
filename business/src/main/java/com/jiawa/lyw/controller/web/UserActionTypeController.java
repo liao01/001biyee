@@ -55,5 +55,11 @@ public class UserActionTypeController {
         return new CommonResp<>(favoritePosts);
     }
 
+    @GetMapping("/User-Like-Count")
+    public CommonResp<Integer> getCurrentUserLikeCount(@RequestParam(required = false)  Long userId){
+        Integer currentUserLikeCount = userActionTypeService.getCurrentUserLikeCount(userId);
+        return new CommonResp<>(currentUserLikeCount);
+    }
+
 
 }

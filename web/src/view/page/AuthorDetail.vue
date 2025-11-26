@@ -13,8 +13,8 @@
         <p> IP属地：{{ user.location || '未填写' }}</p>
         <div class="user-stats">
           <span>{{ user.following }} 关注</span>
-          <span>{{ user.follower }} 粉丝</span>
-          <span>{{ user.likes }} 获赞与收藏</span>
+          <span>{{ statistic.countFollowers  }} 粉丝</span>
+          <span>{{ likecount }} 获赞</span>
         </div>
       </div>
     </div>
@@ -42,7 +42,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { message } from 'ant-design-vue'
+import {message, notification} from 'ant-design-vue'
 import axios from 'axios'
 import store from "../../store/index.js";
 import {Waterfall} from "vue-waterfall-plugin-next";
@@ -54,8 +54,23 @@ const user = ref({})
 const userId = ref(null)
 const cardList = ref([])
 const cardFileRef = ref(null)
+const likecount = ref(0)
 
 const MAX_LENGTH = 10
+const statistic = ref({});
+
+const fetchStatistic = async () => {
+  try {
+    const response = await axios.get("http://localhost:8080/lyw/web/userfollow/query-statistic");
+    if (response.data.success) {
+      statistic.value = response.data.content;
+    } else {
+      notification.error({ description: response.data.message });
+    }
+  } catch (err) {
+    notification.error({ description: "数据请求失败" });
+  }
+};
 
 onMounted(() => {
   userId.value = sessionStorage.getItem('authorId');
@@ -76,6 +91,22 @@ onMounted(() => {
     message.error('请求失败')
   })
 
+  axios.get("http://localhost:8080/lyw/web/userAction/User-Like-Count", {
+    params: { userId: userId.value }
+  }).then(response => {
+    const data = response.data;
+    if (data.success) {
+      // content 是数字，直接赋值
+      likecount.value = data.content;
+      console.log("用户获赞数:", likecount.value);
+    } else {
+      message.error(data.message);
+    }
+  }).catch(err => {
+    console.error(err);
+    message.error('请求失败');
+  })
+
   axios.post("http://localhost:8080/lyw/web/post/post-UserPostQuery", {
     userid: userId.value
   }).then(response => {
@@ -94,6 +125,10 @@ onMounted(() => {
       message.error(data.message)
     }
   })
+
+
+
+  fetchStatistic();
 })
 
 // 格式化性别
