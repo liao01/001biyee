@@ -46,5 +46,9 @@ public class UserFollowController {
         return new CommonResp<>(pageResp);
     }
 
-
+    @GetMapping("/byUserIds")
+    public CommonResp<Integer> getFollowerCount(@RequestParam(required = false)  Long userId){
+        Integer followerCount = userFollowService.getFollowerCount(userId);
+        return new CommonResp<>(followerCount);
+    }
 }

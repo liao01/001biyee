@@ -92,4 +92,30 @@
         GROUP BY p.id, p.title, p.content, m.name, up.avatar, p.create_time
         ORDER BY p.create_time DESC;
     </select>
+
+    <select id="listFavoritePostsByUserId" resultType="com.jiawa.lyw.resp.PostResp">
+        SELECT
+            p.id AS post_id,
+            p.title AS post_title,
+            p.content AS post_content,
+            m.name AS membername,
+            up.avatar AS avatar,                      -- 作者头像
+            p.create_time AS post_time,
+            GROUP_CONCAT(DISTINCT t.name) AS tag_title,
+            GROUP_CONCAT(DISTINCT pi.image_url) AS image_urls,
+            p.user_id AS userId
+        FROM user_action ua
+                 LEFT JOIN post p ON ua.post_id = p.id
+                 LEFT JOIN member m ON p.user_id = m.id
+                 LEFT JOIN user_profile up ON p.user_id = up.user_id
+                 LEFT JOIN post_tag pt ON p.id = pt.post_id
+                 LEFT JOIN tag t ON pt.tag_id = t.id
+                 LEFT JOIN post_image pi ON p.id = pi.post_id
+        WHERE ua.user_id = #{userId}
+          AND ua.action_type = 'favorite'
+          AND p.status = '1'
+        GROUP BY
+            p.id, p.title, p.content, m.name, up.avatar, p.create_time
+        ORDER BY p.create_time DESC;
+    </select>
 </mapper>

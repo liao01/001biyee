@@ -204,8 +204,17 @@ public class UserFollowService {
     }
 
     /**
-     * 当前作者的粉丝总数
-     * @param int
+     * 当前作者的被关注总数
+     * @param Integer
      */
+    public Integer getFollowerCount(Long userId){
+        log.info("用户查询做作者的主页中的被关注数:{},",userId);
+        UserFollowExample example = new UserFollowExample();
+        UserFollowExample.Criteria criteria = example.createCriteria();
+        criteria.andUserIdEqualTo(userId);
+
+        long l = userFollowMapper.countByExample(example);
+        return Math.toIntExact(l);
+    }
 
 }

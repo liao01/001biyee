@@ -12,11 +12,27 @@
         <h2>{{ user.username }}</h2>
         <p> IP属地：{{ user.location || '未填写' }}</p>
         <div class="user-stats">
-          <span>{{ user.following }} 关注</span>
+          <span>{{ following }} 关注</span>
           <span>{{ statistic.countFollowers  }} 粉丝</span>
           <span>{{ likecount }} 获赞</span>
         </div>
       </div>
+    </div>
+
+    <div class="user-tabs">
+      <button
+          class="tab"
+          :class="{ active: activeTab === 'note' }"
+          @click="switchTab('note')">
+        笔记
+      </button>
+
+      <button
+          class="tab"
+          :class="{ active: activeTab === 'favorite' }"
+          @click="switchTab('favorite')">
+        收藏
+      </button>
     </div>
 
     <!-- 瀑布流 -->
@@ -34,6 +50,8 @@
         </template>
       </Waterfall>
     </div>
+
+
 
     <CardFile ref="cardFileRef" />
   </div>
@@ -55,6 +73,8 @@ const userId = ref(null)
 const cardList = ref([])
 const cardFileRef = ref(null)
 const likecount = ref(0)
+const following = ref({})
+const activeTab = ref('note')
 
 const MAX_LENGTH = 10
 const statistic = ref({});
@@ -69,6 +89,63 @@ const fetchStatistic = async () => {
     }
   } catch (err) {
     notification.error({ description: "数据请求失败" });
+  }
+};
+
+const switchTab = (tab) => {
+  if (activeTab.value === tab) return; // 已选中，不重复请求
+  activeTab.value = tab;
+
+  if (tab === 'note') {
+    fetchUserPosts();
+  } else if (tab === 'favorite') {
+    fetchUserFavorites();
+  }
+};
+
+const fetchUserPosts = async () => {
+  try {
+    const response = await axios.post("http://localhost:8080/lyw/web/post/post-UserPostQuery", {
+      userid: userId.value
+    });
+    const data = response.data;
+    if (data.success) {
+      cardList.value = (data.content || []).map(post => ({
+        raw: post,
+        title: post.postTitle,
+        description: post.postContent.length > MAX_LENGTH ? post.postContent.substring(0, MAX_LENGTH) + '...' : post.postContent,
+        membername: post.postMembername,
+        postTime: post.postTime
+      }));
+    } else {
+      message.error(data.message);
+    }
+  } catch (err) {
+    console.error(err);
+    message.error('请求失败');
+  }
+};
+
+const fetchUserFavorites = async () => {
+  try {
+    const response = await axios.post("http://localhost:8080/lyw/web/post/post-list-Favorite-Posts", {
+      userid: userId.value
+    });
+    const data = response.data;
+    if (data.success) {
+      cardList.value = (data.content || []).map(post => ({
+        raw: post,
+        title: post.postTitle,
+        description: post.postContent.length > MAX_LENGTH ? post.postContent.substring(0, MAX_LENGTH) + '...' : post.postContent,
+        membername: post.postMembername,
+        postTime: post.postTime
+      }));
+    } else {
+      message.error(data.message);
+    }
+  } catch (err) {
+    console.error(err);
+    message.error('请求失败');
   }
 };
 
@@ -107,6 +184,22 @@ onMounted(() => {
     message.error('请求失败');
   })
 
+  axios.get("http://localhost:8080/lyw/web/userfollow/byUserIds", {
+    params: { userId: userId.value }
+  }).then(response => {
+    const data = response.data;
+    if (data.success) {
+      // content 是数字，直接赋值
+      following.value = data.content;
+      console.log("用户关注数:", following.value);
+    } else {
+      message.error(data.message);
+    }
+  }).catch(err => {
+    console.error(err);
+    message.error('请求失败');
+  })
+
   axios.post("http://localhost:8080/lyw/web/post/post-UserPostQuery", {
     userid: userId.value
   }).then(response => {
@@ -126,7 +219,7 @@ onMounted(() => {
     }
   })
 
-
+  fetchUserPosts();
 
   fetchStatistic();
 })
@@ -225,12 +318,39 @@ const showCardModal = (item) => {
   background-color: transparent; /* 去掉背景颜色 */
 }
 
-.tab-bar {
-  margin-top: 16px;
-  border-bottom: 1px solid #f0f0f0;
-
+.user-tabs {
   display: flex;
-  justify-content: center;   /* 水平居中 */
+  justify-content: center;
+  margin-top: 20px;
+  gap: 30px;
+}
+
+.tab {
+  padding: 6px 26px;
+  border-radius: 20px;
+  font-size: 16px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  background: transparent;
+  transition: all 0.2s;
+}
+
+/* 激活状态：笔记 */
+.tab.active {
+  background: #f5f5f5;
+  color: #000;
+}
+
+/* 未激活状态：收藏（可点击） */
+.tab:not(.active) {
+  color: #999;
+}
+
+/* 鼠标悬停效果（提升交互体验） */
+.tab:hover {
+  background: #f5f5f5;
+  color: #000;
 }
 
 /* 让 Tabs 本身宽度适配内容，而不是撑满 */

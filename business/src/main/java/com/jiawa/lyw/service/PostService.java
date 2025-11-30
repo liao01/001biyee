@@ -194,6 +194,16 @@ public class PostService {
 
     }
 
+    /**
+     * 根据userid查询所有该用户信息 */
+    public List<PostResp> listFavoritePostsByUserId(UserPostQueryReq req) {
+        log.info("查询用户收藏信息开始:{},当前用户:{}", req.getUserid(),LoginMemberContext.getId());
+        List<PostResp> list = postMapperCust.listFavoritePostsByUserId(Long.valueOf(req.getUserid()));
+        log.info("查询用户收藏信息结束:{},当前用户:{}", req.getUserid(),LoginMemberContext.getId());
+        return list;
+
+    }
+
     public void del(DelPostReq req) {
         Long postId = req.getPostId();
         log.info("开始软删除帖子: {}", postId);
