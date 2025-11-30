@@ -1,14 +1,23 @@
 <template>
   <div id="mapDiv" style="width:100%; height:100%;"></div>
+  <!-- 卡片浮层 -->
+  <LocationCard
+      v-if="activeLocation"
+      :location="activeLocation"
+      @close="activeLocation = null"
+      class="location-card"
+  />
 </template>
 
 <script setup>
 import axios from "axios";
 import {message} from "ant-design-vue";
 import {ref} from "vue";
+import LocationCard from "../../components/card/locationCard.vue";
 
 let map;
 const locations = ref([]);
+const activeLocation = ref(null);
 
 // 请求后端获取所有景点数据
 axios.get("http://localhost:8080/lyw/web/location/findLocationAll")
@@ -52,20 +61,20 @@ function initMap() {
       map: map
     });
 
-    const infoWindow = new AMap.InfoWindow({
-      content: `
-        <div style="padding:10px;">
-          <h4>${loc.formattedAddress}</h4>
-          <p>${loc.city}, ${loc.district}</p>
-        </div>
-      `,
-      offset: new AMap.Pixel(0, -30)
-    });
-
     marker.on('click', function () {
-      infoWindow.open(map, marker.getPosition());
-      map.setZoomAndCenter(12, marker.getPosition());
+      activeLocation.value = loc; // 点击 Marker → 设置当前选中景点
+      map.setZoomAndCenter(12, marker.getPosition()); // 地图中心移动并放大
     });
   });
 }
 </script>
+
+<style scoped>
+.location-card {
+  position: absolute;
+  right: 30px;
+  top: 150px;
+  width: 500px;
+  z-index: 999;
+}
+</style>
