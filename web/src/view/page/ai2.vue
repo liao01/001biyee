@@ -29,8 +29,7 @@
 </template>
 
 <script setup>
-import {ref, nextTick, onMounted} from 'vue';
-import axios from 'axios';
+import { ref, nextTick } from 'vue';
 
 const userMessage = ref('');
 const chatHistory = ref([]);
@@ -44,71 +43,70 @@ const sendMessage = async () => {
   const messageToSend = userMessage.value;
   userMessage.value = '';
 
-  // 滚动到底部
   await nextTick();
   chatLog.value.scrollTop = chatLog.value.scrollHeight;
 
   try {
-    const res = await axios.post('http://localhost:8080/lyw/web/xiaozhi/chat', {
-      sessionId: '123456',
-      message: messageToSend,
+    const response = await fetch('http://localhost:8080/lyw/web/xiaozhi/chat', {
+      method: 'POST',
+      body: JSON.stringify({
+        memoryId: 1,
+        message: messageToSend
+      })
     });
 
-    const aiReply = res.data.data;
+    if (!response.body) throw new Error('响应体为空');
 
-    chatHistory.value.push({ user: 'AI', message: aiReply });
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder('utf-8');
+    let buffer = '';
 
-    await nextTick();
-    chatLog.value.scrollTop = chatLog.value.scrollHeight;
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop(); // 保留最后可能不完整的一行
+
+      lines.forEach(line => {
+        if (line.trim()) {
+          chatHistory.value.push({ user: 'AI', message: line.trim() });
+        }
+      });
+
+      await nextTick();
+      chatLog.value.scrollTop = chatLog.value.scrollHeight;
+    }
+
+    // 处理最后一行
+    if (buffer.trim()) {
+      chatHistory.value.push({ user: 'AI', message: buffer.trim() });
+      await nextTick();
+      chatLog.value.scrollTop = chatLog.value.scrollHeight;
+    }
+
   } catch (err) {
     console.error(err);
     chatHistory.value.push({ user: 'AI', message: '调用 AI 接口失败，请稍后重试' });
-
     await nextTick();
     chatLog.value.scrollTop = chatLog.value.scrollHeight;
   }
 };
-
-
-const loadChatHistory = async () => {
-  try {
-    const res = await axios.get('http://localhost:8080/lyw/web/customerService/history');
-    const data = res.data.data || [];
-
-    // 转换成前端渲染格式
-    chatHistory.value = [];
-    data.forEach(item => {
-      if (item.userMessage) {
-        chatHistory.value.push({ user: '你', message: item.userMessage });
-      }
-      if (item.aiResponse) {
-        chatHistory.value.push({ user: 'AI', message: item.aiResponse });
-      }
-    });
-
-    await nextTick();
-    chatLog.value.scrollTop = chatLog.value.scrollHeight;
-  } catch (err) {
-    console.error(err);
-  }
-};
-
-onMounted(() => {
-  loadChatHistory();
-});
 </script>
 
 <style scoped>
 .chat-container {
-  max-width: 1200px;
+  max-width: 800px;
   margin: 20px auto;
   border: 1px solid #eee;
   border-radius: 12px;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
   display: flex;
   flex-direction: column;
-  height: 800px;
+  height: 700px;
   background-color: #fff;
+  font-family: "Microsoft YaHei", sans-serif;
 }
 
 h2 {
@@ -127,6 +125,17 @@ h2 {
   flex-direction: column;
   gap: 8px;
   background-color: #f9f9f9;
+  scrollbar-width: thin;
+  scrollbar-color: #ccc transparent;
+}
+
+.chat-log::-webkit-scrollbar {
+  width: 6px;
+}
+
+.chat-log::-webkit-scrollbar-thumb {
+  background-color: #ccc;
+  border-radius: 3px;
 }
 
 .chat-item {
@@ -143,10 +152,12 @@ h2 {
 }
 
 .bubble {
-  padding: 8px 12px;
+  padding: 10px 16px;
   border-radius: 16px;
   word-break: break-word;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  line-height: 1.4;
+  white-space: pre-wrap;
 }
 
 .chat-item.user .bubble {
@@ -174,6 +185,8 @@ textarea {
   border-radius: 8px;
   border: 1px solid #ccc;
   resize: none;
+  font-size: 14px;
+  line-height: 1.4;
 }
 
 button {
