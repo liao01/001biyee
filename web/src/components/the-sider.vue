@@ -51,10 +51,6 @@
         <RobotOutlined />
         <span class="nav-text">你的旅游助手</span>
       </a-menu-item>
-      <a-menu-item key="/AI2"  @click="handleMenuClick('/AI2', true)">
-        <RobotOutlined />
-        <span class="nav-text">你的旅游助手</span>
-      </a-menu-item>
       <a-menu-item key="/Map" @click="handleMenuClick('/Map', true)">
         <CompassOutlined />
         <span class="nav-text">地图</span>
