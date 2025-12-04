@@ -10,7 +10,8 @@ import static dev.langchain4j.service.spring.AiServiceWiringMode.EXPLICIT;
 
 @AiService(wiringMode = EXPLICIT,
         streamingChatModel = "qwenStreamingChatModel",
-        chatMemoryProvider = "chatMemoryProvider")
+        chatMemoryProvider = "chatMemoryProvider",
+        tools = "PostTools")
 public interface Assistant {
     /**
      * 分离聊天记录
