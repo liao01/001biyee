@@ -49,7 +49,7 @@ const sendMessage = async () => {
   chatLog.value.scrollTop = chatLog.value.scrollHeight;
 
   try {
-    const res = await axios.post('http://localhost:8080/lyw/web/xiaozhi/chat', {
+    const res = await axios.post('http://localhost:8080/lyw/web/customerService/message', {
       sessionId: '123456',
       message: messageToSend,
     });

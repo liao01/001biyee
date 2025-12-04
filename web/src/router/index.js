@@ -4,6 +4,7 @@ import CardList from "../view/page/cardlist.vue"
 import uploadPost from "../view/page/upload-post.vue"
 import Userfollow from "../view/page/Userfollow.vue";
 import AI from "../view/page/ai.vue"
+import AI2 from "../view/page/ai2.vue"
 import PostHistory from "../view/page/PostHistory.vue";
 import Map from "../view/page/map.vue";
 import CardlistView from "../view/page/cardlistView.vue";
@@ -30,6 +31,9 @@ const routes = [{
     },{
       path:"ai",
       component:AI
+    },{
+      path:"ai2",
+      component:AI2
     },{
       path:"PostHistory",
       component:PostHistory

@@ -47,7 +47,11 @@
           </router-link>
         </a-menu-item>
       </a-sub-menu>
-      <a-menu-item key="/AI"  @click="handleMenuClick('/AI', true)">
+<!--      <a-menu-item key="/AI"  @click="handleMenuClick('/AI', true)">-->
+<!--        <RobotOutlined />-->
+<!--        <span class="nav-text">你的旅游助手</span>-->
+<!--      </a-menu-item>-->
+      <a-menu-item key="/AI2"  @click="handleMenuClick('/AI2', true)">
         <RobotOutlined />
         <span class="nav-text">你的旅游助手</span>
       </a-menu-item>
