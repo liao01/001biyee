@@ -9,7 +9,11 @@
         >
           <!-- 头像 -->
           <div class="avatar">
-            <i :class="message.isUser ? 'fa-solid fa-user' : 'fa-solid fa-robot'"></i>
+            <img
+                :src="message.isUser? (avatarUrl)   /* 用户头像 */
+                : '../../../public/img/Robot.png'                                 /* AI 默认头像 */"
+                class="avatar-img"
+            />
           </div>
 
           <!-- 气泡内容 -->
@@ -63,6 +67,7 @@ onMounted(() => {
   // 移除 setInterval，改用手动滚动
   watch(messages, () => scrollToBottom(), { deep: true })
   hello()
+  fetchAvatar()
 })
 
 const scrollToBottom = () => {
@@ -153,6 +158,19 @@ const uuidToNumber = uuid => {
   return number % 1000000
 }
 
+const avatarUrl = ref('')
+
+// 请求用户头像
+const fetchAvatar = async () => {
+  axios.get("http://localhost:8080/lyw/web/UserProFile/findAvatarUser").then(response => {
+    const data = response.data;
+    if (data.success) {
+      avatarUrl.value = `http://localhost:8080/lyw${data.content}`
+    } else {
+      message.error(data.message)
+    }
+  })
+}
 </script>
 
 <style scoped>
@@ -198,16 +216,22 @@ const uuidToNumber = uuid => {
 
 /* 头像 */
 .avatar {
-  width: 32px;
-  height: 32px;
-  background: #e5e7eb;
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
   border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  overflow: hidden;
   margin: 0 10px;
-  font-size: 16px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+  border: 2px solid #fff;
 }
+
+.avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
 
 /* 气泡 */
 .bubble {
