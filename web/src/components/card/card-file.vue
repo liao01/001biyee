@@ -251,8 +251,6 @@ const showModal = (item) => {
     } else {
       message.error(data.message);
     }
-  }).catch(() => {
-    message.error("请求失败");
   });
 
 
@@ -268,9 +266,6 @@ const showModal = (item) => {
         } else {
           message.error(data.message)
         }
-      })
-      .catch(err => {
-        message.error("请求失败：" + err)
       });
 
   axios.post("http://localhost:8080/lyw/web/userAction/PostUserLikeActionCount", {
@@ -284,9 +279,6 @@ const showModal = (item) => {
         } else {
           message.error(data.message)
         }
-      })
-      .catch(err => {
-        message.error("请求失败：" + err)
       });
 
   axios.post("http://localhost:8080/lyw/web/userAction/PostUserFavoritedcountActionCount", {
@@ -300,9 +292,6 @@ const showModal = (item) => {
         } else {
           message.error(data.message)
         }
-      })
-      .catch(err => {
-        message.error("请求失败：" + err)
       });
 }
 

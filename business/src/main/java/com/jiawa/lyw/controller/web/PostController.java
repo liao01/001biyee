@@ -58,7 +58,6 @@ public class PostController {
         return new CommonResp<>(list);
     }
 
-
     @PostMapping("/post-list-Favorite-Posts")
     public CommonResp<List<PostResp>> listFavoritePostsByUserId(@Valid @RequestBody UserPostQueryReq req){
         System.out.println("收到的 userId = " + req.getUserid());

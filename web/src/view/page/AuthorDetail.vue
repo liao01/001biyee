@@ -262,8 +262,6 @@ const showCardModal = (item) => {
     if (data.success) {
       message.success("记录成功!");
       console.log("登录返回数据", data.content);
-    } else {
-      message.error(data.message)
     }
   })
 
