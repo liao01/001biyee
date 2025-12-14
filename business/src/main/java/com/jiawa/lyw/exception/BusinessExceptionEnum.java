@@ -10,6 +10,7 @@ public enum BusinessExceptionEnum {
     SMS_CODE_TOO_FREQUENT("短信请求过于频繁"),
     SMS_CODE_ERROR("短信验证码不正确"),
     SMS_CODE_EXPIRED("短信验证码未发送或已过期，请重新发送短信"),
+    USER_LOGIN_ERROR("管理员错误"),
 
     MEMBER_MOBILE_HAD_REGISTER("手机号已注册"),
     MEMBER_MOBILE_NOT_REGISTER("手机号未注册"),
