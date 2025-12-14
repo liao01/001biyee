@@ -1,7 +1,9 @@
 package com.jiawa.lyw.controller.admin;
 
 import cn.hutool.crypto.digest.DigestUtil;
+import com.jiawa.lyw.enums.SmsCodeUseEnum;
 import com.jiawa.lyw.req.UserLoginReq;
+import com.jiawa.lyw.req.UserRegisterReq;
 import com.jiawa.lyw.resp.CommonResp;
 import com.jiawa.lyw.resp.UserLoginResp;
 import com.jiawa.lyw.service.AdminService;
@@ -23,37 +25,10 @@ public class AdminController {
     @Autowired
     private AdminService adminService;
 
-    @Autowired
-    private SmsCodeService smsCodeService;
 
     @Autowired
     private KaptchaService kaptchaService;
 
-//    @PostMapping("/register")
-//    public CommonResp<Object> Register(@Valid @RequestBody MemberRegisterReq req) {
-//        req.setPassword(DigestUtil.md5Hex(req.getPassword().toLowerCase()));
-//
-//        log.info("会员注册开始:{}",req.getMobile());
-//
-//        smsCodeService.validCode(req.getMobile(), SmsCodeUseEnum.REGISTER.getCode(), req.getCode());
-//        log.info("注册验证码校验通过:{}",req.getMobile());
-//
-//        adminService.register(req);
-//        return new CommonResp<>();
-//    }
-
-//    @PostMapping("/reset")
-//    public CommonResp<Object> reset(@Valid @RequestBody MemberResetReq req) {
-//        req.setPassword(DigestUtil.md5Hex(req.getPassword().toLowerCase()));
-//
-//        log.info("会员重置密码开始:{}",req.getMobile());
-//
-//        smsCodeService.validCode(req.getMobile(), SmsCodeUseEnum.RESET.getCode(), req.getCode());
-//        log.info("重置密码验证码校验通过:{}",req.getMobile());
-//
-//        adminService.reset(req);
-//        return new CommonResp<>();
-//    }
 
 
     @PostMapping("/login")

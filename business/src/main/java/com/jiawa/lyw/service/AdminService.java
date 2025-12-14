@@ -8,7 +8,6 @@ import com.jiawa.lyw.domain.UserExample;
 import com.jiawa.lyw.exception.BusinessException;
 import com.jiawa.lyw.exception.BusinessExceptionEnum;
 import com.jiawa.lyw.mapper.UserMapper;
-import com.jiawa.lyw.req.MemberRegisterReq;
 import com.jiawa.lyw.req.UserLoginReq;
 import com.jiawa.lyw.resp.UserLoginResp;
 import lombok.extern.slf4j.Slf4j;
@@ -35,48 +34,6 @@ public class AdminService {
             return null;
         }
     }
-
-//    public List<Member> findByMemberId(Long memberId){
-//        MemberExample example = new MemberExample();
-//        MemberExample.Criteria criteria = example.createCriteria();
-//        criteria.andIdEqualTo(memberId);
-//        List<Member> list = userMapper.selectByExample(example);
-//        return list;
-//    }
-
-    //注册
-    public void register(MemberRegisterReq req){
-//        String mobile = req.getMobile();
-//        Date now = new Date();
-//        Member memberDB = selectByMember(mobile);
-//        if (memberDB != null){
-//            throw new BusinessException(BusinessExceptionEnum.MEMBER_MOBILE_HAD_REGISTER);
-//        }
-//        Member member = new Member();
-//        member.setId(IdUtil.getSnowflakeNextId());
-//        member.setMobile(mobile);
-//        member.setPassword(req.getPassword());
-//        member.setName(mobile.substring(0,3)+"****"+mobile.substring(7));
-//        member.setCreatedAt(now);
-//        member.setUpdatedAt(now);
-//
-//        userMapper.insert(member);
-    }
-
-    //重置密码
-//    public void reset(MemberResetReq req){
-//        String mobile = req.getMobile();
-//        Date now = new Date();
-//        Member memberDB = selectByMember(mobile);
-//        if (memberDB == null){
-//            throw new BusinessException(BusinessExceptionEnum.MEMBER_MOBILE_NOT_REGISTER);
-//        }
-//        Member member = new Member();
-//        member.setId(memberDB.getId());
-//        member.setPassword(req.getPassword());
-//        member.setCreatedAt(now);
-//        userMapper.updateByPrimaryKeySelective(member);
-//    }
 
     /**
      *登录

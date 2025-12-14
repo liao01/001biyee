@@ -70,11 +70,6 @@
             登录
           </a-button>
         </a-form-item>
-        <!-- 底部链接 -->
-        <div class="login-footer">
-          <span @click="goRegister" class="link">注册账号</span>
-          <span @click="goForgotPassword" class="link">忘记密码？</span>
-        </div>
       </a-form>
     </a-card>
   </div>
@@ -85,7 +80,6 @@ import { ref } from "vue";
 import axios from "axios";
 import { message } from "ant-design-vue";
 import store from "../store/index.js";
-import router from "../router/index.js";
 
 const loginUser = ref({
   loginName: '',
@@ -126,13 +120,6 @@ const loadImageCode = () => {
 
 loadImageCode()
 
-// 底部跳转
-const goRegister = () => {
-  router.push('/register')
-}
-const goForgotPassword = () => {
-  router.push('/forgot-password')
-}
 </script>
 
 <style scoped>
