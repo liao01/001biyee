@@ -27,30 +27,28 @@ public class PostViewService {
         PostViewExample postViewExample = new PostViewExample();
         PostViewExample.Criteria criteria = postViewExample.createCriteria();
         criteria.andPostIdEqualTo(postViewReq.getPostId());
+        criteria.andUserIdEqualTo(LoginMemberContext.getId());
 
         List<PostView> postViews = postViewMapper.selectByExample(postViewExample);
 
-        if (postViews.size() == 0) {
-            log.info("不存在记录:{}",postViewReq.getPostId());
+        if (postViews.isEmpty()) {
+            log.info("不存在记录:{},{}", postViewReq.getPostId(), LoginMemberContext.getId());
+
             PostView postView = new PostView();
             postView.setId(IdUtil.getSnowflakeNextId());
             postView.setPostId(postViewReq.getPostId());
             postView.setUserId(LoginMemberContext.getId());
             postView.setViewTime(new Date());
+
             postViewMapper.insert(postView);
-        }else {
-            // 已有浏览记录，只更新时间
-            log.info("已存在记录:{}",postViewReq.getPostId());
-            PostView postView = postViews.get(0); // 获取已有记录
+        } else {
+            log.info("已存在记录:{},{}", postViewReq.getPostId(), LoginMemberContext.getId());
+
+            PostView postView = postViews.get(0);
             postView.setViewTime(new Date());
 
-            PostViewExample updateExample = new PostViewExample();
-            PostViewExample.Criteria updateCriteria = updateExample.createCriteria();
-            updateCriteria.andIdEqualTo(postView.getId());
-
-            postViewMapper.updateByExampleSelective(postView, updateExample);
+            postViewMapper.updateByPrimaryKeySelective(postView);
         }
-        log.info("记录结束:{}",postViewReq.getPostId());
     }
 
     public List<PostViewResp> findAll(){
