@@ -11,6 +11,7 @@ import HelloWorld from './components/HelloWorld.vue'
       <img src="./assets/vue.svg" class="logo vue" alt="Vue logo" />
     </a>
   </div>
+  <a-button type="dashed">Dashed Button</a-button>
   <HelloWorld msg="Vite + Vue" />
 </template>
 
