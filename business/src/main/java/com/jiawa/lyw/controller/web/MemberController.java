@@ -8,15 +8,13 @@ import com.jiawa.lyw.req.MemberResetReq;
 import com.jiawa.lyw.resp.CommonResp;
 import com.jiawa.lyw.resp.MemberLoginResp;
 import com.jiawa.lyw.service.KaptchaService;
+import com.jiawa.lyw.service.MemberLoginLogService;
 import com.jiawa.lyw.service.MemberService;
 import com.jiawa.lyw.service.SmsCodeService;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @Slf4j
 @RestController
@@ -31,6 +29,9 @@ public class MemberController {
     @Autowired
     private KaptchaService kaptchaService;
 
+    @Autowired
+    private MemberLoginLogService memberLoginLogService;
+
     @PostMapping("/register")
     public CommonResp<Object> Register(@Valid @RequestBody MemberRegisterReq req) {
         req.setPassword(DigestUtil.md5Hex(req.getPassword().toLowerCase()));
@@ -41,6 +42,12 @@ public class MemberController {
         log.info("注册验证码校验通过:{}",req.getMobile());
 
         memberService.register(req);
+        return new CommonResp<>();
+    }
+
+    @GetMapping("/heart")
+    public CommonResp<Object> heart() {
+        memberLoginLogService.upadteHeartInfo();
         return new CommonResp<>();
     }
 

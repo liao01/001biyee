@@ -1,7 +1,10 @@
 package com.jiawa.lyw.service;
 
+import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.IdUtil;
+import com.jiawa.lyw.context.LoginMemberContext;
 import com.jiawa.lyw.domain.MemberLoginLog;
+import com.jiawa.lyw.domain.MemberLoginLogExample;
 import com.jiawa.lyw.mapper.MemberLoginLogMapper;
 import com.jiawa.lyw.resp.MemberLoginResp;
 import jakarta.annotation.Resource;
@@ -9,6 +12,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.Date;
+import java.util.List;
 
 @Slf4j
 @Service
@@ -29,5 +33,29 @@ public class MemberLoginLogService {
         memberLoginLog.setLastHeartTime(now);
 
         memberLoginLogMapper.insert(memberLoginLog);
+    }
+
+    public void upadteHeartInfo(){
+        MemberLoginResp member = LoginMemberContext.getMember();
+        String token = member.getToken();
+        log.info("更新会员信息:{}", token);
+        MemberLoginLogExample example = new MemberLoginLogExample();
+        example.createCriteria().andTokenEqualTo(token);
+        example.setOrderByClause("id desc");
+
+        List<MemberLoginLog> memberLoginLogs = memberLoginLogMapper.selectByExample(example);
+
+        if (CollUtil.isEmpty(memberLoginLogs)) {
+            log.warn("未找到该token的登录信息:{},会员id:{}", token, member.getId());
+            save(member);
+            return;
+        }
+
+        MemberLoginLog memberLoginLogDB = memberLoginLogs.get(0);
+
+        memberLoginLogDB.setHeartCount(memberLoginLogDB.getHeartCount() + 1);
+        memberLoginLogDB.setLastHeartTime(new Date());
+
+        memberLoginLogMapper.updateByPrimaryKeySelective(memberLoginLogDB);
     }
 }

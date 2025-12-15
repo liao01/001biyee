@@ -152,6 +152,32 @@ const showSearch = computed(() => route.path === '/CardList')
 // 跳转到资料编辑页
 const goToEdit = () => router.push('/UserDetail')
 const goToProfile = () => router.push('/UserProfile')
+
+const heart   =()  =>{
+  axios.get('http://localhost:8080/lyw/web/member/heart');
+}
+
+let  interval = setInterval(heart, 50000);
+let heartTimer = null
+watch(
+    () => member.value?.name,
+    (newVal) => {
+      if (newVal) {
+        // 已登录 → 开启心跳
+        if (!heartTimer) {
+          heartTimer = setInterval(heart, 1000)
+        }
+      } else {
+        // 未登录 / 退出登录 → 停止心跳
+        if (heartTimer) {
+          clearInterval(heartTimer)
+          heartTimer = null
+        }
+      }
+    },
+    { immediate: true }
+)
+
 </script>
 
 
