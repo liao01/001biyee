@@ -13,6 +13,7 @@ import com.jiawa.lyw.req.MemberLoginReq;
 import com.jiawa.lyw.req.MemberRegisterReq;
 import com.jiawa.lyw.req.MemberResetReq;
 import com.jiawa.lyw.resp.MemberLoginResp;
+import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -26,6 +27,8 @@ import java.util.Map;
 public class MemberService {
     @Autowired
     private MemberMapper memberMapper;
+    @Resource
+    private MemberLoginLogService  memberLoginLogService;
 
     //按手机号查会员信息
     public Member selectByMember(String member){
@@ -99,6 +102,9 @@ public class MemberService {
 
             String token = JwtUtil.createLoginToken(map);
             memberLoginResp.setToken(token);
+
+            memberLoginLogService.save(memberLoginResp);
+
             return memberLoginResp;
         }else {
             log.warn("密码错误,{}",req.getMobile());
