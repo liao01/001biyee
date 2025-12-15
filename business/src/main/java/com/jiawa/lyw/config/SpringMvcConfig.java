@@ -1,5 +1,6 @@
 package com.jiawa.lyw.config;
 
+import com.jiawa.lyw.interceptor.AdminLoginInterceptor;
 import com.jiawa.lyw.interceptor.LogInterceptor;
 import com.jiawa.lyw.interceptor.WebLoginInterceptor;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,6 +14,8 @@ public class SpringMvcConfig implements WebMvcConfigurer {
     private WebLoginInterceptor webLoginInterceptor;
     @Autowired
     private LogInterceptor logInterceptor;
+    @Autowired
+    private AdminLoginInterceptor adminLoginInterceptor;
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
@@ -30,5 +33,15 @@ public class SpringMvcConfig implements WebMvcConfigurer {
                         "/web/post/post-findAll",
                         "/web/comment/findall-comment"
                 );
+
+        registry.addInterceptor(adminLoginInterceptor)
+                .addPathPatterns("/admin/**")
+                .excludePathPatterns(
+                        "/admin/kaptcha/image-code/*",
+                        "/admin/member/login",
+                        "/admin/report/**"
+                );
+
+
     }
 }

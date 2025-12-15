@@ -7,6 +7,12 @@ import java.util.List;
 @Data
 public class StatisticResp {
 
+    /**
+     * 实时在线
+     */
+    private Integer onlineCount;
+
+
     private Integer countFollowers;
     /**
      * 相比昨日关注人数
