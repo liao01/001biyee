@@ -1,19 +1,19 @@
 import { createStore } from 'vuex'
 
-const MEMBER = "member";
+const User = "user";
 
 export default createStore({
     state: {
-        member: { ...(SessionStorage.get(MEMBER) || {}) }
+        user: { ...(SessionStorage.get(User) || {}) }
     },
     mutations: {
-        setMember(state, _member) {
-            state.member = { ..._member };
-            SessionStorage.set(MEMBER, _member);
+        setMember(state, _user) {
+            state.user = { ..._user };
+            SessionStorage.set(User, _user);
         },
         clearMember(state) {
-            state.member = {};
-            SessionStorage.remove(MEMBER);
+            state.user = {};
+            SessionStorage.remove(User);
         }
     }
 })

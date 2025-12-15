@@ -4,7 +4,7 @@
     <a-layout>
       <a-layout-header class="app-header">
         <div class="header-content">
-          <span class="welcome-message">欢迎回来，Admin</span>
+          <span class="welcome-message">欢迎回来，{{ user.loginName || '未登录' }}</span>
         </div>
       </a-layout-header>
 
@@ -26,7 +26,11 @@
 
 <script setup>
 import TheSider from "../components/the-sider.vue";
-// 引入图标等...
+import {computed} from "vue";
+import store from "../store/index.js";
+
+// 当前登录用户，直接依赖 Vuex
+const user = computed(() => store.state.user)
 </script>
 
 <style scoped>
