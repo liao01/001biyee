@@ -2,9 +2,11 @@
   <a-layout-sider v-model:collapsed="collapsed" collapsible>
     <div class="logo" />
     <a-menu v-model:selectedKeys="selectedKeys" theme="dark" mode="inline">
-      <a-menu-item key="1">
-        <pie-chart-outlined />
-        <span>Option 1</span>
+      <a-menu-item key="/home/dashboard">
+        <router-link to="/home/dashboard">
+          <pie-chart-outlined />
+          <span>数据查看台</span>
+        </router-link>
       </a-menu-item>
       <a-menu-item key="2">
         <desktop-outlined />
@@ -19,9 +21,16 @@
 </template>
 
 <script  setup>
-import { ref } from 'vue';
-const collapsed = ref(false);
-const selectedKeys = ref(['1']);
+import {computed, ref} from 'vue';
+import {useRoute} from "vue-router";
+
+const collapsed = ref(false)
+
+// 当前路由
+const route = useRoute()
+
+// ✅ 菜单选中项 = 当前路由 path
+const selectedKeys = computed(() => [route.path])
 </script>
 
 <style scoped>
