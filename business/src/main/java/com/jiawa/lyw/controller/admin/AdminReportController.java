@@ -15,11 +15,19 @@ public class AdminReportController {
     @Autowired
     private ReportService reportService;
 
+
     //首页数字统计
     @GetMapping("/query-statistic")
     public CommonResp<StatisticResp> queryStatistic(){
         StatisticResp statisticResp = reportService.queryStatistic();
         return new CommonResp<>(statisticResp);
 
+    }
+
+    //统计日活用户
+    @GetMapping("/dau")
+    public CommonResp<StatisticResp> getDau() {
+        StatisticResp statisticResp = reportService.getDau();
+        return new CommonResp<>(statisticResp);
     }
 }

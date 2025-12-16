@@ -13,6 +13,12 @@ public class StatisticResp {
     private Integer onlineCount;
 
 
+    /**
+     * 日活用户
+     */
+    private Long dau;
+
+
     private Integer countFollowers;
     /**
      * 相比昨日关注人数

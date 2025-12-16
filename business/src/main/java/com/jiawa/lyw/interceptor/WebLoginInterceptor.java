@@ -5,17 +5,23 @@ import cn.hutool.json.JSONUtil;
 import com.jiawa.lyw.Util.JwtUtil;
 import com.jiawa.lyw.context.LoginMemberContext;
 import com.jiawa.lyw.resp.MemberLoginResp;
+import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
 import org.springframework.web.servlet.ModelAndView;
+import java.util.concurrent.TimeUnit;
+import java.time.LocalDate;
 
 @Slf4j
 @Component
 public class WebLoginInterceptor implements HandlerInterceptor {
+    @Resource
+    private StringRedisTemplate stringRedisTemplate;
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
@@ -47,6 +53,16 @@ public class WebLoginInterceptor implements HandlerInterceptor {
             MemberLoginResp member = JSONUtil.toBean(loginMember, MemberLoginResp.class);
             member.setToken(token);
             LoginMemberContext.setMember(member);
+
+            // ================== DAU 统计开始 ==================
+            Long memberId = member.getId();
+            String today = LocalDate.now().toString(); // 2025-12-16
+            String key = "dau:" + today;
+
+            stringRedisTemplate.opsForSet().add(key, String.valueOf(memberId));
+            stringRedisTemplate.expire(key, 7, TimeUnit.DAYS);
+            // ================== DAU 统计结束 ==================
+
             return true;
         }
     }
