@@ -144,26 +144,16 @@ const formatAndRender30Chart = (id, title, data30) => {
   render30Chart(id, title, dates, nums);
 }
 
-const render30Chart = (id, title, xAxios, yAxios) => {
-  // 发布生产后出现问题：切到别的页面，再切回首页，报表显示不出来
-  // 解决方法：把原来的id=registerCount的区域清空，重新初始化
-  const dom = document.getElementById(id + '-col');
-  if (dom) {
-    dom.innerHTML = '<div id="' + id + '" style="width: 100%;height:250px;"></div>';
-  }
-  const myChart = echarts.init(document.getElementById(id));
+const render30Chart = (id, title, xAxisData, yAxisData) => {
+  const dom = document.getElementById(id);
+  if (!dom) return;
+  const myChart = echarts.init(dom);
   const option = {
-    title: {
-      text: title,
-    },
-    xAxis: {
-      data: xAxios
-    },
-    yAxis: {},
-    series: [{
-      data: yAxios,
-      type: 'line'
-    }]
+    title: { text: title },
+    tooltip: { trigger: 'axis' },
+    xAxis: { type: 'category', data: xAxisData },
+    yAxis: { type: 'value' },
+    series: [{ data: yAxisData, type: 'line', smooth: true }]
   };
   myChart.setOption(option);
 };
