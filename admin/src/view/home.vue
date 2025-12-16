@@ -4,7 +4,10 @@
     <a-layout>
       <a-layout-header class="app-header">
         <div class="header-content">
-          <span class="welcome-message">欢迎回来，{{ user.loginName || '未登录' }}</span>
+          <span class="welcome-message">欢迎回来，{{ user.loginName || '未登录' }}</span>&nbsp;&nbsp;
+          <router-link to="/login">
+            退出登录
+          </router-link>
         </div>
       </a-layout-header>
 
