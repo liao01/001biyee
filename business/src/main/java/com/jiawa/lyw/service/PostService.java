@@ -11,9 +11,7 @@ import com.jiawa.lyw.exception.BusinessException;
 import com.jiawa.lyw.exception.BusinessExceptionEnum;
 import com.jiawa.lyw.mapper.*;
 import com.jiawa.lyw.req.*;
-import com.jiawa.lyw.resp.PageResp;
-import com.jiawa.lyw.resp.PostResp;
-import com.jiawa.lyw.resp.PostUserResp;
+import com.jiawa.lyw.resp.*;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -49,6 +47,9 @@ public class PostService {
 
     @Resource
     private StringRedisTemplate stringRedisTemplate;
+
+    @Resource
+    private UserFollowService userFollowService;
 
     @Transactional
     public void savePost(PostReq req) throws IOException {
@@ -228,5 +229,29 @@ public class PostService {
         } else {
             log.warn("帖子软删除失败，帖子不存在: {}", postId);
         }
+    }
+
+    /**
+     * 查询帖子总数 */
+    public StatisticResp getPostCount(){
+        StatisticResp statisticResp = new StatisticResp();
+
+        PostExample postExample = new PostExample();
+        PostExample.Criteria criteria = postExample.createCriteria();
+        criteria.andStatusEqualTo(PostStatusEnum.OPEN.getCode());
+
+        long totalPostCount = postMapper.countByExample(postExample);
+        statisticResp.setPostCount(totalPostCount);
+
+        return statisticResp;
+    }
+
+    public StatisticResp selectDailyPostCountLast30Days(){
+        StatisticResp statisticResp = new StatisticResp();
+
+        List<StatisticDateResp> statisticResps = postMapperCust.selectDailyPostCountLast30Days();
+        statisticResp.setSelectDailyPostCountLast30Days(userFollowService.fill30(statisticResps));
+
+        return statisticResp;
     }
 }

@@ -3,6 +3,7 @@ package com.jiawa.lyw.controller.admin;
 
 import com.jiawa.lyw.resp.CommonResp;
 import com.jiawa.lyw.resp.StatisticResp;
+import com.jiawa.lyw.service.PostService;
 import com.jiawa.lyw.service.ReportService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -14,6 +15,9 @@ import org.springframework.web.bind.annotation.RestController;
 public class AdminReportController {
     @Autowired
     private ReportService reportService;
+
+    @Autowired
+    private PostService postService;
 
 
     //首页数字统计
@@ -35,6 +39,20 @@ public class AdminReportController {
     @GetMapping("/postDayCount")
     public CommonResp<StatisticResp> getPostDayCount() {
         StatisticResp statisticResp = reportService.getPostDayCount();
+        return new CommonResp<>(statisticResp);
+    }
+
+    //统计每日发贴量
+    @GetMapping("/postCount")
+    public CommonResp<StatisticResp> getPostCount() {
+        StatisticResp statisticResp = postService.getPostCount();
+        return new CommonResp<>(statisticResp);
+    }
+
+    //统计每日发贴量
+    @GetMapping("/postCount30Days")
+    public CommonResp<StatisticResp> selectDailyPostCountLast30Days() {
+        StatisticResp statisticResp = postService.selectDailyPostCountLast30Days();
         return new CommonResp<>(statisticResp);
     }
 }

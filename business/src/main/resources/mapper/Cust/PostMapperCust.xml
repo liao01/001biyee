@@ -118,4 +118,14 @@
             p.id, p.title, p.content, m.name, up.avatar, p.create_time
         ORDER BY p.create_time DESC;
     </select>
+
+    <select id="selectDailyPostCountLast30Days" resultType="com.jiawa.lyw.resp.StatisticDateResp">
+        SELECT DATE_FORMAT(create_time, '%m-%d') AS date,
+               COUNT(*) AS post_count
+        FROM post
+        WHERE status = '1'
+          AND create_time >= DATE_SUB(CURDATE(), INTERVAL 29 DAY)
+        GROUP BY DATE_FORMAT(create_time, '%m-%d')
+        ORDER BY date;
+    </select>
 </mapper>

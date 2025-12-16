@@ -23,6 +23,11 @@ public class StatisticResp {
      */
     private String postDayCount;
 
+    /**
+     * 总发帖量
+     */
+    private long postCount;
+
 
     private Integer countFollowers;
     /**
@@ -40,6 +45,11 @@ public class StatisticResp {
      * 该用户近30天关注人数数
      */
     private List<StatisticDateResp> getUserFollowTrendLast30Days;
+
+    /**
+     * 该用户近30天发送帖子数量
+     */
+    private List<StatisticDateResp> selectDailyPostCountLast30Days;
 
     /**
      * 该用户近30天关注人数数
