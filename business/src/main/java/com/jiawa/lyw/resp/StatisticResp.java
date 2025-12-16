@@ -28,6 +28,11 @@ public class StatisticResp {
      */
     private long postCount;
 
+    /**
+     * 用户总数
+     */
+    private long TotalCount;
+
 
     private Integer countFollowers;
     /**

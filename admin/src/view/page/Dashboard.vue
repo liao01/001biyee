@@ -15,6 +15,9 @@
     <a-col :span="12">
       <a-statistic title="发帖总数" :value=" account.postCount " style="margin-right: 50px" />
     </a-col>
+    <a-col :span="12">
+      <a-statistic title="用户数 " :value=" account.totalCount " style="margin-right: 50px" />
+    </a-col>
   </a-row>
   <div id="post30DayCountList" style="width: 100%;height:250px;"></div>
 </template>
@@ -28,7 +31,8 @@ const account = ref({
   onlineCount: 0,
   dau: 0,
   postDayCount:  0,
-  postCount: 0
+  postCount: 0,
+  totalCount: 0
 })
 
 onMounted(() => {
@@ -68,6 +72,17 @@ onMounted(() => {
           message.error(data.message)
         }
       })
+  axios.get('http://localhost:8080/lyw/admin/report/UserCount')
+      .then(response => {
+        const data = response.data
+        if (data.success) {
+          account.value.totalCount = data.content.totalCount
+        } else {
+          message.error(data.message)
+        }
+      })
+
+
   axios.get('http://localhost:8080/lyw/admin/report/postCount30Days')
       .then(response => {
         const data = response.data

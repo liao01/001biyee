@@ -13,6 +13,7 @@ import com.jiawa.lyw.req.MemberLoginReq;
 import com.jiawa.lyw.req.MemberRegisterReq;
 import com.jiawa.lyw.req.MemberResetReq;
 import com.jiawa.lyw.resp.MemberLoginResp;
+import com.jiawa.lyw.resp.StatisticResp;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -110,5 +111,15 @@ public class MemberService {
             log.warn("密码错误,{}",req.getMobile());
             throw new BusinessException(BusinessExceptionEnum.MEMBER_LOGIN_ERROR);
         }
+    }
+
+    public StatisticResp getUserCount() {
+        StatisticResp statisticResp = new StatisticResp();
+
+        MemberExample example = new MemberExample();
+        long userCount = memberMapper.countByExample(example);
+
+        statisticResp.setTotalCount(userCount);  // 假设 StatisticResp 有 totalCount 字段
+        return statisticResp;
     }
 }

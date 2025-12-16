@@ -3,6 +3,7 @@ package com.jiawa.lyw.controller.admin;
 
 import com.jiawa.lyw.resp.CommonResp;
 import com.jiawa.lyw.resp.StatisticResp;
+import com.jiawa.lyw.service.MemberService;
 import com.jiawa.lyw.service.PostService;
 import com.jiawa.lyw.service.ReportService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,6 +19,8 @@ public class AdminReportController {
 
     @Autowired
     private PostService postService;
+    @Autowired
+    private MemberService memberService;
 
 
     //首页数字统计
@@ -46,6 +49,12 @@ public class AdminReportController {
     @GetMapping("/postCount")
     public CommonResp<StatisticResp> getPostCount() {
         StatisticResp statisticResp = postService.getPostCount();
+        return new CommonResp<>(statisticResp);
+    }
+    //统计用户总数
+    @GetMapping("/UserCount")
+    public CommonResp<StatisticResp> getUserCount() {
+        StatisticResp statisticResp = memberService.getUserCount();
         return new CommonResp<>(statisticResp);
     }
 
