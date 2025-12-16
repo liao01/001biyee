@@ -57,6 +57,12 @@ public class AdminReportController {
         StatisticResp statisticResp = memberService.getUserCount();
         return new CommonResp<>(statisticResp);
     }
+    //统计今日注册人数
+    @GetMapping("/RegisterUserCount")
+    public CommonResp<StatisticResp> getRegisterUserCount() {
+        StatisticResp statisticResp = memberService.getRegisterUserCount();
+        return new CommonResp<>(statisticResp);
+    }
 
     //统计每日发贴量
     @GetMapping("/postCount30Days")

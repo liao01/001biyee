@@ -33,6 +33,11 @@ public class StatisticResp {
      */
     private long TotalCount;
 
+    /**
+     * 昨日注册人数
+     */
+    private long todayNewUsers;
+
 
     private Integer countFollowers;
     /**

@@ -19,6 +19,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -119,7 +120,21 @@ public class MemberService {
         MemberExample example = new MemberExample();
         long userCount = memberMapper.countByExample(example);
 
-        statisticResp.setTotalCount(userCount);  // 假设 StatisticResp 有 totalCount 字段
+        statisticResp.setTotalCount(userCount);
+        return statisticResp;
+    }
+
+    //今日注册人数
+    public StatisticResp getRegisterUserCount() {
+        StatisticResp statisticResp = new StatisticResp();
+
+        MemberExample example = new MemberExample();
+        example.createCriteria().andCreatedAtGreaterThanOrEqualTo(LocalDate.now().atStartOfDay())      // 今天 0 点之后
+                .andCreatedAtLessThan(LocalDate.now().plusDays(1).atStartOfDay());    // 明天 0 点之前
+
+        long todayNewUsers = memberMapper.countByExample(example);
+
+        statisticResp.setTodayNewUsers(todayNewUsers);
         return statisticResp;
     }
 }

@@ -18,6 +18,9 @@
     <a-col :span="12">
       <a-statistic title="用户数 " :value=" account.totalCount " style="margin-right: 50px" />
     </a-col>
+    <a-col :span="12">
+      <a-statistic title="今日注册数 " :value=" account.todayNewUsers " style="margin-right: 50px" />
+    </a-col>
   </a-row>
   <div id="post30DayCountList" style="width: 100%;height:250px;"></div>
 </template>
@@ -32,7 +35,8 @@ const account = ref({
   dau: 0,
   postDayCount:  0,
   postCount: 0,
-  totalCount: 0
+  totalCount: 0,
+  todayNewUsers: 0
 })
 
 onMounted(() => {
@@ -77,6 +81,15 @@ onMounted(() => {
         const data = response.data
         if (data.success) {
           account.value.totalCount = data.content.totalCount
+        } else {
+          message.error(data.message)
+        }
+      })
+  axios.get('http://localhost:8080/lyw/admin/report/RegisterUserCount')
+      .then(response => {
+        const data = response.data
+        if (data.success) {
+          account.value.todayNewUsers = data.content.todayNewUsers
         } else {
           message.error(data.message)
         }

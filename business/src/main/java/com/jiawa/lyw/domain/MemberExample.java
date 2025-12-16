@@ -1,5 +1,6 @@
 package com.jiawa.lyw.domain;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -385,7 +386,7 @@ public class MemberExample {
             return (Criteria) this;
         }
 
-        public Criteria andCreatedAtEqualTo(Date value) {
+        public Criteria andCreatedAtEqualTo(LocalDateTime value) {
             addCriterion("created_at =", value, "createdAt");
             return (Criteria) this;
         }
@@ -400,12 +401,12 @@ public class MemberExample {
             return (Criteria) this;
         }
 
-        public Criteria andCreatedAtGreaterThanOrEqualTo(Date value) {
+        public Criteria andCreatedAtGreaterThanOrEqualTo(LocalDateTime value) {
             addCriterion("created_at >=", value, "createdAt");
             return (Criteria) this;
         }
 
-        public Criteria andCreatedAtLessThan(Date value) {
+        public Criteria andCreatedAtLessThan(LocalDateTime value) {
             addCriterion("created_at <", value, "createdAt");
             return (Criteria) this;
         }
