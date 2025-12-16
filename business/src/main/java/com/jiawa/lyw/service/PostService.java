@@ -14,15 +14,19 @@ import com.jiawa.lyw.req.*;
 import com.jiawa.lyw.resp.PageResp;
 import com.jiawa.lyw.resp.PostResp;
 import com.jiawa.lyw.resp.PostUserResp;
+import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
 import java.net.URL;
+import java.time.LocalDate;
 import java.util.Date;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 @Service
 
@@ -42,6 +46,9 @@ public class PostService {
 
     @Autowired
     private PostMapperCust postMapperCust;
+
+    @Resource
+    private StringRedisTemplate stringRedisTemplate;
 
     @Transactional
     public void savePost(PostReq req) throws IOException {
@@ -142,6 +149,12 @@ public class PostService {
             postTag.setTagId(tagId);
             postTagMapper.insert(postTag);
         }
+
+        // Redis 今日新增帖子数 +1
+        String key = "post:count:" + LocalDate.now();
+        stringRedisTemplate.opsForValue().increment(key);
+        stringRedisTemplate.expire(key, 7, TimeUnit.DAYS);
+
         log.info("保存帖子结束:{}", postID);
     }
 

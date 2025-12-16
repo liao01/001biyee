@@ -7,7 +7,10 @@
       <a-statistic title="当前在线人数" :value=" account.onlineCount " style="margin-right: 50px" />
     </a-col>
     <a-col :span="12">
-      <a-statistic title="日活跃用户" :value=" account.dau " style="margin-right: 50px" />
+      <a-statistic title="今日活跃用户" :value=" account.dau " style="margin-right: 50px" />
+    </a-col>
+    <a-col :span="12">
+      <a-statistic title="今日发帖总数" :value=" account.postDayCount " style="margin-right: 50px" />
     </a-col>
   </a-row>
 </template>
@@ -19,7 +22,8 @@ import { message } from 'ant-design-vue'
 
 const account = ref({
   onlineCount: 0,
-  dau: 0
+  dau: 0,
+  postDayCount:0
 })
 
 onMounted(() => {
@@ -37,6 +41,15 @@ onMounted(() => {
         const data = response.data
         if (data.success) {
           account.value.dau = data.content.dau
+        } else {
+          message.error(data.message)
+        }
+      })
+  axios.get('http://localhost:8080/lyw/admin/report/postDayCount')
+      .then(response => {
+        const data = response.data
+        if (data.success) {
+          account.value.postDayCount = data.content.postDayCount
         } else {
           message.error(data.message)
         }

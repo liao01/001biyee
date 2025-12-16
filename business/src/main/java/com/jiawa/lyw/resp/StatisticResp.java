@@ -18,6 +18,11 @@ public class StatisticResp {
      */
     private Long dau;
 
+    /**
+     * 每日发帖量
+     */
+    private String postDayCount;
+
 
     private Integer countFollowers;
     /**

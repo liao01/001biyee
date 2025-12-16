@@ -165,7 +165,7 @@ watch(
       if (newVal) {
         // 已登录 → 开启心跳
         if (!heartTimer) {
-          heartTimer = setInterval(heart, 1000)
+          heartTimer = setInterval(heart, 60000)
         }
       } else {
         // 未登录 / 退出登录 → 停止心跳

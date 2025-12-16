@@ -33,4 +33,14 @@ public class ReportService {
 
         return resp;
     }
+
+    public StatisticResp getPostDayCount(){
+        StatisticResp resp = new StatisticResp();
+
+        String key = "post:count:" + LocalDate.now();
+        String count = stringRedisTemplate.opsForValue().get(key);
+        resp.setPostDayCount(count);
+
+        return resp;
+    }
 }

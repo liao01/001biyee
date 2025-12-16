@@ -30,4 +30,11 @@ public class AdminReportController {
         StatisticResp statisticResp = reportService.getDau();
         return new CommonResp<>(statisticResp);
     }
+
+    //统计每日发贴量
+    @GetMapping("/postDayCount")
+    public CommonResp<StatisticResp> getPostDayCount() {
+        StatisticResp statisticResp = reportService.getPostDayCount();
+        return new CommonResp<>(statisticResp);
+    }
 }
