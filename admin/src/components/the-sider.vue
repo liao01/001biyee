@@ -5,16 +5,16 @@
       <a-menu-item key="/home/dashboard">
         <router-link to="/home/dashboard">
           <pie-chart-outlined />
-          <span>数据查看台</span>
+          <span>数据概况</span>
         </router-link>
       </a-menu-item>
       <a-menu-item key="2">
         <desktop-outlined />
-        <span>Option 2</span>
+        <span>旅游地图管理</span>
       </a-menu-item>
       <a-menu-item key="3">
         <user-outlined />
-        <span>User</span>
+        <span>用户管理</span>
       </a-menu-item>
     </a-menu>
   </a-layout-sider>

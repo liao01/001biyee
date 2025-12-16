@@ -21,7 +21,7 @@
       </a-layout-content>
 
       <a-layout-footer class="app-footer">
-        © {{ new Date().getFullYear() }} [您的公司/项目名称]. All Rights Reserved.
+        © {{ new Date().getFullYear() }} [基于Spring Boot技术的旅游信息分享平台设计与实现 ]. All Rights Reserved.
       </a-layout-footer>
     </a-layout>
   </a-layout>
