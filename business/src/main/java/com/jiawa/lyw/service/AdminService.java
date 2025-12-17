@@ -2,6 +2,7 @@ package com.jiawa.lyw.service;
 
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.collection.CollUtil;
+import cn.hutool.core.util.IdUtil;
 import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
 import com.jiawa.lyw.Util.JwtUtil;
@@ -12,6 +13,7 @@ import com.jiawa.lyw.exception.BusinessExceptionEnum;
 import com.jiawa.lyw.mapper.UserMapper;
 import com.jiawa.lyw.req.PageReq;
 import com.jiawa.lyw.req.UserLoginReq;
+import com.jiawa.lyw.req.UserRegisterReq;
 import com.jiawa.lyw.resp.PageResp;
 import com.jiawa.lyw.resp.UserLoginResp;
 import com.jiawa.lyw.resp.UserResp;
@@ -83,5 +85,23 @@ public class AdminService {
         pageResp.setPage(list);
 
         return  pageResp;
+    }
+
+    public void register(UserRegisterReq req){
+        UserExample userExample = new UserExample();
+        UserExample.Criteria criteria = userExample.createCriteria();
+        criteria.andLoginNameEqualTo(req.getLoginName());
+
+        if (!userMapper.selectByExample(userExample).isEmpty()) {
+            log.warn("用户已经拥有,{}",req.getLoginName());
+            throw new BusinessException(BusinessExceptionEnum.User_MOBILE_HAD_REGISTER);
+        }
+
+        User user = new User();
+        user.setId(IdUtil.getSnowflakeNextId());
+        user.setLoginName(req.getLoginName());
+        user.setPassword(req.getPassword());
+
+        userMapper.insert(user);
     }
 }

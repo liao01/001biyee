@@ -10,7 +10,7 @@ public class UserRegisterReq {
      * 用户名
      */
     @NotBlank(message = "【用户名】不能为空")
-    private String UserName;
+    private String LoginName;
 
     /**
      * 密码
@@ -18,10 +18,10 @@ public class UserRegisterReq {
     @NotBlank(message = "【密码】不能为空")
     private String password;
 
-    /**
-     * 验证码
-     */
-    @NotBlank(message = "【验证码】不能为空")
-    private String code;
+    @NotBlank(message = "【图片验证码】不能为空")
+    private String imageCode;
+
+    @NotBlank(message = "【图片验证码】参数非法")
+    private String imageCodeToken;
 
 }

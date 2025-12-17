@@ -3,6 +3,7 @@ package com.jiawa.lyw.controller.admin;
 import cn.hutool.crypto.digest.DigestUtil;
 import com.jiawa.lyw.req.PageReq;
 import com.jiawa.lyw.req.UserLoginReq;
+import com.jiawa.lyw.req.UserRegisterReq;
 import com.jiawa.lyw.resp.CommonResp;
 import com.jiawa.lyw.resp.PageResp;
 import com.jiawa.lyw.resp.UserLoginResp;
@@ -46,6 +47,20 @@ public class AdminController {
     public CommonResp<PageResp<UserResp>> query(@Valid PageReq req) {
         PageResp<UserResp> pageResp = adminService.selectUser(req);// 注意加分号并定义 result
         return new CommonResp<>(pageResp);
+    }
+
+    @PostMapping("/register")
+    public CommonResp<Object> Register(@Valid @RequestBody UserRegisterReq req) {
+        req.setPassword(DigestUtil.md5Hex(req.getPassword().toLowerCase()));
+
+        log.info("用户注册开始:{}",req.getLoginName());
+
+        // 校验图片验证码，防止短信攻击，不加的话，只能防止同一手机攻击，加上图片验证码，可防止不同的手机号攻击
+        kaptchaService.validCode(req.getImageCode(), req.getImageCodeToken());
+        log.info("用户验证码校验通过:{}",req.getLoginName());
+
+        adminService.register(req);
+        return new CommonResp<>();
     }
 
 }
