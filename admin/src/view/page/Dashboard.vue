@@ -23,7 +23,7 @@
       </a-col>
       <a-col :xs="24" :sm="12" :md="8" :lg="4">
         <a-card hoverable class="stat-card">
-          <a-statistic title="发帖总数" :value="account.postCount" />
+          <a-statistic title="发帖总数" :value="account.postCount || 0" />
         </a-card>
       </a-col>
       <a-col :xs="24" :sm="12" :md="8" :lg="4">

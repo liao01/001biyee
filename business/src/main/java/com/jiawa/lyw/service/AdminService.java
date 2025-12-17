@@ -2,14 +2,19 @@ package com.jiawa.lyw.service;
 
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.collection.CollUtil;
+import com.github.pagehelper.PageHelper;
+import com.github.pagehelper.PageInfo;
 import com.jiawa.lyw.Util.JwtUtil;
 import com.jiawa.lyw.domain.User;
 import com.jiawa.lyw.domain.UserExample;
 import com.jiawa.lyw.exception.BusinessException;
 import com.jiawa.lyw.exception.BusinessExceptionEnum;
 import com.jiawa.lyw.mapper.UserMapper;
+import com.jiawa.lyw.req.PageReq;
 import com.jiawa.lyw.req.UserLoginReq;
+import com.jiawa.lyw.resp.PageResp;
 import com.jiawa.lyw.resp.UserLoginResp;
+import com.jiawa.lyw.resp.UserResp;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -61,5 +66,22 @@ public class AdminService {
             log.warn("密码错误,{}",req.getLoginName());
             throw new BusinessException(BusinessExceptionEnum.USER_LOGIN_ERROR);
         }
+    }
+
+    public PageResp<UserResp> selectUser(PageReq req){
+        UserExample userExample = new UserExample();
+
+        PageHelper.startPage(req.getPage(),req.getSize());//分页必须要和查询放在一起
+        List<User> users = userMapper.selectByExample(userExample);
+        //构造分页的返回信息
+        PageResp<UserResp> pageResp = new PageResp<>();
+        //获取分页的信息，需要获取总数
+        PageInfo<User> pageInfo = new PageInfo<>(users);
+        pageResp.setTotal(pageInfo.getTotal());
+        //获取当前分页列表的内容
+        List<UserResp> list = BeanUtil.copyToList(users, UserResp.class);
+        pageResp.setPage(list);
+
+        return  pageResp;
     }
 }

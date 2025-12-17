@@ -12,9 +12,11 @@
         <desktop-outlined />
         <span>旅游地图管理</span>
       </a-menu-item>
-      <a-menu-item key="3">
-        <user-outlined />
-        <span>用户管理</span>
+      <a-menu-item key="/home/UserManagement">
+        <router-link to="/home/UserManagement">
+          <user-outlined />
+          <span>用户管理</span>
+        </router-link>
       </a-menu-item>
     </a-menu>
   </a-layout-sider>

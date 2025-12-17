@@ -1,21 +1,18 @@
 package com.jiawa.lyw.controller.admin;
 
 import cn.hutool.crypto.digest.DigestUtil;
-import com.jiawa.lyw.enums.SmsCodeUseEnum;
+import com.jiawa.lyw.req.PageReq;
 import com.jiawa.lyw.req.UserLoginReq;
-import com.jiawa.lyw.req.UserRegisterReq;
 import com.jiawa.lyw.resp.CommonResp;
+import com.jiawa.lyw.resp.PageResp;
 import com.jiawa.lyw.resp.UserLoginResp;
+import com.jiawa.lyw.resp.UserResp;
 import com.jiawa.lyw.service.AdminService;
 import com.jiawa.lyw.service.KaptchaService;
-import com.jiawa.lyw.service.SmsCodeService;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 
 @Slf4j
@@ -43,6 +40,12 @@ public class AdminController {
 
 
         return new CommonResp<>(userLoginResp);
+    }
+
+    @GetMapping("/query")
+    public CommonResp<PageResp<UserResp>> query(@Valid PageReq req) {
+        PageResp<UserResp> pageResp = adminService.selectUser(req);// 注意加分号并定义 result
+        return new CommonResp<>(pageResp);
     }
 
 }

@@ -3,6 +3,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import Home from '../view/home.vue'
 import Login from '../view/login.vue'
 import Dashboard from '../view/page/Dashboard.vue'
+import UserManagement from "../view/page/UserManagement.vue";
 
 const routes = [
   {
@@ -11,8 +12,11 @@ const routes = [
     redirect: '/home/dashboard',
     children: [
       {
-        path: 'dashboard',   // ✅ 不加 /
+        path: 'dashboard',
         component: Dashboard
+      },{
+        path: 'UserManagement',
+        component: UserManagement
       }
     ]
   },
