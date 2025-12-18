@@ -4,7 +4,7 @@ import lombok.Data;
 
 @Data
 public class UserResp {
-    private Long id;
+    private String id;
 
     private String loginName;
 

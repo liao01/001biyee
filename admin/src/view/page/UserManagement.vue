@@ -26,6 +26,12 @@
         <a @click="resetPwd(record)">重置密码</a>
         <a-divider type="vertical" />
         <a @click="deleteUser(record)">删除</a>
+
+        <DeleteUser
+            v-model:open="deleteOpen"
+            :user="currentUser"
+            @success="handleDeleteSuccess"/>
+
       </template>
     </template>
   </a-table>
@@ -36,12 +42,15 @@ import { ref, reactive, onMounted } from 'vue'
 import { message } from 'ant-design-vue'
 import axios from 'axios'
 import AddUser from "../../components/addUser.vue";
+import DeleteUser from "../../components/deleteUser.vue";
 
 // 如果你 main.js 里没配 baseURL，这里一定要写全
 axios.defaults.baseURL = 'http://localhost:8080/lyw'
 
 const loading = ref(false)
 const data = ref([])
+const deleteOpen = ref(false)
+const currentUser = ref(null)
 
 const pagination = reactive({
   current: 1,
@@ -104,9 +113,6 @@ const resetPwd = (record) => {
   message.info(`重置用户 ${record.loginName} 密码`)
 }
 
-const deleteUser = (record) => {
-  message.warning(`删除用户 ${record.loginName}`)
-}
 
 onMounted(() => {
   loadData()
@@ -123,6 +129,18 @@ const handleAddSuccess = () => {
   pagination.current = 1;
   loadData();
 };
+
+const deleteUser = (record) => {
+  currentUser.value = record
+  deleteOpen.value = true
+}
+
+const handleDeleteSuccess = () => {
+  deleteOpen.value = false
+  pagination.current = 1;
+  loadData()
+}
+
 </script>
 
 

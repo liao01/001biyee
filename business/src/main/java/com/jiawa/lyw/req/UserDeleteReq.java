@@ -8,8 +8,8 @@ public class UserDeleteReq {
     /**
      * 用户名
      */
-    @NotBlank(message = "【用户名】不能为空")
-    private Long id;
+    @NotBlank(message = "id不能为空")
+    private String id;
 
     @NotBlank(message = "【图片验证码】不能为空")
     private String imageCode;

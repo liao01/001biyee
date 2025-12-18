@@ -106,16 +106,15 @@ public class AdminService {
         userMapper.insert(user);
     }
 
-    public void delete(UserDeleteReq req){
+    public void delete(UserDeleteReq req) {
         UserExample userExample = new UserExample();
         UserExample.Criteria criteria = userExample.createCriteria();
-        criteria.andIdEqualTo(req.getId());
+        criteria.andIdEqualTo(Long.parseLong(req.getId())); // 确保是数字
 
-        if (userMapper.selectByExample(userExample).isEmpty()) {
-            log.warn("用户已经没拥有,{}",req.getId());
-            throw new BusinessException(BusinessExceptionEnum.User_MOBILE_HAD_REGISTER);
+        int deletedCount = userMapper.deleteByExample(userExample);
+        if (deletedCount == 0) {
+            log.warn("用户不存在, {}", req.getId());
+            throw new BusinessException(BusinessExceptionEnum.User_MOBILE_HAD_HAVE);
         }
-
-        userMapper.deleteByExample(userExample);
     }
 }

@@ -93,9 +93,6 @@
           >
             立即注册
           </a-button>
-          <div class="footer-links">
-            已有账号？<a @click="visible = false">直接登录</a>
-          </div>
         </a-form-item>
       </a-form>
     </div>
