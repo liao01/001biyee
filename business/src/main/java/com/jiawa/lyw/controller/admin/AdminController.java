@@ -2,6 +2,7 @@ package com.jiawa.lyw.controller.admin;
 
 import cn.hutool.crypto.digest.DigestUtil;
 import com.jiawa.lyw.req.PageReq;
+import com.jiawa.lyw.req.UserDeleteReq;
 import com.jiawa.lyw.req.UserLoginReq;
 import com.jiawa.lyw.req.UserRegisterReq;
 import com.jiawa.lyw.resp.CommonResp;
@@ -60,6 +61,18 @@ public class AdminController {
         log.info("用户验证码校验通过:{}",req.getLoginName());
 
         adminService.register(req);
+        return new CommonResp<>();
+    }
+    @PostMapping("/delete")
+    public CommonResp<Object> Delete(@Valid @RequestBody UserDeleteReq req) {
+
+        log.info("用户删除开始:{}",req.getId());
+
+        // 校验图片验证码，防止短信攻击，不加的话，只能防止同一手机攻击，加上图片验证码，可防止不同的手机号攻击
+        kaptchaService.validCode(req.getImageCode(), req.getImageCodeToken());
+        log.info("用户验证码校验通过:{}",req.getId());
+
+        adminService.delete(req);
         return new CommonResp<>();
     }
 

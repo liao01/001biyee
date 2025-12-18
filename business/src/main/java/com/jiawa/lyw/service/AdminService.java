@@ -12,6 +12,7 @@ import com.jiawa.lyw.exception.BusinessException;
 import com.jiawa.lyw.exception.BusinessExceptionEnum;
 import com.jiawa.lyw.mapper.UserMapper;
 import com.jiawa.lyw.req.PageReq;
+import com.jiawa.lyw.req.UserDeleteReq;
 import com.jiawa.lyw.req.UserLoginReq;
 import com.jiawa.lyw.req.UserRegisterReq;
 import com.jiawa.lyw.resp.PageResp;
@@ -103,5 +104,18 @@ public class AdminService {
         user.setPassword(req.getPassword());
 
         userMapper.insert(user);
+    }
+
+    public void delete(UserDeleteReq req){
+        UserExample userExample = new UserExample();
+        UserExample.Criteria criteria = userExample.createCriteria();
+        criteria.andIdEqualTo(req.getId());
+
+        if (userMapper.selectByExample(userExample).isEmpty()) {
+            log.warn("用户已经没拥有,{}",req.getId());
+            throw new BusinessException(BusinessExceptionEnum.User_MOBILE_HAD_REGISTER);
+        }
+
+        userMapper.deleteByExample(userExample);
     }
 }
