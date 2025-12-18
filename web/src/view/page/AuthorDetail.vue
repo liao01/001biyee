@@ -271,89 +271,169 @@ const showCardModal = (item) => {
 </script>
 
 <style scoped>
+/* 全局背景微调 */
+.user-page {
+  background-color: #fbfbfc;
+  min-height: 100vh;
+}
+
+/* 顶部用户信息区域美化 */
 .user-header-wrapper {
   display: flex;
   align-items: center;
-  justify-content: center;   /* 水平居中 */
-  flex-direction: column;    /* 改为上下排列 */
-  padding: 20px;
-  gap: 20px;
-  border-bottom: 1px solid #f0f0f0;
-  text-align: center;        /* 文本居中 */
+  justify-content: center;
+  flex-direction: column;
+  padding: 60px 20px 40px;
+  background: white;
+  /* 增加一个非常淡的背景渐变，增加深度感 */
+  background: linear-gradient(to bottom, #f8f9ff 0%, #ffffff 100%);
+  gap: 16px;
+  position: relative;
+}
+
+/* 头像外圈装饰 */
+.avatar {
+  border: 4px solid #fff;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+  transition: transform 0.3s ease;
+  cursor: pointer;
+}
+
+.avatar:hover {
+  transform: scale(1.05);
 }
 
 .user-info h2 {
-  margin: 0;
-  font-size: 24px;
-  font-weight: bold;
+  margin: 10px 0 5px;
+  font-size: 28px;
+  font-weight: 800;
+  color: #1a1a1a;
+  letter-spacing: -0.5px;
 }
 
 .user-info p {
-  margin: 4px 0;
-  color: #888;
+  margin: 0;
+  color: #999;
+  font-size: 13px;
+  background: #f0f2f5;
+  padding: 2px 12px;
+  border-radius: 12px;
+  display: inline-block;
 }
 
+/* 统计数据栏 */
 .user-stats {
-  margin-top: 8px;
+  margin-top: 20px;
   display: flex;
-  gap: 12px;
-  color: #555;
+  gap: 32px; /* 加大间距 */
 }
 
-.follow-btn {
-  margin-left: auto;
-}
-
-.tab-bar {
-  margin-top: 16px;
-  border-bottom: 1px solid #f0f0f0;
-}
-
-.waterfall-wrapper {
-  padding: 20px;
+.user-stats span {
   display: flex;
-  justify-content: center;
-  background-color: transparent; /* 去掉背景颜色 */
+  flex-direction: column;
+  align-items: center;
+  font-size: 14px;
+  color: #666;
+  cursor: pointer;
+  transition: color 0.2s;
 }
 
+/* 让数字和文字有主次之分 */
+.user-stats span::before {
+  content: attr(data-count); /* 如果以后你想用JS传值可以直接这样写，现在先手动调样式 */
+  font-size: 18px;
+  font-weight: 700;
+  color: #1a1a1a;
+  margin-bottom: 2px;
+}
+
+/* Tab 切换栏美化 */
 .user-tabs {
   display: flex;
   justify-content: center;
-  margin-top: 20px;
-  gap: 30px;
+  margin: 0;
+  padding: 20px 0;
+  background: #fff;
+  position: sticky; /* 粘性定位：滚动时固定在顶部 */
+  top: 0;
+  z-index: 100;
+  border-bottom: 1px solid rgba(0,0,0,0.04);
 }
 
 .tab {
-  padding: 6px 26px;
-  border-radius: 20px;
-  font-size: 16px;
-  font-weight: 600;
+  padding: 8px 32px;
+  border-radius: 25px;
+  font-size: 15px;
+  font-weight: 500;
   border: none;
   cursor: pointer;
   background: transparent;
-  transition: all 0.2s;
-}
-
-/* 激活状态：笔记 */
-.tab.active {
-  background: #f5f5f5;
-  color: #000;
-}
-
-/* 未激活状态：收藏（可点击） */
-.tab:not(.active) {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   color: #999;
+  position: relative;
 }
 
-/* 鼠标悬停效果（提升交互体验） */
-.tab:hover {
-  background: #f5f5f5;
-  color: #000;
+.tab.active {
+  background: #1a1a1a; /* 黑色深沉风格 */
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
 }
 
-/* 让 Tabs 本身宽度适配内容，而不是撑满 */
-.tab-bar .ant-tabs-nav {
-  margin: 0 auto !important;
+.tab:not(.active):hover {
+  background: #f5f5f7;
+  color: #333;
+}
+
+/* 瀑布流卡片精致化 */
+.waterfall-wrapper {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 30px 20px;
+}
+
+/* 穿透修改 antd 卡片样式 */
+:deep(.ant-card) {
+  border: none !important;
+  border-radius: 16px !important;
+  overflow: hidden;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+  transition: all 0.3s ease !important;
+}
+
+:deep(.ant-card:hover) {
+  transform: translateY(-8px);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.08) !important;
+}
+
+:deep(.ant-card-cover img) {
+  border-radius: 16px 16px 0 0;
+  transition: transform 0.5s ease;
+}
+
+:deep(.ant-card:hover .ant-card-cover img) {
+  transform: scale(1.05); /* 悬停图片轻微放大 */
+}
+
+:deep(.ant-card-meta-title) {
+  font-size: 15px !important;
+  font-weight: 600 !important;
+  margin-bottom: 8px !important;
+}
+
+:deep(.ant-card-meta-description) {
+  font-size: 13px !important;
+  color: #666 !important;
+  line-height: 1.5;
+}
+
+/* 响应式微调 */
+@media (max-width: 768px) {
+  .user-stats {
+    gap: 20px;
+  }
+  .user-info h2 {
+    font-size: 22px;
+  }
 }
 </style>
 

@@ -78,35 +78,122 @@ const formatDate = (isoDate) => {
   return date.toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' })
 }
 </script>
-
 <style scoped>
+/* 容器大卡片美化 */
 .user-detail-card {
-  max-width: 700px;
-  margin: 40px auto;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  border-radius: 16px;
-  padding: 20px;
-  background-color: #fff;
+  max-width: 800px;
+  margin: 50px auto;
+  border: none;
+  border-radius: 20px;
+  overflow: hidden; /* 确保背景不溢出 */
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
+  background: #fff;
+  transition: transform 0.3s ease;
 }
 
+/* 模拟社交主页的顶部封面背景 */
+.user-detail-card::before {
+  content: "";
+  display: block;
+  height: 120px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  width: 100%;
+}
+
+/* 用户头部信息布局 */
 .user-header {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 20px;
+  margin-top: -50px; /* 头像向上移动，压在背景上 */
+  padding-bottom: 24px;
+  text-align: center;
 }
 
+/* 头像特效 */
 .avatar {
-  border: 2px solid #f0f0f0;
+  border: 4px solid #fff;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+  background-color: #f9f9f9;
+  transition: transform 0.3s ease;
+}
+
+.avatar:hover {
+  transform: scale(1.05);
 }
 
 .user-info .username {
-  margin: 0;
-  font-size: 22px;
-  font-weight: bold;
+  margin: 15px 0 5px;
+  font-size: 26px;
+  font-weight: 700;
+  color: #2c3e50;
+  letter-spacing: 0.5px;
 }
 
 .user-info .bio {
-  margin-top: 6px;
-  color: #888;
+  margin: 0;
+  color: #95a5a6;
+  font-size: 15px;
+  font-style: italic;
+  max-width: 80%;
+  margin: 0 auto;
+}
+
+/* 调整分割线间距 */
+:deep(.ant-divider) {
+  margin: 0;
+  border-color: #f0f0f0;
+}
+
+/* 深度自定义 a-descriptions 样式 */
+:deep(.ant-descriptions) {
+  padding: 30px;
+  background: #fafafa;
+}
+
+:deep(.ant-descriptions-title) {
+  font-size: 18px !important;
+  font-weight: 600 !important;
+  color: #333 !important;
+  margin-bottom: 20px !important;
+  display: flex;
+  align-items: center;
+}
+
+/* 给标题加个小前缀修饰 */
+:deep(.ant-descriptions-title)::before {
+  content: "";
+  width: 4px;
+  height: 18px;
+  background: #764ba2;
+  margin-right: 10px;
+  border-radius: 2px;
+}
+
+/* 单元格标签样式 */
+:deep(.ant-descriptions-item-label) {
+  background: #fff !important;
+  color: #888 !important;
+  font-weight: 500;
+  width: 120px;
+}
+
+/* 单元格内容样式 */
+:deep(.ant-descriptions-item-content) {
+  background: #fff !important;
+  color: #2c3e50 !important;
+  font-size: 15px;
+}
+
+/* 响应式调整 */
+@media (max-width: 576px) {
+  .user-detail-card {
+    margin: 20px;
+    border-radius: 12px;
+  }
+
+  :deep(.ant-descriptions-item) {
+    display: block;
+  }
 }
 </style>

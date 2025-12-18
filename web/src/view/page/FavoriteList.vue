@@ -1,21 +1,26 @@
 <template>
-  <div style="padding: 20px;">
+  <div class="waterfall-container">
     <Waterfall
         :list="cardList"
         :width="240"
         :gutter="16"
+        class="waterfall-box"
     >
       <template #item="{ item }">
         <a-card
             hoverable
-            style="width: 240px"
+            class="custom-card"
             @click="showCardModal(item)"
         >
           <template #cover>
-            <img :src="baseUrl + item.raw.imageUrls?.split(',')[0]" :alt="item.title" />
+            <div class="cover-wrapper">
+              <img :src="baseUrl + item.raw.imageUrls?.split(',')[0]" :alt="item.title" />
+            </div>
           </template>
           <a-card-meta :title="item.title">
-            <template #description>{{ item.description }}</template>
+            <template #description>
+              <span class="card-desc">{{ item.description }}</span>
+            </template>
           </a-card-meta>
         </a-card>
       </template>
@@ -104,3 +109,70 @@ const showCardModal = (item) => {
 
 }
 </script>
+
+<style scoped>
+/* 1. 容器背景与内边距 */
+.waterfall-container {
+  padding: 30px;
+  background-color: #f4f7f9; /* 浅冷色调背景，让白色卡片更突出 */
+  min-height: 100vh;
+}
+
+/* 2. 卡片整体样式重塑 */
+:deep(.custom-card) {
+  border-radius: 12px; /* 更圆润的角 */
+  overflow: hidden;
+  border: none; /* 去掉生硬的边框 */
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05); /* 柔和的阴影 */
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
+  background: #ffffff;
+}
+
+/* 3. 悬停动效：上浮并加深阴影 */
+:deep(.custom-card:hover) {
+  transform: translateY(-8px);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.12);
+}
+
+/* 4. 图片封面处理 */
+.cover-wrapper {
+  overflow: hidden;
+  line-height: 0;
+}
+
+.cover-wrapper img {
+  width: 100%;
+  height: auto;
+  transition: transform 0.5s ease;
+  object-fit: cover;
+}
+
+/* 悬停时图片轻微缩放 */
+:deep(.custom-card:hover) .cover-wrapper img {
+  transform: scale(1.08);
+}
+
+/* 5. 内容区域调整 */
+:deep(.ant-card-meta-title) {
+  font-size: 16px;
+  font-weight: 600;
+  color: #262626;
+  margin-bottom: 8px !important;
+}
+
+:deep(.ant-card-meta-description) {
+  color: #8c8c8c;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+/* 6. 强制瀑布流居中显示 */
+.waterfall-box {
+  margin: 0 auto;
+}
+
+/* 7. 卡片内边距微调 */
+:deep(.ant-card-body) {
+  padding: 16px !important;
+}
+</style>
