@@ -1,5 +1,12 @@
 <template>
   <h1>用户管理</h1>
+  <div>
+    <a-button type="primary" @click="showModal">创建管理员账户</a-button>
+    <AddUser
+        v-model:open="open"
+        @success="handleAddSuccess"
+    />
+  </div>
   <a-table
       :columns="columns"
       :data-source="data"
@@ -28,6 +35,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { message } from 'ant-design-vue'
 import axios from 'axios'
+import AddUser from "../../components/addUser.vue";
 
 // 如果你 main.js 里没配 baseURL，这里一定要写全
 axios.defaults.baseURL = 'http://localhost:8080/lyw'
@@ -103,6 +111,18 @@ const deleteUser = (record) => {
 onMounted(() => {
   loadData()
 })
+
+const open = ref(false);
+
+const showModal = () => {
+  open.value = true;
+};
+
+const handleAddSuccess = () => {
+  open.value = false;
+  pagination.current = 1;
+  loadData();
+};
 </script>
 
 
