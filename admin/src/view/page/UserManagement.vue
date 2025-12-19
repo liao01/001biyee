@@ -24,6 +24,11 @@
       <!-- 操作 -->
       <template v-else-if="column.key === 'action'">
         <a @click="resetPwd(record)">重置密码</a>
+        <ForgetUser
+            v-model:open="resetVisible"
+            :user-id="resetUserId"
+            @success="resetVisibleSuccess"
+        />
         <a-divider type="vertical" />
         <a @click="deleteUser(record)">删除</a>
 
@@ -43,6 +48,7 @@ import { message } from 'ant-design-vue'
 import axios from 'axios'
 import AddUser from "../../components/addUser.vue";
 import DeleteUser from "../../components/deleteUser.vue";
+import ForgetUser from "../../components/forgetUser.vue";
 
 // 如果你 main.js 里没配 baseURL，这里一定要写全
 axios.defaults.baseURL = 'http://localhost:8080/lyw'
@@ -51,6 +57,8 @@ const loading = ref(false)
 const data = ref([])
 const deleteOpen = ref(false)
 const currentUser = ref(null)
+const resetVisible = ref(false)
+const resetUserId = ref(null)
 
 const pagination = reactive({
   current: 1,
@@ -109,11 +117,6 @@ const handleTableChange = (pager) => {
   loadData()
 }
 
-const resetPwd = (record) => {
-  message.info(`重置用户 ${record.loginName} 密码`)
-}
-
-
 onMounted(() => {
   loadData()
 })
@@ -136,6 +139,18 @@ const deleteUser = (record) => {
 }
 
 const handleDeleteSuccess = () => {
+  deleteOpen.value = false
+  pagination.current = 1;
+  loadData()
+}
+
+// 点击“重置密码”
+const resetPwd = (record) => {
+  resetUserId.value = record.id
+  resetVisible.value = true
+}
+
+const resetVisibleSuccess = () => {
   deleteOpen.value = false
   pagination.current = 1;
   loadData()
