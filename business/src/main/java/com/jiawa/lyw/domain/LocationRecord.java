@@ -1,7 +1,5 @@
 package com.jiawa.lyw.domain;
 
-import java.util.Date;
-
 public class LocationRecord {
     private Long id;
 
@@ -17,7 +15,9 @@ public class LocationRecord {
 
     private String district;
 
-    private Date createTime;
+    private String name;
+
+    private String description;
 
     public Long getId() {
         return id;
@@ -75,12 +75,20 @@ public class LocationRecord {
         this.district = district;
     }
 
-    public Date getCreateTime() {
-        return createTime;
+    public String getName() {
+        return name;
     }
 
-    public void setCreateTime(Date createTime) {
-        this.createTime = createTime;
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
     }
 
     @Override
@@ -96,7 +104,8 @@ public class LocationRecord {
         sb.append(", city=").append(city);
         sb.append(", province=").append(province);
         sb.append(", district=").append(district);
-        sb.append(", createTime=").append(createTime);
+        sb.append(", name=").append(name);
+        sb.append(", description=").append(description);
         sb.append("]");
         return sb.toString();
     }

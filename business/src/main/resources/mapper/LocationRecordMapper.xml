@@ -9,7 +9,8 @@
     <result column="city" jdbcType="VARCHAR" property="city" />
     <result column="province" jdbcType="VARCHAR" property="province" />
     <result column="district" jdbcType="VARCHAR" property="district" />
-    <result column="create_time" jdbcType="TIMESTAMP" property="createTime" />
+    <result column="name" jdbcType="VARCHAR" property="name" />
+    <result column="description" jdbcType="VARCHAR" property="description" />
   </resultMap>
   <sql id="Example_Where_Clause">
     <where>
@@ -70,7 +71,7 @@
     </where>
   </sql>
   <sql id="Base_Column_List">
-    id, longitude, latitude, formatted_address, city, province, district, create_time
+    id, longitude, latitude, formatted_address, city, province, district, `name`, description
   </sql>
   <select id="selectByExample" parameterType="com.jiawa.lyw.domain.LocationRecordExample" resultMap="BaseResultMap">
     select
@@ -105,10 +106,12 @@
   <insert id="insert" parameterType="com.jiawa.lyw.domain.LocationRecord">
     insert into location_record (id, longitude, latitude, 
       formatted_address, city, province, 
-      district, create_time)
+      district, `name`, description
+      )
     values (#{id,jdbcType=BIGINT}, #{longitude,jdbcType=DOUBLE}, #{latitude,jdbcType=DOUBLE}, 
       #{formattedAddress,jdbcType=VARCHAR}, #{city,jdbcType=VARCHAR}, #{province,jdbcType=VARCHAR}, 
-      #{district,jdbcType=VARCHAR}, #{createTime,jdbcType=TIMESTAMP})
+      #{district,jdbcType=VARCHAR}, #{name,jdbcType=VARCHAR}, #{description,jdbcType=VARCHAR}
+      )
   </insert>
   <insert id="insertSelective" parameterType="com.jiawa.lyw.domain.LocationRecord">
     insert into location_record
@@ -134,8 +137,11 @@
       <if test="district != null">
         district,
       </if>
-      <if test="createTime != null">
-        create_time,
+      <if test="name != null">
+        `name`,
+      </if>
+      <if test="description != null">
+        description,
       </if>
     </trim>
     <trim prefix="values (" suffix=")" suffixOverrides=",">
@@ -160,8 +166,11 @@
       <if test="district != null">
         #{district,jdbcType=VARCHAR},
       </if>
-      <if test="createTime != null">
-        #{createTime,jdbcType=TIMESTAMP},
+      <if test="name != null">
+        #{name,jdbcType=VARCHAR},
+      </if>
+      <if test="description != null">
+        #{description,jdbcType=VARCHAR},
       </if>
     </trim>
   </insert>
@@ -195,8 +204,11 @@
       <if test="record.district != null">
         district = #{record.district,jdbcType=VARCHAR},
       </if>
-      <if test="record.createTime != null">
-        create_time = #{record.createTime,jdbcType=TIMESTAMP},
+      <if test="record.name != null">
+        `name` = #{record.name,jdbcType=VARCHAR},
+      </if>
+      <if test="record.description != null">
+        description = #{record.description,jdbcType=VARCHAR},
       </if>
     </set>
     <if test="_parameter != null">
@@ -212,7 +224,8 @@
       city = #{record.city,jdbcType=VARCHAR},
       province = #{record.province,jdbcType=VARCHAR},
       district = #{record.district,jdbcType=VARCHAR},
-      create_time = #{record.createTime,jdbcType=TIMESTAMP}
+      `name` = #{record.name,jdbcType=VARCHAR},
+      description = #{record.description,jdbcType=VARCHAR}
     <if test="_parameter != null">
       <include refid="Update_By_Example_Where_Clause" />
     </if>
@@ -238,8 +251,11 @@
       <if test="district != null">
         district = #{district,jdbcType=VARCHAR},
       </if>
-      <if test="createTime != null">
-        create_time = #{createTime,jdbcType=TIMESTAMP},
+      <if test="name != null">
+        `name` = #{name,jdbcType=VARCHAR},
+      </if>
+      <if test="description != null">
+        description = #{description,jdbcType=VARCHAR},
       </if>
     </set>
     where id = #{id,jdbcType=BIGINT}
@@ -252,7 +268,8 @@
       city = #{city,jdbcType=VARCHAR},
       province = #{province,jdbcType=VARCHAR},
       district = #{district,jdbcType=VARCHAR},
-      create_time = #{createTime,jdbcType=TIMESTAMP}
+      `name` = #{name,jdbcType=VARCHAR},
+      description = #{description,jdbcType=VARCHAR}
     where id = #{id,jdbcType=BIGINT}
   </update>
 </mapper>

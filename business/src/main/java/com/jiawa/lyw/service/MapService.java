@@ -1,21 +1,28 @@
 package com.jiawa.lyw.service;
 
+import cn.hutool.core.util.IdUtil;
 import com.alibaba.fastjson.JSONObject;
 import com.jiawa.lyw.Util.AmapUtils;
+import com.jiawa.lyw.domain.LocationImage;
 import com.jiawa.lyw.domain.LocationRecord;
 import com.jiawa.lyw.exception.BusinessException;
 import com.jiawa.lyw.exception.BusinessExceptionEnum;
+import com.jiawa.lyw.mapper.LocationImageMapper;
 import com.jiawa.lyw.mapper.LocationRecordMapper;
 import com.jiawa.lyw.mapper.LocationRecordMapperCust;
-import com.jiawa.lyw.req.AddressDelReq;
 import com.jiawa.lyw.req.AddressReq;
-import com.jiawa.lyw.resp.LocationRecordResp;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.File;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.UUID;
+
 
 @Service
 @Slf4j
@@ -30,39 +37,36 @@ public class MapService {
     @Autowired
     private LocationRecordMapperCust locationRecordMapperCust;
 
+    @Autowired
+    private LocationImageMapper locationImageMapper;
+
+    private static final String UPLOAD_DIR = "D:/idea/lyw/uploads/location/";
+
     /**
      * 根据地址获取地理信息，并插入或更新到数据库
      */
-    public void getGeo(AddressReq req) {
+    @Transactional
+    public Long createLocation(AddressReq req, MultipartFile[] files) {
 
-        log.info("插入或更新开始景区地图");
-
-        String address = req.getAddress();
-        Integer id = req.getId();
-
-        // 调用高德API获取位置信息
-        JSONObject location = amapUtils.getLocationByAddress(address);
-
-        // 如果解析失败，直接抛异常
+        JSONObject location = amapUtils.getLocationByAddress(req.getFormattedAddress());
         if (location == null) {
             throw new BusinessException(BusinessExceptionEnum.Map_NOT_ERROR);
         }
 
-        // 构建实体对象
-        LocationRecord record = buildLocationRecord(location);
-        record.setCreateTime(new Date());
+        Long locationId = IdUtil.getSnowflakeNextId();
 
-        // 如果有ID则更新，否则插入
-        if (id != null) {
-            log.info("更新开始景区地图");
-            record.setId(Long.valueOf(id));
-            locationRecordMapper.updateByPrimaryKeySelective(record);
-            log.info("更新结束景区地图");
-        } else {
-            log.info("插入开始景区地图");
-            locationRecordMapper.insert(record);
-            log.info("插入结束景区地图");
+        LocationRecord record = buildLocationRecord(location);
+        record.setId(locationId);
+        record.setName(req.getName());
+        record.setDescription(req.getDescription());
+
+        locationRecordMapper.insert(record);
+
+        if (files != null && files.length > 0) {
+            uploadImages(locationId, files, req.getDescription());
         }
+
+        return locationId;
     }
 
     /**
@@ -79,22 +83,67 @@ public class MapService {
         return record;
     }
 
-    /**
-     * 获取所有位置信息
-     */
-    public List<LocationRecordResp> getLocationList() {
-        return locationRecordMapperCust.findAll();
-    }
-    /**
-     * 根据id获取更新到数据库
-     */
-    public void deleteLocation(AddressDelReq req) {
-        log.info("删除景区地址开始",req.getId());
-        Integer id = req.getId();
-        if (id == null) {
-            throw new BusinessException(BusinessExceptionEnum.Map_NOT_ERROR);
+
+    @Transactional
+    public List<String> uploadImages(Long locationId,
+                                     MultipartFile[] files,
+                                     String description) {
+
+        if (files == null || files.length == 0) {
+            throw new BusinessException(BusinessExceptionEnum.IMAGE_NOT_ERROR);
         }
-        locationRecordMapper.deleteByPrimaryKey(Long.valueOf(id));
-        log.info("删除景区地址结束",req.getId());
+
+        List<String> urls = new ArrayList<>();
+
+        try {
+            for (int i = 0; i < files.length; i++) {
+                MultipartFile file = files[i];
+                String url = saveSingleImage(
+                        locationId,
+                        file,
+                        i + 1,              // seq 自动排序
+                        description
+                );
+                urls.add(url);
+            }
+            return urls;
+
+        } catch (Exception e) {
+            throw new BusinessException(BusinessExceptionEnum.IMAGE_NOT_ERROR);
+        }
     }
+
+
+    private String saveSingleImage(Long locationId,
+                                   MultipartFile file,
+                                   Integer seq,
+                                   String description) throws Exception {
+
+        String originalFilename = file.getOriginalFilename();
+        String suffix = originalFilename.substring(originalFilename.lastIndexOf("."));
+        String fileName = UUID.randomUUID() + suffix;
+
+        File dir = new File(UPLOAD_DIR);
+        if (!dir.exists()) {
+            dir.mkdirs();
+        }
+
+        File dest = new File(UPLOAD_DIR + fileName);
+        file.transferTo(dest);
+
+        String imageUrl = "/upload/location/" + fileName;
+
+        LocationImage image = new LocationImage();
+        image.setId(IdUtil.getSnowflakeNextId());
+        image.setLocationId(locationId);
+        image.setImageUrl(imageUrl);
+        image.setSeq(seq);
+        image.setDescription(description);
+        image.setCreateTime(new Date());
+
+        locationImageMapper.insert(image);
+
+        return imageUrl;
+    }
+
 }

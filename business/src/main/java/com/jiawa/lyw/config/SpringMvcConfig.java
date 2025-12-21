@@ -39,7 +39,9 @@ public class SpringMvcConfig implements WebMvcConfigurer {
                 .excludePathPatterns(
                         "/admin/kaptcha/image-code/*",
                         "/admin/member/**",
-                        "/admin/report/**"
+                        "/admin/report/**",
+                        "/admin/location/**"
+
                 );
 
 

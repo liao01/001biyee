@@ -17,6 +17,9 @@ import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.Arrays;
+import java.util.stream.Collectors;
+
 @Slf4j
 @Aspect
 @Component
@@ -50,13 +53,22 @@ public class LogAspect {
         log.info("类名方法: {}.{}", signature.getDeclaringTypeName(), name);
         log.info("远程地址: {}", request.getRemoteAddr());
 
-        // 请求参数
+        // 请求参数处理
         Object[] args = proceedingJoinPoint.getArgs();
         Object[] arguments = new Object[args.length];
         for (int i = 0; i < args.length; i++) {
             if (args[i] instanceof ServletRequest
-                    || args[i] instanceof ServletResponse
-                    || args[i] instanceof MultipartFile) {
+                    || args[i] instanceof ServletResponse) {
+                continue; // 跳过请求/响应对象
+            } else if (args[i] instanceof MultipartFile) {
+                MultipartFile file = (MultipartFile) args[i];
+                arguments[i] = "MultipartFile[name=" + file.getOriginalFilename() + ", size=" + file.getSize() + "]";
+                continue;
+            } else if (args[i] instanceof MultipartFile[]) {
+                MultipartFile[] files = (MultipartFile[]) args[i];
+                arguments[i] = Arrays.stream(files)
+                        .map(f -> "MultipartFile[name=" + f.getOriginalFilename() + ", size=" + f.getSize() + "]")
+                        .collect(Collectors.toList());
                 continue;
             }
             arguments[i] = args[i];
