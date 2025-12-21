@@ -31,6 +31,7 @@ public enum BusinessExceptionEnum {
 
     IMAGE_CODE_ERROR("图片验证码不正确"),
     IMAGE_NOT_ERROR("图片上传失败"),
+    IMAGE_HAVE_ERROR("图片上传失败1111"),
     IMAGE_NO_ERROR("图片未找到"),
     INVALID_GENDER("性别参数错误"),
     POST_ID_EMPTY("贴子为找到");
