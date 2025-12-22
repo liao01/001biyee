@@ -2,7 +2,26 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.jiawa.lyw.mapper.LocationRecordMapperCust">
     <select id="findAll" resultType="com.jiawa.lyw.resp.LocationRecordResp">
-        SELECT *
-        FROM location_record
+        SELECT
+            lr.id AS id,
+            lr.formatted_address AS formattedAddress,
+            lr.city AS city,
+            lr.province AS province,
+            lr.district AS district,
+            lr.name AS name,
+            lr.description AS description,
+            GROUP_CONCAT(DISTINCT li.image_url) AS imageUrls
+        FROM location_record lr
+                 LEFT JOIN location_image li
+                           ON lr.id = li.location_id
+        GROUP BY
+            lr.id,
+            lr.formatted_address,
+            lr.city,
+            lr.province,
+            lr.district,
+            lr.name,
+            lr.description
+        ORDER BY lr.id DESC
     </select>
 </mapper>

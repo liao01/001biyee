@@ -11,6 +11,7 @@ import com.jiawa.lyw.mapper.LocationImageMapper;
 import com.jiawa.lyw.mapper.LocationRecordMapper;
 import com.jiawa.lyw.mapper.LocationRecordMapperCust;
 import com.jiawa.lyw.req.AddressReq;
+import com.jiawa.lyw.resp.LocationRecordResp;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -18,10 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 
 
 @Service
@@ -144,6 +142,21 @@ public class MapService {
         locationImageMapper.insert(image);
 
         return imageUrl;
+    }
+
+    public  List<LocationRecordResp> findAll(){
+        List<LocationRecordResp> list = locationRecordMapperCust.findAll();
+
+        list.forEach(item -> {
+            if (item.getImageUrls() != null && !item.getImageUrls().isEmpty()) {
+                item.setImageUrlList(
+                        Arrays.asList(item.getImageUrls().split(","))
+                );
+            } else {
+                item.setImageUrlList(Collections.emptyList());
+            }
+        });
+        return list;
     }
 
 }
