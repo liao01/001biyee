@@ -28,6 +28,7 @@ public enum BusinessExceptionEnum {
     DATA_NOT_FOUND("用户为空，不能重复关注"),
 
     Map_NOT_ERROR("地址上传失败"),
+    Map_NO_ERROR("地址没有值"),
 
     IMAGE_CODE_ERROR("图片验证码不正确"),
     IMAGE_NOT_ERROR("图片上传失败"),

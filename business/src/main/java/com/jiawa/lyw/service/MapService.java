@@ -4,13 +4,16 @@ import cn.hutool.core.util.IdUtil;
 import com.alibaba.fastjson.JSONObject;
 import com.jiawa.lyw.Util.AmapUtils;
 import com.jiawa.lyw.domain.LocationImage;
+import com.jiawa.lyw.domain.LocationImageExample;
 import com.jiawa.lyw.domain.LocationRecord;
+import com.jiawa.lyw.domain.LocationRecordExample;
 import com.jiawa.lyw.exception.BusinessException;
 import com.jiawa.lyw.exception.BusinessExceptionEnum;
 import com.jiawa.lyw.mapper.LocationImageMapper;
 import com.jiawa.lyw.mapper.LocationRecordMapper;
 import com.jiawa.lyw.mapper.LocationRecordMapperCust;
 import com.jiawa.lyw.req.AddressReq;
+import com.jiawa.lyw.req.LocationDelReq;
 import com.jiawa.lyw.resp.LocationRecordResp;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -159,4 +162,17 @@ public class MapService {
         return list;
     }
 
+    public void deleteLocation(LocationDelReq  req){
+        log.info("delete location id:{}",req.getId());
+
+        LocationImageExample imageExample = new LocationImageExample();
+        imageExample.createCriteria().andLocationIdEqualTo(Long.valueOf(req.getId()));
+        locationImageMapper.deleteByExample(imageExample);
+
+        LocationRecordExample example = new LocationRecordExample();
+        example.createCriteria().andIdEqualTo(Long.valueOf(req.getId()));
+        locationRecordMapper.deleteByExample(example);
+
+        log.info("delete location id save:{}",req.getId());
+    }
 }
