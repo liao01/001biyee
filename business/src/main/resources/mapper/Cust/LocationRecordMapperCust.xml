@@ -6,6 +6,8 @@
             lr.id AS id,
             lr.formatted_address AS formattedAddress,
             lr.city AS city,
+            lr.longitude,
+            lr.latitude,
             lr.province AS province,
             lr.district AS district,
             lr.name AS name,

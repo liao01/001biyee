@@ -129,7 +129,7 @@ public class MapService {
         File dest = new File(UPLOAD_DIR + fileName);
         file.transferTo(dest);
 
-        String imageUrl = "/upload/location/" + fileName;
+        String imageUrl = "/uploads/location/" + fileName;
 
         LocationImage image = new LocationImage();
         image.setId(IdUtil.getSnowflakeNextId());

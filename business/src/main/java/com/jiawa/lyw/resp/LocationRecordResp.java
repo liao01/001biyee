@@ -15,6 +15,10 @@ public class LocationRecordResp {
     /** 城市 */
     private String city;
 
+    private Double longitude;
+
+    private Double latitude;
+
     /** 省份 */
     private String province;
 
