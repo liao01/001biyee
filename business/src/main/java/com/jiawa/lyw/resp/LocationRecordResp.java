@@ -7,7 +7,7 @@ import java.util.List;
 @Data
 public class LocationRecordResp {
     /** 主键ID */
-    private Long id;
+    private String id;
 
     /** 完整地址 */
     private String formattedAddress;

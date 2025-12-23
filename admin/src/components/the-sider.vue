@@ -8,17 +8,17 @@
           <span>数据概况</span>
         </router-link>
       </a-menu-item>
-      <a-sub-menu key="2">
+      <a-sub-menu key="sub1">
         <template #title>
           <desktop-outlined />
           <span>旅游地图管理</span>
         </template>
-        <a-menu-item key="1">
+        <a-menu-item key="/home/uploadMap">
           <router-link to="/home/uploadMap">添加地图详细</router-link>
         </a-menu-item>
-        <a-menu-item key="2">option2</a-menu-item>
-        <a-menu-item key="3">option3</a-menu-item>
-        <a-menu-item key="4">option4</a-menu-item>
+        <a-menu-item key="/home/LocationAdmin">
+        <router-link to="/home/LocationAdmin">查看地图详细</router-link>
+        </a-menu-item>
       </a-sub-menu>
       <a-menu-item key="/home/UserManagement">
         <router-link to="/home/UserManagement">

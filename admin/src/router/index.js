@@ -5,6 +5,7 @@ import Login from '../view/login.vue'
 import Dashboard from '../view/page/Dashboard.vue'
 import UserManagement from "../view/page/UserManagement.vue";
 import uploadMap from "../view/page/upload-map.vue";
+import LocationAdmin from "../view/page/LocationAdmin.vue";
 
 const routes = [
   {
@@ -21,6 +22,9 @@ const routes = [
       },{
         path: 'uploadMap',
         component: uploadMap
+      },{
+        path: 'LocationAdmin',
+        component: LocationAdmin
       }
     ]
   },

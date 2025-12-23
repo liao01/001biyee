@@ -49,6 +49,15 @@ public class MapService {
     @Transactional
     public Long createLocation(AddressReq req, MultipartFile[] files) {
 
+        LocationRecordExample example = new LocationRecordExample();
+        LocationRecordExample.Criteria criteria = example.createCriteria();
+        criteria.andFormattedAddressEqualTo(req.getFormattedAddress());
+
+        long l = locationRecordMapper.countByExample(example);
+        if (l > 0) {
+            throw new BusinessException(BusinessExceptionEnum.LOcCATION_HAVE_ERROR);
+        }
+
         JSONObject location = amapUtils.getLocationByAddress(req.getFormattedAddress());
         if (location == null) {
             throw new BusinessException(BusinessExceptionEnum.Map_NOT_ERROR);
