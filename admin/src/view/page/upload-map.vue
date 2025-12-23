@@ -114,11 +114,16 @@ async function handleSubmit() {
       }
     });
 
-    await axios.post(
+    const res =  await axios.post(
         'http://localhost:8080/lyw/admin/location/save',
         formData,
         { headers: { 'Content-Type': 'multipart/form-data' } }
     );
+
+    if (!res.data || res.data.success !== true) {
+      message.error(res.data?.message || '提交失败');
+      return;
+    }
 
     message.success('景点创建成功！');
     handleReset();
