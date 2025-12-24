@@ -3,7 +3,16 @@
     <div id="mapDiv" class="full-map"></div>
 
     <div class="sidebar">
-
+      <!-- 搜索框 -->
+      <a-input-search
+          v-model:value="searchQuery"
+          placeholder="搜索景区 / 城市 / 地址"
+          allow-clear
+          enter-button
+          @search="handleSearch"
+          @clear="resetSearch"
+          class="search-box"
+      />
       <div class="location-list" v-if="filteredLocations.length > 0">
         <div
             v-for="item in filteredLocations"
@@ -14,7 +23,7 @@
         >
           <div class="item-info">
             <h4>{{ item.name }}</h4>
-            <p>{{ item.address || '查看详情' }}</p>
+            <p>{{ item.formattedAddress || '查看详情' }}</p>
           </div>
           <right-outlined />
         </div>
@@ -48,13 +57,10 @@ const locations = ref([]);
 const activeLocation = ref(null);
 const searchQuery = ref("");
 const previousView = ref(null);
+const allLocations = ref([]); // 保存全部地点
 
 // 过滤后的列表
-const filteredLocations = computed(() => {
-  return locations.value.filter(loc =>
-      loc.name.toLowerCase().includes(searchQuery.value.toLowerCase())
-  );
-});
+const filteredLocations = computed(() => locations.value);
 
 onMounted(() => {
   loadLocations();
@@ -65,10 +71,46 @@ function loadLocations() {
       .then(res => {
         if (res.data.success) {
           locations.value = res.data.content || [];
+          allLocations.value = res.data.content || [];
           initMap();
         }
       })
       .catch(() => message.error("获取数据失败"));
+}
+
+function handleSearch(value) {
+  const keyword = value?.trim();
+  if (!keyword) {
+    resetSearch();
+    return;
+  }
+
+  axios.get("http://localhost:8080/lyw/web/location/searchLocation", {
+    params: { keyword }
+  }).then(res => {
+    if (res.data.success) {
+      locations.value = res.data.content || [];
+      activeLocation.value = null;
+      previousView.value = null;
+
+      // 重新渲染地图 Marker
+      renderMarkers();
+
+      if (locations.value.length === 0) {
+        message.info("未搜索到相关景区");
+      }
+    }
+  }).catch(() => {
+    message.error("搜索失败");
+  });
+}
+
+function resetSearch() {
+  searchQuery.value = "";
+  locations.value = allLocations.value;
+  activeLocation.value = null;
+  previousView.value = null;
+  renderMarkers();
 }
 
 function initMap() {
