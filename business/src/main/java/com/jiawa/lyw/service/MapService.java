@@ -2,6 +2,8 @@ package com.jiawa.lyw.service;
 
 import cn.hutool.core.util.IdUtil;
 import com.alibaba.fastjson.JSONObject;
+import com.github.pagehelper.PageHelper;
+import com.github.pagehelper.PageInfo;
 import com.jiawa.lyw.Util.AmapUtils;
 import com.jiawa.lyw.domain.LocationImage;
 import com.jiawa.lyw.domain.LocationImageExample;
@@ -14,7 +16,9 @@ import com.jiawa.lyw.mapper.LocationRecordMapper;
 import com.jiawa.lyw.mapper.LocationRecordMapperCust;
 import com.jiawa.lyw.req.AddressReq;
 import com.jiawa.lyw.req.LocationDelReq;
+import com.jiawa.lyw.req.PageReq;
 import com.jiawa.lyw.resp.LocationRecordResp;
+import com.jiawa.lyw.resp.PageResp;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -169,6 +173,35 @@ public class MapService {
             }
         });
         return list;
+    }
+
+    public PageResp<LocationRecordResp> findAllPage(PageReq req) {
+
+        // 1. 启动分页
+        PageHelper.startPage(req.getPage(), req.getSize());
+
+        // 2. 查询数据
+        List<LocationRecordResp> list = locationRecordMapperCust.findAll();
+
+        // 3. 处理图片 URL
+        list.forEach(item -> {
+            if (item.getImageUrls() != null && !item.getImageUrls().isEmpty()) {
+                item.setImageUrlList(
+                        Arrays.asList(item.getImageUrls().split(","))
+                );
+            } else {
+                item.setImageUrlList(Collections.emptyList());
+            }
+        });
+
+        // 4. 构造分页响应
+        PageInfo<LocationRecordResp> pageInfo = new PageInfo<>(list);
+
+        PageResp<LocationRecordResp> pageResp = new PageResp<>();
+        pageResp.setTotal(pageInfo.getTotal());
+        pageResp.setPage(list);
+
+        return pageResp;
     }
 
     public void deleteLocation(LocationDelReq  req){

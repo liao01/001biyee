@@ -2,15 +2,15 @@ package com.jiawa.lyw.controller.admin;
 
 import com.jiawa.lyw.req.AddressReq;
 import com.jiawa.lyw.req.LocationDelReq;
+import com.jiawa.lyw.req.PageReq;
 import com.jiawa.lyw.resp.CommonResp;
 import com.jiawa.lyw.resp.LocationRecordResp;
+import com.jiawa.lyw.resp.PageResp;
 import com.jiawa.lyw.service.MapService;
 import jakarta.annotation.Resource;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/admin/location")
@@ -32,8 +32,8 @@ public class LocationAdminController {
     };
 
     @GetMapping("/findLocationAll")
-    public CommonResp<List<LocationRecordResp>> findAll(){
-        List<LocationRecordResp> all = mapService.findAll();
-        return new CommonResp<>(all);
+    public CommonResp<PageResp<LocationRecordResp>> findAll(@Valid PageReq req){
+        PageResp<LocationRecordResp> allPage = mapService.findAllPage(req);
+        return new CommonResp<>(allPage);
     }
 }

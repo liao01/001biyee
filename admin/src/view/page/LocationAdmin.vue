@@ -13,9 +13,10 @@
           :data-source="data"
           row-key="id"
           :loading="loading"
-          :pagination="false"
+          :pagination="pagination"
           size="middle"
           class="beautify-table"
+          @change="handleTableChange"
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'city'">
@@ -79,12 +80,37 @@ const columns = [
   { title: '操作', key: 'action', width: 100, align: 'center' }
 ]
 
+const pagination = ref({
+  current: 1,
+  pageSize: 5,
+  total: 0,
+  showSizeChanger: true,
+  showTotal: total => `共 ${total} 条`
+})
+
+const handleTableChange = (pager) => {
+  pagination.value.current = pager.current
+  pagination.value.pageSize = pager.pageSize
+  loadData()
+}
+
+
 const loadData = async () => {
   loading.value = true
   try {
-    const res = await axios.get('http://localhost:8080/lyw/admin/location/findLocationAll')
+    const res = await axios.get(
+        'http://localhost:8080/lyw/admin/location/findLocationAll',
+        {
+          params: {
+            page: pagination.value.current,
+            size: pagination.value.pageSize
+          }
+        }
+    )
+
     if (res.data.success) {
-      data.value = res.data.content
+      data.value = res.data.content.page
+      pagination.value.total = res.data.content.total
     } else {
       message.error(res.data.message || '加载失败')
     }
