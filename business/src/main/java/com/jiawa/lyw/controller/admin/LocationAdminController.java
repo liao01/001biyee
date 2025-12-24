@@ -36,4 +36,10 @@ public class LocationAdminController {
         PageResp<LocationRecordResp> allPage = mapService.findAllPage(req);
         return new CommonResp<>(allPage);
     }
+
+    @GetMapping("/searchPage")
+    public CommonResp<PageResp<LocationRecordResp>> searchPage(@Valid PageReq req,String keyword){
+        PageResp<LocationRecordResp> allPage = mapService.searchPage(req,keyword);
+        return new CommonResp<>(allPage);
+    }
 }

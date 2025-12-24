@@ -190,6 +190,27 @@ public class MapService {
         return list;
     }
 
+    public PageResp<LocationRecordResp> searchPage(PageReq req, String keyword) {
+        PageHelper.startPage(req.getPage(), req.getSize());
+
+        List<LocationRecordResp> list = locationRecordMapperCust.searchLocation(keyword);
+
+        list.forEach(item -> {
+            if (item.getImageUrls() != null && !item.getImageUrls().isEmpty()) {
+                item.setImageUrlList(Arrays.asList(item.getImageUrls().split(",")));
+            } else {
+                item.setImageUrlList(Collections.emptyList());
+            }
+        });
+
+        PageInfo<LocationRecordResp> pageInfo = new PageInfo<>(list);
+        PageResp<LocationRecordResp> pageResp = new PageResp<>();
+        pageResp.setTotal(pageInfo.getTotal());
+        pageResp.setPage(list);
+
+        return pageResp;
+    }
+
     public PageResp<LocationRecordResp> findAllPage(PageReq req) {
 
         // 1. 启动分页
