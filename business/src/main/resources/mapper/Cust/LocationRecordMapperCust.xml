@@ -26,4 +26,45 @@
             lr.description
         ORDER BY lr.id DESC
     </select>
+
+
+    <select id="searchLocation" resultType="com.jiawa.lyw.resp.LocationRecordResp">
+        SELECT
+        lr.id AS id,
+        lr.formatted_address AS formattedAddress,
+        lr.city AS city,
+        lr.longitude,
+        lr.latitude,
+        lr.province AS province,
+        lr.district AS district,
+        lr.name AS name,
+        lr.description AS description,
+        GROUP_CONCAT(DISTINCT li.image_url) AS imageUrls
+        FROM location_record lr
+        LEFT JOIN location_image li ON lr.id = li.location_id
+        <where>
+            <if test="keyword != null and keyword != ''">
+                (
+                lr.name LIKE CONCAT('%', #{keyword}, '%')
+                OR lr.city LIKE CONCAT('%', #{keyword}, '%')
+                OR lr.province LIKE CONCAT('%', #{keyword}, '%')
+                OR lr.district LIKE CONCAT('%', #{keyword}, '%')
+                OR lr.formatted_address LIKE CONCAT('%', #{keyword}, '%')
+                OR lr.description LIKE CONCAT('%', #{keyword}, '%')
+                )
+            </if>
+        </where>
+        GROUP BY
+        lr.id,
+        lr.formatted_address,
+        lr.city,
+        lr.longitude,
+        lr.latitude,
+        lr.province,
+        lr.district,
+        lr.name,
+        lr.description
+        ORDER BY lr.id DESC
+    </select>
+
 </mapper>

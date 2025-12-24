@@ -175,6 +175,21 @@ public class MapService {
         return list;
     }
 
+    public  List<LocationRecordResp> searchLocation(String keyword){
+        List<LocationRecordResp> list = locationRecordMapperCust.searchLocation(keyword);
+
+        list.forEach(item -> {
+            if (item.getImageUrls() != null && !item.getImageUrls().isEmpty()) {
+                item.setImageUrlList(
+                        Arrays.asList(item.getImageUrls().split(","))
+                );
+            } else {
+                item.setImageUrlList(Collections.emptyList());
+            }
+        });
+        return list;
+    }
+
     public PageResp<LocationRecordResp> findAllPage(PageReq req) {
 
         // 1. 启动分页
