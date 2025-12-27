@@ -1,7 +1,7 @@
 <template>
   <a-modal
       v-model:open="open"
-      :title="modalTitle"
+      :title="null"
       :footer="null"
   >
     <!-- 登录表单 -->

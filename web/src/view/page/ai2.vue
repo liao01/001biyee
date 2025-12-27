@@ -1,55 +1,63 @@
 <template>
   <div class="chat-wrapper">
     <div class="chat-box">
+      <div class="chat-header">
+        <span class="status-dot"></span>
+        <span class="bot-name">智能小智</span>
+      </div>
+
       <div class="messages" ref="messaggListRef">
         <div
             v-for="(message, index) in messages"
             :key="index"
             :class="message.isUser ? 'msg msg-user' : 'msg msg-bot'"
         >
-          <!-- 头像 -->
           <div class="avatar">
             <img
-                :src="message.isUser? (avatarUrl)   /* 用户头像 */
-                : '../../../public/img/Robot.png'                                 /* AI 默认头像 */"
+                :src="message.isUser ? avatarUrl : '/img/Robot.png'"
                 class="avatar-img"
             />
           </div>
 
-          <!-- 气泡内容 -->
-          <div class="bubble">
-            <div v-html="message.content"></div>
+          <div class="bubble-container">
+            <div class="bubble">
+              <div v-html="message.content" class="content-text"></div>
 
-            <!-- typing 动画 -->
-            <div class="typing" v-if="message.isTyping">
-              <span class="dot"></span>
-              <span class="dot"></span>
-              <span class="dot"></span>
+              <div class="typing" v-if="message.isTyping">
+                <span class="dot"></span>
+                <span class="dot"></span>
+                <span class="dot"></span>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- 输入框 -->
-      <div class="chat-input">
-        <a-input
-            v-model:value="inputMessage"
-            placeholder="请输入消息"
-            @pressEnter="sendMessage"
-        />
-
-        <a-button
-            type="primary"
-            :loading="isSending"
-            @click="sendMessage"
-        >
-          发送
-        </a-button>
+      <div class="chat-input-container">
+        <div class="chat-input-wrapper">
+          <a-textarea
+              v-model:value="inputMessage"
+              placeholder="问问我任何问题..."
+              :auto-size="{ minRows: 1, maxRows: 4 }"
+              @pressEnter.prevent="sendMessage"
+              class="custom-textarea"
+          />
+          <div class="input-actions">
+            <a-button
+                type="primary"
+                shape="circle"
+                :loading="isSending"
+                @click="sendMessage"
+                class="send-btn"
+            >
+              <template #icon><SendOutlined /></template>
+            </a-button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
 </template>
-
 
 <script setup>
 import { onMounted, ref, watch } from 'vue'
@@ -174,35 +182,70 @@ const fetchAvatar = async () => {
 </script>
 
 <style scoped>
+/* 全局容器背景 */
 .chat-wrapper {
   width: 100%;
-  height: 100%;
-  padding: 10px;
+  height: 100vh;
+  padding: 20px;
+  background-color: #f0f2f5;
+  display: flex;
+  justify-content: center;
 }
 
 .chat-box {
   display: flex;
   flex-direction: column;
+  width: 100%;
+  max-width: 900px;
   height: 100%;
-  background: #fff;
-  border-radius: 8px;
-  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.05);
+  overflow: hidden;
 }
 
-/* 消息列表 */
+/* 页眉样式 */
+.chat-header {
+  padding: 15px 24px;
+  border-bottom: 1px solid #f0f0f0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  background-color: #52c41a;
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px rgba(82, 196, 26, 0.2);
+}
+
+.bot-name {
+  font-weight: 600;
+  color: #1f1f1f;
+  font-size: 16px;
+}
+
+/* 消息列表区域 */
 .messages {
   flex: 1;
-  padding: 16px;
+  padding: 24px;
   overflow-y: auto;
-  display: flex;
-  flex-direction: column;
+  background-color: #fafafa;
+  scroll-behavior: smooth;
 }
 
-/* 单条消息 */
 .msg {
   display: flex;
-  margin-bottom: 14px;
-  max-width: 85%;
+  margin-bottom: 24px;
+  max-width: 90%;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .msg-user {
@@ -214,16 +257,14 @@ const fetchAvatar = async () => {
   align-self: flex-start;
 }
 
-/* 头像 */
+/* 头像优化 */
 .avatar {
-  width: 38px;
-  height: 38px;
+  width: 40px;
+  height: 40px;
   flex-shrink: 0;
-  border-radius: 50%;
+  border-radius: 12px;
   overflow: hidden;
-  margin: 0 10px;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
-  border: 2px solid #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
 .avatar-img {
@@ -232,52 +273,99 @@ const fetchAvatar = async () => {
   object-fit: cover;
 }
 
+/* 气泡美化 */
+.bubble-container {
+  display: flex;
+  flex-direction: column;
+  margin: 0 12px;
+}
 
-/* 气泡 */
 .bubble {
-  padding: 12px 15px;
-  border-radius: 10px;
-  background: #f6f6f6;
+  padding: 12px 16px;
+  border-radius: 18px;
   line-height: 1.6;
-  font-size: 14px;
+  font-size: 15px;
+  position: relative;
+  transition: all 0.2s;
+}
+
+.msg-bot .bubble {
+  background: #ffffff;
+  color: #333;
+  border: 1px solid #e8e8e8;
+  border-top-left-radius: 4px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.02);
 }
 
 .msg-user .bubble {
   background: #1677ff;
   color: #fff;
+  border-top-right-radius: 4px;
+  box-shadow: 0 4px 12px rgba(22, 119, 255, 0.2);
 }
 
-/* 输入框区 */
-.chat-input {
+.content-text :deep(p) {
+  margin-bottom: 8px;
+}
+
+/* 输入框容器 */
+.chat-input-container {
+  padding: 20px 24px;
+  background: #fff;
+  border-top: 1px solid #f0f0f0;
+}
+
+.chat-input-wrapper {
   display: flex;
-  padding: 10px;
-  gap: 10px;
+  align-items: flex-end;
+  background: #f5f5f5;
+  border-radius: 12px;
+  padding: 8px 12px;
+  transition: border 0.3s, background 0.3s;
 }
 
-/* typing 动画 */
+.chat-input-wrapper:focus-within {
+  background: #fff;
+  border: 1px solid #1677ff;
+  box-shadow: 0 0 0 2px rgba(22, 119, 255, 0.1);
+}
+
+.custom-textarea {
+  flex: 1;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 8px 0;
+  font-size: 15px;
+  resize: none;
+}
+
+.input-actions {
+  margin-left: 12px;
+  padding-bottom: 4px;
+}
+
+.send-btn {
+  width: 36px !important;
+  height: 36px !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Typing 动画微调 */
 .typing {
   display: flex;
-  margin-top: 4px;
+  align-items: center;
+  height: 20px;
 }
 
 .dot {
-  width: 6px;
-  height: 6px;
-  background: #999;
+  width: 5px;
+  height: 5px;
+  background: #1677ff;
   border-radius: 50%;
-  margin-right: 4px;
-  animation: blink 1s infinite alternate;
-}
-
-.dot:nth-child(2) {
-  animation-delay: 0.2s;
-}
-.dot:nth-child(3) {
-  animation-delay: 0.4s;
-}
-
-@keyframes blink {
-  from { opacity: 0.2; }
-  to { opacity: 1; }
+  margin-right: 3px;
+  opacity: 0.6;
 }
 </style>
