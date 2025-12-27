@@ -3,7 +3,7 @@
     <div class="chat-box">
       <div class="chat-header">
         <span class="status-dot"></span>
-        <span class="bot-name">智能小智</span>
+        <span class="bot-name">智能助手</span>
       </div>
 
       <div class="messages" ref="messaggListRef">
