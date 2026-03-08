@@ -14,9 +14,12 @@
     >
       <a-form-item
           name="mobile" class="form-item"
-          :rules="[{ required: true, message: '请输入手机号', trigger: 'blur' }, { pattern: /^\d{11}$/, message: '手机号为11位数字', trigger: 'blur' }]"
+          :rules="[
+    { required: true, message: '请输入邮箱', trigger: 'blur' },
+    { type: 'email', message: '请输入正确的邮箱格式', trigger: 'blur' }
+  ]"
       >
-        <a-input v-model:value="resetMember.mobile" placeholder="手机号" size="large" class="custom-input">
+        <a-input v-model:value="resetMember.mobile" placeholder="邮箱" size="large" class="custom-input">
           <template #prefix>
             <MobileOutlined class="icon-style"/>
           </template>
@@ -44,9 +47,9 @@
       </a-form-item>
 
       <a-form-item name="code" class="form-item"
-                   :rules="[{ required: true, message: '请输入短信验证码', trigger: 'blur' }]">
+                   :rules="[{ required: true, message: '请输入验证码', trigger: 'blur' }]">
         <a-input-search
-            placeholder="短信验证码"
+            placeholder="验证码"
             v-model:value="resetMember.code"
             :enter-button="sendText"
             size="large"

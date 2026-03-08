@@ -135,6 +135,17 @@
             <artifactId>langchain4j-community-dashscope-spring-boot-starter</artifactId>
         </dependency>
 
+        <!--javaMail-->
+        <dependency>
+            <groupId>javax.mail</groupId>
+            <artifactId>javax.mail-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.sun.mail</groupId>
+            <artifactId>javax.mail</artifactId>
+        </dependency>
+
+
     </dependencies>
 
     <build>

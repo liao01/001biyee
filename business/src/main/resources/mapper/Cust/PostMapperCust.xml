@@ -32,13 +32,13 @@
         p.content AS post_content,
         p.user_id AS user_id,
         m.name AS member_name,
-        up.avatar AS avatar,                     -- ✅ 新增头像
+        up.avatar AS avatar,
         p.create_time AS post_time,
         GROUP_CONCAT(DISTINCT t.name) AS tag_title,
         GROUP_CONCAT(DISTINCT pi.image_url) AS image_urls
         FROM post p
         LEFT JOIN member m ON p.user_id = m.id
-        LEFT JOIN user_profile up ON p.user_id = up.user_id   -- ✅ 关联头像
+        LEFT JOIN user_profile up ON p.user_id = up.user_id
         LEFT JOIN post_tag pt ON p.id = pt.post_id
         LEFT JOIN tag t ON pt.tag_id = t.id
         LEFT JOIN post_image pi ON p.id = pi.post_id

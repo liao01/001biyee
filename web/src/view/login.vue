@@ -15,10 +15,10 @@
       <a-form-item
           name="mobile"
           class="form-item"
-          :rules="[{ required: true, message: '请输入手机号' }]"
+          :rules="[{ required: true, message: '请输入邮箱' }]"
       >
         <a-input
-            placeholder="手机号"
+            placeholder="邮箱"
             v-model:value="loginMember.mobile"
             size="large"
             class="custom-input"

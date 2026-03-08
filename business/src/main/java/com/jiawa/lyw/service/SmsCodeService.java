@@ -4,6 +4,7 @@ import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.util.IdUtil;
 import cn.hutool.core.util.RandomUtil;
+import com.jiawa.lyw.Util.MailUtils;
 import com.jiawa.lyw.domain.Member;
 import com.jiawa.lyw.domain.SmsCode;
 import com.jiawa.lyw.domain.SmsCodeExample;
@@ -73,6 +74,11 @@ public class SmsCodeService {
         smsCode.setUpdatedAt(now);
 
         smsCodeMapper.insert(smsCode);
+
+        //添加邮箱验证码
+        MailUtils mailUtils = new MailUtils();
+        mailUtils.sendMail(mobile,"你好，验证码是："+code,"旅分享");
+        log.info("发送成功");
     }
 
     /**
