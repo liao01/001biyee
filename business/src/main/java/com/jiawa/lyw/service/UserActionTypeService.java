@@ -103,6 +103,13 @@ public class UserActionTypeService {
         log.info("删除结束点赞或收藏,{}",LoginMemberContext.getId());
     }
 
+    /**
+    * TODO:Post点赞数
+    * @author Tom
+    * @since 2026/3/11 18:25
+     * @param req
+     * @return java.lang.Integer
+    **/
     public Integer PostUserLikeActionCount(UserActionReq req) {
         log.info("查询Post点赞数,{}",LoginMemberContext.getId());
         UserActionExample userActionExample = new UserActionExample();
@@ -113,6 +120,13 @@ public class UserActionTypeService {
         return Math.toIntExact(l);
     }
 
+    /**
+    * TODO:Post收藏数s
+    * @author Tom
+    * @since 2026/3/11 18:25
+     * @param req
+     * @return java.lang.Integer
+    **/
     public Integer PostUserFavoritedcountActionCount(UserActionReq req) {
         log.info("查询Post收藏数,{}",LoginMemberContext.getId());
         UserActionExample userActionExample = new UserActionExample();

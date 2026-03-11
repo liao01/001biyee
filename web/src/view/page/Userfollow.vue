@@ -1,11 +1,20 @@
 <template>
-  <a-card bordered :style="{ borderRadius: '12px', boxShadow: '0 2px 12px rgba(0,0,0,0.08)' }">
+  <a-card
+      bordered
+      :style="{
+    borderRadius: '12px',
+    boxShadow: '0 2px 12px rgba(0,0,0,0.08)',
+    margin: '20px auto',  /* 增加上下间距，并水平居中 */
+    maxWidth: '1200px',   /* 限制一个最大宽度，防止在大屏幕上无限拉伸 */
+    padding: '0 20px'     /* 增加内部左右缓冲 */
+  }"
+  >
     <div class="card-header">
       <span class="card-title"><UserOutlined style="margin-right:8px"/> 粉丝数据概览</span>
     </div>
 
     <a-row :gutter="[24, 24]" class="stat-row">
-      <a-col :xs="24" :sm="8">
+      <a-col :xs="23" :sm="7">
         <a-statistic
             title="粉丝总数"
             :value="statistic.countFollowers || 0"
