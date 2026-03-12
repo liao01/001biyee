@@ -1,57 +1,70 @@
 <template>
   <div class="user-page">
+    <div class="main-container">
 
-    <!-- 顶部用户信息 -->
-    <div class="user-header-wrapper">
-      <a-avatar
-          :src="user.avatar ? baseUrl + user.avatar : defaultAvatar"
-          :size="100"
-          class="avatar"
-      />
-      <div class="user-info">
-        <h2>{{ user.username }}</h2>
-        <p> IP属地：{{ user.location || '未填写' }}</p>
-        <div class="user-stats">
-          <span>{{ following }} 关注</span>
-          <span>{{ statistic.countFollowers  }} 粉丝</span>
-          <span>{{ likecount }} 获赞</span>
+      <div class="user-header-wrapper">
+        <a-avatar
+            :src="user.avatar ? baseUrl + user.avatar : defaultAvatar"
+            :size="100"
+            class="avatar"
+        />
+        <div class="user-info">
+          <h2>{{ user.username }}</h2>
+          <p> IP属地：{{ user.location || '未填写' }}</p>
+          <div class="user-stats">
+            <div class="stat-item">
+              <span class="stat-num">{{ following || 0 }}</span>
+              <span class="stat-label">关注</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-num">{{ statistic.countFollowers || 0 }}</span>
+              <span class="stat-label">粉丝</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-num">{{ likecount || 0 }}</span>
+              <span class="stat-label">获赞</span>
+            </div>
+          </div>
         </div>
       </div>
+
+      <div class="user-tabs">
+        <button
+            class="tab"
+            :class="{ active: activeTab === 'note' }"
+            @click="switchTab('note')">
+          笔记
+        </button>
+
+        <button
+            class="tab"
+            :class="{ active: activeTab === 'favorite' }"
+            @click="switchTab('favorite')">
+          收藏
+        </button>
+      </div>
+
+      <div class="waterfall-wrapper">
+        <Waterfall
+            :list="cardList"
+            :width="280"
+            :gutter="16"
+            :has-around-gutter="true"
+            background-color="transparent"
+        >
+          <template #item="{ item }">
+            <a-card hoverable class="note-card" @click="showCardModal(item)">
+              <template #cover>
+                <img :src="baseUrl + item.raw.imageUrls?.split(',')[0]" :alt="item.title" />
+              </template>
+              <a-card-meta :title="item.title">
+                <template #description>{{ item.description }}</template>
+              </a-card-meta>
+            </a-card>
+          </template>
+        </Waterfall>
+      </div>
     </div>
-
-    <div class="user-tabs">
-      <button
-          class="tab"
-          :class="{ active: activeTab === 'note' }"
-          @click="switchTab('note')">
-        笔记
-      </button>
-
-      <button
-          class="tab"
-          :class="{ active: activeTab === 'favorite' }"
-          @click="switchTab('favorite')">
-        收藏
-      </button>
-    </div>
-
-    <!-- 瀑布流 -->
-    <div class="waterfall-wrapper">
-      <Waterfall :list="cardList" :width="240" :gutter="16">
-        <template #item="{ item }">
-          <a-card hoverable style="width: 240px" @click="showCardModal(item)">
-            <template #cover>
-              <img :src="baseUrl + item.raw.imageUrls?.split(',')[0]" :alt="item.title" />
-            </template>
-            <a-card-meta :title="item.title">
-              <template #description>{{ item.description }}</template>
-            </a-card-meta>
-          </a-card>
-        </template>
-      </Waterfall>
-    </div>
-
-
 
     <CardFile ref="cardFileRef" />
   </div>
@@ -271,169 +284,120 @@ const showCardModal = (item) => {
 </script>
 
 <style scoped>
-/* 全局背景微调 */
+/* 全局背景和对齐 */
 .user-page {
-  background-color: #fbfbfc;
+  background-color: #f7f8fa; /* 稍微深一点的底色，衬托白色的卡片 */
   min-height: 100vh;
+  width: 100%;
 }
 
-/* 顶部用户信息区域美化 */
+/* 核心容器：限制最大宽度并居中，解决“突出来”的关键 */
+.main-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  background-color: #ffffff;
+  min-height: 100vh;
+  box-shadow: 0 0 20px rgba(0,0,0,0.02); /* 侧边淡淡的阴影，增加高级感 */
+}
+
+/* 用户信息区域美化 */
 .user-header-wrapper {
   display: flex;
   align-items: center;
   justify-content: center;
   flex-direction: column;
-  padding: 60px 20px 40px;
-  background: white;
-  /* 增加一个非常淡的背景渐变，增加深度感 */
+  padding: 60px 20px 30px;
   background: linear-gradient(to bottom, #f8f9ff 0%, #ffffff 100%);
   gap: 16px;
-  position: relative;
 }
 
-/* 头像外圈装饰 */
 .avatar {
   border: 4px solid #fff;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
-  transition: transform 0.3s ease;
-  cursor: pointer;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
 }
 
-.avatar:hover {
-  transform: scale(1.05);
+.user-info {
+  text-align: center;
 }
 
 .user-info h2 {
-  margin: 10px 0 5px;
-  font-size: 28px;
-  font-weight: 800;
-  color: #1a1a1a;
-  letter-spacing: -0.5px;
+  font-size: 26px;
+  font-weight: 700;
+  margin-bottom: 8px;
 }
 
-.user-info p {
-  margin: 0;
-  color: #999;
-  font-size: 13px;
-  background: #f0f2f5;
-  padding: 2px 12px;
-  border-radius: 12px;
-  display: inline-block;
-}
-
-/* 统计数据栏 */
+/* 统计项美化 */
 .user-stats {
   margin-top: 20px;
   display: flex;
-  gap: 32px; /* 加大间距 */
+  gap: 40px;
 }
-
-.user-stats span {
+.stat-item {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  font-size: 14px;
-  color: #666;
   cursor: pointer;
-  transition: color 0.2s;
 }
-
-/* 让数字和文字有主次之分 */
-.user-stats span::before {
-  content: attr(data-count); /* 如果以后你想用JS传值可以直接这样写，现在先手动调样式 */
+.stat-num {
   font-size: 18px;
   font-weight: 700;
   color: #1a1a1a;
-  margin-bottom: 2px;
+}
+.stat-label {
+  font-size: 13px;
+  color: #999;
 }
 
-/* Tab 切换栏美化 */
+/* Tab 切换栏 */
 .user-tabs {
   display: flex;
   justify-content: center;
-  margin: 0;
-  padding: 20px 0;
-  background: #fff;
-  position: sticky; /* 粘性定位：滚动时固定在顶部 */
+  padding: 10px 0;
+  border-bottom: 1px solid #f0f0f0;
+  margin-bottom: 20px;
+  position: sticky;
   top: 0;
-  z-index: 100;
-  border-bottom: 1px solid rgba(0,0,0,0.04);
+  background: #fff;
+  z-index: 10;
 }
 
 .tab {
-  padding: 8px 32px;
-  border-radius: 25px;
+  padding: 8px 30px;
+  border-radius: 20px;
   font-size: 15px;
-  font-weight: 500;
   border: none;
+  background: none;
   cursor: pointer;
-  background: transparent;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  color: #999;
-  position: relative;
+  color: #666;
+  transition: all 0.3s;
 }
 
 .tab.active {
-  background: #1a1a1a; /* 黑色深沉风格 */
+  background: #000;
   color: #fff;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  font-weight: 600;
 }
 
-.tab:not(.active):hover {
-  background: #f5f5f7;
-  color: #333;
-}
-
-/* 瀑布流卡片精致化 */
+/* 瀑布流容器：增加内边距，不让卡片贴边 */
 .waterfall-wrapper {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 30px 20px;
+  padding: 0 24px 40px 24px;
 }
 
-/* 穿透修改 antd 卡片样式 */
-:deep(.ant-card) {
+/* 卡片样式优化 */
+.note-card {
   border: none !important;
-  border-radius: 16px !important;
+  border-radius: 12px !important;
   overflow: hidden;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
-  transition: all 0.3s ease !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04) !important;
+  transition: transform 0.3s ease !important;
 }
 
-:deep(.ant-card:hover) {
-  transform: translateY(-8px);
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.08) !important;
+.note-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08) !important;
 }
 
 :deep(.ant-card-cover img) {
-  border-radius: 16px 16px 0 0;
-  transition: transform 0.5s ease;
+  border-radius: 12px 12px 0 0;
 }
 
-:deep(.ant-card:hover .ant-card-cover img) {
-  transform: scale(1.05); /* 悬停图片轻微放大 */
-}
-
-:deep(.ant-card-meta-title) {
-  font-size: 15px !important;
-  font-weight: 600 !important;
-  margin-bottom: 8px !important;
-}
-
-:deep(.ant-card-meta-description) {
-  font-size: 13px !important;
-  color: #666 !important;
-  line-height: 1.5;
-}
-
-/* 响应式微调 */
-@media (max-width: 768px) {
-  .user-stats {
-    gap: 20px;
-  }
-  .user-info h2 {
-    font-size: 22px;
-  }
-}
 </style>
-

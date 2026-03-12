@@ -5,7 +5,7 @@ import lombok.Getter;
 
 @AllArgsConstructor
 public enum BusinessExceptionEnum {
-    DEMO_MOBILE_NOT_NULL("手机号不能为空！！!"),
+    DEMO_MOBILE_NOT_NULL("邮箱不能为空！！!"),
 
     SMS_CODE_TOO_FREQUENT("短信请求过于频繁"),
     SMS_CODE_ERROR("短信验证码不正确"),
@@ -14,9 +14,9 @@ public enum BusinessExceptionEnum {
     User_MOBILE_HAD_REGISTER("管理员已注册"),
     User_MOBILE_HAD_HAVE("管理员未注册"),
 
-    MEMBER_MOBILE_HAD_REGISTER("手机号已注册"),
-    MEMBER_MOBILE_NOT_REGISTER("手机号未注册"),
-    MEMBER_LOGIN_ERROR("手机号未注册或密码错误"),
+    MEMBER_MOBILE_HAD_REGISTER("邮箱已注册"),
+    MEMBER_MOBILE_NOT_REGISTER("邮箱未注册"),
+    MEMBER_LOGIN_ERROR("邮箱未注册或密码错误"),
 
     COMMENT_CONTENT_IN("评论内容已存在!!"),
     COMMENT_CONTENT_NOT("帖子不存在!!"),
