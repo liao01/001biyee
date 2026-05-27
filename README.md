@@ -81,5 +81,3 @@ npm run dev
 - **后端部署**: 通过 Maven 打包为 Jar 包，使用 `nohup` 或 `systemd` 运行。
 - **静态资源**: 图片等上传资源映射至服务器本地目录 `D:/idea/lyw/uploads/` (Windows) 或相应 Linux 路径。
 
-## �📄 开源协议
-本项目遵循 MIT 开源协议。
