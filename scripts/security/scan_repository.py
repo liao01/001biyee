@@ -243,7 +243,7 @@ def scan_git_refs(repo: Path) -> list[Finding]:
             continue
         seen.add(object_id)
         path = PurePosixPath(object_path)
-        if any(part in EXCLUDED_PARTS for part in path.parts):
+        if _is_excluded(Path(*path.parts)):
             continue
         object_type = _run_git(repo, "cat-file", "-t", object_id).stdout.strip()
         if object_type != "blob":
