@@ -56,6 +56,7 @@ import axios from "axios";
 import {message, notification} from "ant-design-vue";
 import {onMounted, ref} from "vue";
 import store from "../../store/index.js";
+import { BASE_URL } from "../../utils/baseUrl";
 
 const loading = ref(false);
 
@@ -89,7 +90,7 @@ const handleQuery = (param) => {
   }
   loading.value = true;
   UserHistoryList.value = [];
-  axios.get("http://localhost:8080/lyw/web/post/post-User-search", {
+  axios.get(BASE_URL+"/lyw/web/post/post-User-search", {
     params: { page: param.page, size: param.size }
   }).then((response) => {
     loading.value = false;
@@ -119,7 +120,7 @@ const del = async (postId) => {
   if (!postId) return;
   console.log("删除帖子ID:", postId); // 确认前端拿到postId
 
-  axios.post("http://localhost:8080/lyw/web/post/post-del", { postId })
+  axios.post(BASE_URL+"/lyw/web/post/post-del", { postId })
       .then(response => {
         const data = response.data;
         if (data.success) {

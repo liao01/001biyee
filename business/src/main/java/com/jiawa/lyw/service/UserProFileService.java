@@ -38,6 +38,7 @@ public class UserProFileService {
     private MemberMapper memberMapper;
 
     private static final String UPLOAD_DIR = "D:/idea/lyw/uploads/avatar/";
+//    private static final String UPLOAD_DIR = "/home/lyw/uploads/avatar/";
 
     /**
      * 通过 UserProfilereq 新增用户资料

@@ -77,6 +77,7 @@ public class SmsCodeService {
 
         //添加邮箱验证码
         MailUtils mailUtils = new MailUtils();
+        log.info("准备发送邮件");
         mailUtils.sendMail(mobile,"你好，验证码是："+code,"旅分享");
         log.info("发送成功");
     }

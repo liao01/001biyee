@@ -82,6 +82,7 @@ import { ref } from 'vue';
 import { message } from 'ant-design-vue';
 import { PlusOutlined, EnvironmentOutlined, ShopOutlined } from '@ant-design/icons-vue';
 import axios from 'axios';
+import { BASE_URL } from "../../utils/baseUrl";
 
 // 响应式状态
 const submitting = ref(false);
@@ -115,7 +116,7 @@ async function handleSubmit() {
     });
 
     const res =  await axios.post(
-        'http://localhost:8080/lyw/admin/location/save',
+        BASE_URL+'/lyw/admin/location/save',
         formData,
         { headers: { 'Content-Type': 'multipart/form-data' } }
     );

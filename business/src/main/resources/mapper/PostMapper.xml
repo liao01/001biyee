@@ -127,10 +127,10 @@
   </delete>
   <insert id="insert" parameterType="com.jiawa.lyw.domain.Post">
     insert into post (id, user_id, title, 
-      location_id, create_time, update_time, 
+       create_time, update_time,
       `status`, content)
     values (#{id,jdbcType=BIGINT}, #{userId,jdbcType=BIGINT}, #{title,jdbcType=VARCHAR}, 
-      #{locationId,jdbcType=BIGINT}, #{createTime,jdbcType=TIMESTAMP}, #{updateTime,jdbcType=TIMESTAMP}, 
+       #{createTime,jdbcType=TIMESTAMP}, #{updateTime,jdbcType=TIMESTAMP},
       #{status,jdbcType=CHAR}, #{content,jdbcType=LONGVARCHAR})
   </insert>
   <insert id="insertSelective" parameterType="com.jiawa.lyw.domain.Post">

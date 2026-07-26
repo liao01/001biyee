@@ -21,6 +21,12 @@ public class CommentController {
     private CommentService commentService;
 
 
+    /**
+     * 保存评论信息
+     *
+     * @param req 评论请求对象，包含需要保存的评论信息
+     * @return 通用响应对象，不包含具体数据
+     */
     @PostMapping("/save-comment")
     public CommonResp<Object> saveComment(@RequestBody @Valid CommentReq req) {
         commentService.saveComment(req);

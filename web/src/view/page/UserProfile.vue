@@ -36,9 +36,10 @@
 import { ref, onMounted } from 'vue'
 import axios from 'axios'
 import { message } from 'ant-design-vue'
+import { BASE_URL } from "../../utils/baseUrl";
 
 // 后端基础路径
-const baseUrl = 'http://localhost:8080/lyw'
+const baseUrl = BASE_URL+'/lyw'
 
 
 // 用户数据

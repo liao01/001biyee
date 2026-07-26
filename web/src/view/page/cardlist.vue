@@ -39,9 +39,10 @@ import CardFile from "../../components/card/card-file.vue"
 import axios from "axios"
 import {message, notification} from "ant-design-vue"
 import { useSearchStore } from "../../store/search.js"
+import { BASE_URL } from "../../utils/baseUrl";
 
 const cardFileRef = ref(null)
-const baseUrl = 'http://localhost:8080/lyw'
+const baseUrl = BASE_URL+'/lyw'
 const cardList = ref([])
 const MAX_LENGTH = 15 // 稍微增加长度让视觉更丰满
 
@@ -83,7 +84,7 @@ const showCardModal = (item) => {
     userId: item.raw.userId,
     avatar: item.raw.avatar,
   }
-  axios.post("http://localhost:8080/lyw/web/postview/save", { postId : item.raw.postId })
+  axios.post(BASE_URL+"/lyw/web/postview/save", { postId : item.raw.postId })
   cardFileRef.value.showModal(fullItem)
 }
 </script>

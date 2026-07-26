@@ -49,6 +49,7 @@ import {ref, computed, reactive} from 'vue';
 import { message } from 'ant-design-vue';
 import axios from 'axios';
 import store from "../../store/index.js";
+import { BASE_URL } from "../../utils/baseUrl";
 
 const tagsData = reactive(['美食', '景点', '旅行', '攻略']);
 const selectTags = reactive([false, true, false, false]);
@@ -129,7 +130,7 @@ const submitPost = async () => {
     };
 
     const res = await axios.post(
-        "http://localhost:8080/lyw/web/post/post-save",
+        BASE_URL +"/lyw/web/post/post-save",
         postData,
         { headers: { "Content-Type": "application/json" } }
     );

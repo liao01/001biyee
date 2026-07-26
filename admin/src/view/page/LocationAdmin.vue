@@ -57,7 +57,7 @@
                 <a-image
                     v-for="(img, index) in record.imageUrlList"
                     :key="index"
-                    :src="`http://localhost:8080/lyw${img}`"
+                    :src="`${BASE_URL}/lyw${img}`"
                     :width="44"
                     :height="44"
                     class="table-img"
@@ -95,6 +95,7 @@ import {
   ReloadOutlined
 } from '@ant-design/icons-vue'
 import axios from "axios"
+import { BASE_URL } from "../../utils/baseUrl";
 
 const loading = ref(false)
 const data = ref([])
@@ -122,7 +123,7 @@ const loadData = async () => {
   loading.value = true
   try {
     const res = await axios.get(
-        'http://localhost:8080/lyw/admin/location/searchPage',
+        BASE_URL+'/lyw/admin/location/searchPage',
         {
           params: {
             page: pagination.value.current,
@@ -163,7 +164,7 @@ const resetSearch = () => {
 
 const handleDelete = async (id) => {
   try {
-    const res = await axios.post("http://localhost:8080/lyw/admin/location/del", { id })
+    const res = await axios.post(BASE_URL+"/lyw/admin/location/del", { id })
     if (res.data.success) {
       message.success("数据已成功删除")
       loadData()

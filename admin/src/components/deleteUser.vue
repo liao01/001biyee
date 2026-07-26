@@ -67,6 +67,7 @@ import { computed, ref, watch } from 'vue'
 import { message, Avatar } from 'ant-design-vue'
 import { SafetyOutlined, LoadingOutlined } from '@ant-design/icons-vue'
 import axios from 'axios'
+import { BASE_URL } from "../utils/baseUrl";
 
 const props = defineProps({
   open: Boolean,
@@ -95,7 +96,7 @@ const loadImageCode = () => {
       ? Tool.uuid(8)
       : Math.random().toString(36).substring(2, 10)
 
-  imageCodeSrc.value = `http://localhost:8080/lyw/admin/kaptcha/image-code/${imageCodeToken.value}`
+  imageCodeSrc.value = BASE_URL+`/lyw/admin/kaptcha/image-code/${imageCodeToken.value}`
 }
 
 watch(visible, (v) => {

@@ -78,8 +78,9 @@ import axios from 'axios'
 import store from "../../store/index.js";
 import {Waterfall} from "vue-waterfall-plugin-next";
 import CardFile from "../../components/card/card-file.vue";
+import { BASE_URL } from "../../utils/baseUrl";
 
-const baseUrl = 'http://localhost:8080/lyw'
+const baseUrl = BASE_URL+'/lyw'
 // 用户数据
 const user = ref({})
 const userId = ref(null)
@@ -94,7 +95,7 @@ const statistic = ref({});
 
 const fetchStatistic = async () => {
   try {
-    const response = await axios.get("http://localhost:8080/lyw/web/userfollow/query-statistic");
+    const response = await axios.get(BASE_URL+"/lyw/web/userfollow/query-statistic");
     if (response.data.success) {
       statistic.value = response.data.content;
     } else {
@@ -118,7 +119,7 @@ const switchTab = (tab) => {
 
 const fetchUserPosts = async () => {
   try {
-    const response = await axios.post("http://localhost:8080/lyw/web/post/post-UserPostQuery", {
+    const response = await axios.post(BASE_URL+"/lyw/web/post/post-UserPostQuery", {
       userid: userId.value
     });
     const data = response.data;
@@ -141,7 +142,7 @@ const fetchUserPosts = async () => {
 
 const fetchUserFavorites = async () => {
   try {
-    const response = await axios.post("http://localhost:8080/lyw/web/post/post-list-Favorite-Posts", {
+    const response = await axios.post(BASE_URL+"/lyw/web/post/post-list-Favorite-Posts", {
       userid: userId.value
     });
     const data = response.data;
@@ -165,7 +166,7 @@ const fetchUserFavorites = async () => {
 onMounted(() => {
   userId.value = sessionStorage.getItem('authorId');
 
-  axios.get("http://localhost:8080/lyw/web/UserProFile/findAllUser", {
+  axios.get(BASE_URL+"/lyw/web/UserProFile/findAllUser", {
     params: {
       userId: userId.value
     }
@@ -181,7 +182,7 @@ onMounted(() => {
     message.error('请求失败')
   })
 
-  axios.get("http://localhost:8080/lyw/web/userAction/User-Like-Count", {
+  axios.get(BASE_URL+"/lyw/web/userAction/User-Like-Count", {
     params: { userId: userId.value }
   }).then(response => {
     const data = response.data;
@@ -197,7 +198,7 @@ onMounted(() => {
     message.error('请求失败');
   })
 
-  axios.get("http://localhost:8080/lyw/web/userfollow/byUserIds", {
+  axios.get(BASE_URL+"/lyw/web/userfollow/byUserIds", {
     params: { userId: userId.value }
   }).then(response => {
     const data = response.data;
@@ -213,7 +214,7 @@ onMounted(() => {
     message.error('请求失败');
   })
 
-  axios.post("http://localhost:8080/lyw/web/post/post-UserPostQuery", {
+  axios.post(BASE_URL+"/lyw/web/post/post-UserPostQuery", {
     userid: userId.value
   }).then(response => {
     const data = response.data;

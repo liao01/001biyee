@@ -94,6 +94,8 @@ import { ref } from "vue";
 import axios from "axios";
 import { message } from "ant-design-vue";
 import store from "../store/index.js";
+import request from "../utils/request";
+import { BASE_URL } from "../utils/baseUrl";
 
 const loginMember = ref({
   mobile: '',
@@ -105,7 +107,7 @@ const emit = defineEmits(['login-success'])
 
 const login = values => {
   console.log('开始登录', values);
-  axios.post("http://localhost:8080/lyw/web/member/login", {
+  request.post("/lyw/web/member/login", {
     mobile: loginMember.value.mobile,
     password: hexMd5Key(loginMember.value.password),
     imageCode:  loginMember.value.imageCode,
@@ -132,7 +134,7 @@ const imageCodeSrc = ref();
 const loadImageCode = () => {
   loginMember.value.imageCode = "";
   imageCodeToken.value = Tool.uuid(8);
-  imageCodeSrc.value = 'http://localhost:8080/lyw/web/kaptcha/image-code/' + imageCodeToken.value;
+  imageCodeSrc.value = BASE_URL+'/lyw/web/kaptcha/image-code/' + imageCodeToken.value;
 };
 loadImageCode();
 </script>

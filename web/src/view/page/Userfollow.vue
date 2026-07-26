@@ -70,6 +70,7 @@ import { ref, onMounted } from "vue";
 import axios from "axios";
 import { notification } from "ant-design-vue";
 import { UserOutlined } from '@ant-design/icons-vue';
+import { BASE_URL } from "../../utils/baseUrl";
 
 const statistic = ref({});
 const loading = ref(false);
@@ -88,7 +89,7 @@ const formatDate = (dateStr) => {
 const fetchStatistic = async () => {
   loading.value = true;
   try {
-    const response = await axios.get("http://localhost:8080/lyw/web/userfollow/query-statistic");
+    const response = await axios.get(BASE_URL+"/lyw/web/userfollow/query-statistic");
     loading.value = false;
     if (response.data.success) {
       statistic.value = response.data.content;
@@ -121,7 +122,7 @@ const handleQuery = (param) => {
   }
   loading.value = true;
   getFollowingListByUserId.value = [];
-  axios.get("http://localhost:8080/lyw/web/userfollow/query-ByUserIdList", {
+  axios.get(BASE_URL+"/lyw/web/userfollow/query-ByUserIdList", {
     params: { page: param.page, size: param.size }
   }).then((response) => {
     loading.value = false;

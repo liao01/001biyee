@@ -63,7 +63,6 @@ public class PostService {
         post.setUserId(LoginMemberContext.getId());
         post.setTitle(req.getTitle());
         post.setContent(req.getContent());
-        post.setLocationId(req.getLocationId());
         post.setStatus(PostStatusEnum.OPEN.getCode());
         post.setCreateTime(now);
         post.setUpdateTime(now);
@@ -76,6 +75,7 @@ public class PostService {
 
         log.info("保存帖子图片开始:{}", postID);
         String uploadDir = "D:/idea/lyw/uploads/"; // 本地存储路径
+//        String uploadDir = "/home/lyw/uploads/";
 
         for (PostReq.PostImage img : images) {
             String imageUrl = img.getImageUrl();

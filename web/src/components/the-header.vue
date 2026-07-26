@@ -75,6 +75,7 @@ import axios from "axios"
 import store from '../store/index.js'
 import { useSearchStore } from '../store/search.js'
 import TheLogin from './the-login.vue'
+import { BASE_URL } from "../utils/baseUrl";
 
 const router = useRouter()
 const route = useRoute()
@@ -92,12 +93,12 @@ const showSearch = computed(() => route.path === '/CardList')
 const fetchAvatar = async () => {
   if (!member.value?.name) return
   try {
-    const { data } = await axios.get("http://localhost:8080/lyw/web/UserProFile/findAvatarUser")
-    if (data.success) avatarUrl.value = `http://localhost:8080/lyw${data.content}`
+    const { data } = await axios.get(BASE_URL+"/lyw/web/UserProFile/findAvatarUser")
+    if (data.success) avatarUrl.value = BASE_URL+`/lyw${data.content}`
   } catch (e) { console.error("Avatar error") }
 }
 
-const heart = () => axios.get('http://localhost:8080/lyw/web/member/heart').catch(() => {})
+const heart = () => axios.get(BASE_URL+'/lyw/web/member/heart').catch(() => {})
 const showLogin = () => loginRef.value?.showModal()
 const logout = () => { store.commit('clearMember'); message.success('已安全退出') }
 const onSearch = (val) => { searchStore.setKeyword(val) }

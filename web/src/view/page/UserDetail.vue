@@ -91,6 +91,7 @@ import { reactive, ref } from 'vue'
 import { message } from 'ant-design-vue'
 import { PlusOutlined } from '@ant-design/icons-vue'
 import axios from 'axios'
+import { BASE_URL } from "../../utils/baseUrl";
 
 const formRef = ref(null)
 const form = reactive({
@@ -145,8 +146,8 @@ const onSubmit = async () => {
 
     const token = localStorage.getItem('token') || ''  // 可替换为你的 token 获取方式
 
-    const res = await axios.post(
-        'http://localhost:8080/lyw/web/UserProFile/save',
+    const res = await axios.post(BASE_URL+
+        '/lyw/web/UserProFile/save',
         submitData,
         { headers: { token } }
     )

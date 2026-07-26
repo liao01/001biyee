@@ -80,6 +80,7 @@ import { ref } from "vue";
 import axios from "axios";
 import { message } from "ant-design-vue";
 import store from "../store/index.js";
+import { BASE_URL } from "../utils/baseUrl.js";
 
 const loginUser = ref({
   loginName: '',
@@ -88,7 +89,7 @@ const loginUser = ref({
 })
 
 const login = () => {
-  axios.post("http://localhost:8080/lyw/admin/member/login", {
+  axios.post(BASE_URL+"/lyw/admin/member/login", {
     loginName: loginUser.value.loginName,
     password: hexMd5Key(loginUser.value.password),
     imageCode: loginUser.value.imageCode,
@@ -115,7 +116,7 @@ const loadImageCode = () => {
   loginUser.value.imageCode = ''
   imageCodeToken.value = Tool.uuid(8)
   imageCodeSrc.value =
-      'http://localhost:8080/lyw/admin/kaptcha/image-code/' + imageCodeToken.value
+      BASE_URL+'/lyw/admin/kaptcha/image-code/' + imageCodeToken.value
 }
 
 loadImageCode()

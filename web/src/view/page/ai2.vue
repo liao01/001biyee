@@ -63,6 +63,7 @@
 import { onMounted, ref, watch } from 'vue'
 import axios from 'axios'
 import { v4 as uuidv4 } from 'uuid'
+import { BASE_URL } from "../../utils/baseUrl";
 
 const messaggListRef = ref()
 const isSending = ref(false)
@@ -121,7 +122,7 @@ const sendRequest = message => {
 
   axios
       .post(
-          'http://localhost:8080/lyw/web/xiaozhi/chat',
+          BASE_URL+'/lyw/web/xiaozhi/chat',
           { memoryId: uuid.value, message },
           {
             responseType: 'stream', // 必须为合法值 "text"
@@ -170,10 +171,10 @@ const avatarUrl = ref('')
 
 // 请求用户头像
 const fetchAvatar = async () => {
-  axios.get("http://localhost:8080/lyw/web/UserProFile/findAvatarUser").then(response => {
+  axios.get(BASE_URL+"/lyw/web/UserProFile/findAvatarUser").then(response => {
     const data = response.data;
     if (data.success) {
-      avatarUrl.value = `http://localhost:8080/lyw${data.content}`
+      avatarUrl.value = BASE_URL+`/lyw${data.content}`
     } else {
       message.error(data.message)
     }

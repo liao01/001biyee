@@ -153,11 +153,12 @@ import {message, notification} from 'ant-design-vue'
 import dayjs from 'dayjs'
 import axios from "axios"
 import store from "../../store/index.js"
+import { BASE_URL } from "../../utils/baseUrl";
 
 const open = ref(false)
 const currentCard = ref({ images: [], comments: [] })
 const commentList = ref([]);
-const baseUrl = 'http://localhost:8080/lyw'
+const baseUrl = BASE_URL+'/lyw'
 
 const currentIndex = ref(0)
 let timer = null
@@ -176,7 +177,7 @@ const handleOk = () => {
 }
 
 const deleteComment = (comment, idx) => {
-  axios.post(`http://localhost:8080/lyw/web/comment/del-comment`, {
+  axios.post(BASE_URL+`/lyw/web/comment/del-comment`, {
     id: comment.commentId
   }).then(res => {
     if (res.data.success) {
@@ -197,7 +198,7 @@ const showModal = (item) => {
   open.value = true
   console.log("接收到的数据:", item)
   currentCard.value = item
-  axios.get("http://localhost:8080/lyw/web/comment/findall-comment", {
+  axios.get(BASE_URL+"/lyw/web/comment/findall-comment", {
     params: {
       postId: currentCard.value.postId
     }
@@ -222,7 +223,7 @@ const showModal = (item) => {
         notification.error({ description: "请求失败" });
       });
 
-  axios.post("http://localhost:8080/lyw/web/userfollow/find-user-follow", {
+  axios.post(BASE_URL+"/lyw/web/userfollow/find-user-follow", {
     userId: member.value?.id,
     followId: currentCard.value.userId
   }).then(response => {
@@ -239,7 +240,7 @@ const showModal = (item) => {
   });
 
 
-  axios.post("http://localhost:8080/lyw/web/userAction/findUserAction", {
+  axios.post(BASE_URL+"/lyw/web/userAction/findUserAction", {
     postId: currentCard.value.postId
   })
       .then(response => {
@@ -256,7 +257,7 @@ const showModal = (item) => {
         message.error("请求失败：" + err)
       });
 
-  axios.post("http://localhost:8080/lyw/web/userAction/PostUserLikeActionCount", {
+  axios.post(BASE_URL+"/lyw/web/userAction/PostUserLikeActionCount", {
     postId: currentCard.value.postId
   })
       .then(response => {
@@ -272,7 +273,7 @@ const showModal = (item) => {
         message.error("请求失败：" + err)
       });
 
-  axios.post("http://localhost:8080/lyw/web/userAction/PostUserFavoritedcountActionCount", {
+  axios.post(BASE_URL+"/lyw/web/userAction/PostUserFavoritedcountActionCount", {
     postId: currentCard.value.postId
   })
       .then(response => {
@@ -300,7 +301,7 @@ const sendComment = () => {
 
   const newCommentContent = replyText.value
 
-  axios.post('http://localhost:8080/lyw/web/comment/save-comment', {
+  axios.post(BASE_URL+'/lyw/web/comment/save-comment', {
     postId: currentCard.value.postId,
     userId: member.value?.id,
     content: newCommentContent
@@ -337,7 +338,7 @@ const saveComment = (comment, idx) => {
     message.warning('评论内容不能为空')
     return;
   }
-  axios.post('http://localhost:8080/lyw/web/comment/update-comment', {
+  axios.post(BASE_URL+'/lyw/web/comment/update-comment', {
     id: comment.commentId,
     content: comment.editContent
   }).then(res => {
@@ -357,7 +358,7 @@ const saveComment = (comment, idx) => {
 const handleFollow = async () => {
 
   if (!isFollowed.value) {
-    axios.post("http://localhost:8080/lyw/web/userfollow/save-user-follow", {
+    axios.post(BASE_URL+"/lyw/web/userfollow/save-user-follow", {
       userId: member.value?.id,
       followId: currentCard.value.userId
     }).then(response => {
@@ -372,7 +373,7 @@ const handleFollow = async () => {
       message.error("请求失败");
     });}
   else {
-    axios.post("http://localhost:8080/lyw/web/userfollow/unfollow-user-follow", {
+    axios.post(BASE_URL+"/lyw/web/userfollow/unfollow-user-follow", {
       userId: member.value?.id,
       followId: currentCard.value.userId
     }).then(response => {
@@ -393,7 +394,7 @@ function toggleLike() {
   const actionType = "like";
   if (liked.value) {
     // 删除点赞
-    axios.post("http://localhost:8080/lyw/web/userAction/delUserAction", {
+    axios.post(BASE_URL+"/lyw/web/userAction/delUserAction", {
       postId: currentCard.value.postId,
       actionType
     }).then(res => {
@@ -405,7 +406,7 @@ function toggleLike() {
     });
   } else {
     // 新增点赞
-    axios.post("http://localhost:8080/lyw/web/userAction/insertUserAction", {
+    axios.post(BASE_URL+"/lyw/web/userAction/insertUserAction", {
       postId: currentCard.value.postId,
       actionType
     }).then(res => {
@@ -422,7 +423,7 @@ function toggleLike() {
 function toggleFavorite() {
   const actionType = "favorite";
   if (!favorited.value){
-    axios.post("http://localhost:8080/lyw/web/userAction/insertUserAction", {
+    axios.post(BASE_URL+"/lyw/web/userAction/insertUserAction", {
       postId: currentCard.value.postId,
       actionType
     }).then(res => {
@@ -433,7 +434,7 @@ function toggleFavorite() {
       }
     })
   } else {
-    axios.post("http://localhost:8080/lyw/web/userAction/delUserAction", {
+    axios.post(BASE_URL+"/lyw/web/userAction/delUserAction", {
       postId: currentCard.value.postId,
       actionType
     }).then(res => {

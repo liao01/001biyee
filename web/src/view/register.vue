@@ -113,6 +113,8 @@
 import {ref} from 'vue';
 import axios from "axios";
 import {message} from "ant-design-vue";
+import request from "../utils/request";
+import { BASE_URL } from "../utils/baseUrl";
 const registerMember = ref(
     {
       mobile:'',
@@ -136,7 +138,7 @@ const register = values =>{
     return;
   }
   registerMember.value.password = registerMember.value.passwordOri
-  axios.post("http://localhost:8080/lyw/web/member/register",{
+  request.post("/lyw/web/member/register",{
     mobile: registerMember.value.mobile,
     code : registerMember.value.code,
     password: hexMd5Key(registerMember.value.password)
@@ -177,7 +179,7 @@ const setTime = () =>{
 const sendRegisterSmsCode = () =>{
   console.log('发送验证码');
   sendBtnLoading.value = true;
-  axios.post("http://localhost:8080/lyw/web/sms-code/send-for-register",{
+  request.post("/lyw/web/sms-code/send-for-register",{
     mobile: registerMember.value.mobile,
     imageCode:  registerMember.value.imageCode,
     imageCodeToken: imageCodeToken.value
@@ -204,7 +206,7 @@ const imageCodeSrc = ref();
 const loadImageCode = () => {
   registerMember.value.imageCode = "";
   imageCodeToken.value = Tool.uuid(8);
-  imageCodeSrc.value = 'http://localhost:8080/lyw/web/kaptcha/image-code/' + imageCodeToken.value;
+  imageCodeSrc.value = BASE_URL + '/lyw/web/kaptcha/image-code/' + imageCodeToken.value;
 };
 loadImageCode();
 

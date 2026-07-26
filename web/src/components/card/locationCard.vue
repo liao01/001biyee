@@ -44,6 +44,7 @@
 </template>
 
 <script setup>
+import { BASE_URL } from "../../utils/baseUrl";
 const props = defineProps({
   location: {
     type: Object,
@@ -53,7 +54,7 @@ const props = defineProps({
 });
 
 // 建议：基地址应从环境变量或全局配置中获取，避免硬编码
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/lyw';
+const API_BASE_URL = import.meta.env.VITE_API_URL || BASE_URL+'/lyw';
 
 const fullImageUrl = (url) => {
   if (!url) return 'https://via.placeholder.com/140x100?text=No+Image';

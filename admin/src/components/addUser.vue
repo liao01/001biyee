@@ -105,6 +105,7 @@ import axios from "axios";
 import { message } from "ant-design-vue";
 import { UserOutlined, LockOutlined, CheckCircleOutlined, SafetyOutlined } from '@ant-design/icons-vue';
 import store from "../store/index.js";
+import { BASE_URL } from "../utils/baseUrl";
 
 const props = defineProps({
   open: { type: Boolean, default: false }
@@ -133,7 +134,7 @@ const onFinish = async () => {
 
   loading.value = true;
   try {
-    const res = await axios.post("http://localhost:8080/lyw/admin/member/register", {
+    const res = await axios.post(BASE_URL+"/lyw/admin/member/register", {
       loginName: addUserAdmin.value.loginName,
       password: hexMd5Key(addUserAdmin.value.passwordOri),
       imageCode: addUserAdmin.value.imageCode,
@@ -164,7 +165,7 @@ const loadImageCode = () => {
   addUserAdmin.value.imageCode = "";
   // 假设 Tool 是已定义的工具类
   imageCodeToken.value = typeof Tool !== 'undefined' ? Tool.uuid(8) : Math.random().toString(36).substring(2, 10);
-  imageCodeSrc.value = `http://localhost:8080/lyw/web/kaptcha/image-code/${imageCodeToken.value}`;
+  imageCodeSrc.value = BASE_URL+`/lyw/web/kaptcha/image-code/${imageCodeToken.value}`;
 };
 
 loadImageCode();

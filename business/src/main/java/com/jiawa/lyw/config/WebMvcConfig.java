@@ -15,5 +15,6 @@ public class WebMvcConfig implements WebMvcConfigurer {
         log.info("静态资源映射加载...");
         registry.addResourceHandler("/uploads/**")
                 .addResourceLocations("file:///D:/idea/lyw/uploads/");
+//                .addResourceLocations("file:/home/lyw/uploads/");
     }
 }

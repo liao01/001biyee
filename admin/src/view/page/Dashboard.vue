@@ -50,6 +50,7 @@
 import { ref, onMounted } from 'vue'
 import axios from 'axios'
 import { message } from 'ant-design-vue'
+import { BASE_URL } from "../../utils/baseUrl";
 
 const account = ref({
   onlineCount: 0,
@@ -61,7 +62,7 @@ const account = ref({
 })
 
 onMounted(() => {
-  axios.get('http://localhost:8080/lyw/admin/report/query-statistic')
+  axios.get(BASE_URL+'/lyw/admin/report/query-statistic')
       .then(response => {
         const data = response.data
         if (data.success) {
@@ -70,7 +71,7 @@ onMounted(() => {
           message.error(data.message)
         }
       })
-  axios.get('http://localhost:8080/lyw/admin/report/dau')
+  axios.get(BASE_URL+'/lyw/admin/report/dau')
       .then(response => {
         const data = response.data
         if (data.success) {
@@ -79,7 +80,7 @@ onMounted(() => {
           message.error(data.message)
         }
       })
-  axios.get('http://localhost:8080/lyw/admin/report/postDayCount')
+  axios.get(BASE_URL+'/lyw/admin/report/postDayCount')
       .then(response => {
         const data = response.data
         if (data.success) {
@@ -88,7 +89,7 @@ onMounted(() => {
           message.error(data.message)
         }
       })
-  axios.get('http://localhost:8080/lyw/admin/report/postCount')
+  axios.get(BASE_URL+'/lyw/admin/report/postCount')
       .then(response => {
         const data = response.data
         if (data.success) {
@@ -97,7 +98,7 @@ onMounted(() => {
           message.error(data.message)
         }
       })
-  axios.get('http://localhost:8080/lyw/admin/report/UserCount')
+  axios.get(BASE_URL+'/lyw/admin/report/UserCount')
       .then(response => {
         const data = response.data
         if (data.success) {
@@ -106,7 +107,7 @@ onMounted(() => {
           message.error(data.message)
         }
       })
-  axios.get('http://localhost:8080/lyw/admin/report/RegisterUserCount')
+  axios.get(BASE_URL+'/lyw/admin/report/RegisterUserCount')
       .then(response => {
         const data = response.data
         if (data.success) {
@@ -117,7 +118,7 @@ onMounted(() => {
       })
 
 
-  axios.get('http://localhost:8080/lyw/admin/report/postCount30Days')
+  axios.get(BASE_URL+'/lyw/admin/report/postCount30Days')
       .then(response => {
         const data = response.data
         if (data.success) {

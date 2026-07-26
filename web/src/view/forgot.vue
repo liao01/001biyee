@@ -113,6 +113,8 @@
 import {ref} from 'vue';
 import axios from "axios";
 import {message} from "ant-design-vue";
+import request from "../utils/request";
+import { BASE_URL } from "../utils/baseUrl";
 const resetMember = ref(
     {
       mobile:'',
@@ -136,7 +138,7 @@ const reset = values =>{
     return;
   }
   resetMember.value.password = resetMember.value.passwordOri
-  axios.post("http://localhost:8080/lyw/web/member/reset",{
+  request.post("/lyw/web/member/reset",{
     mobile: resetMember.value.mobile,
     code : resetMember.value.code,
     password: hexMd5Key(resetMember.value.password)
@@ -175,7 +177,7 @@ const setTime = () =>{
 const sendResetSmsCode = () =>{
   console.log('发送验证码');
   sendBtnLoading.value = true;
-  axios.post("http://localhost:8080/lyw/web/sms-code/send-for-reset",{
+  request.post("/lyw/web/sms-code/send-for-reset",{
     mobile: resetMember.value.mobile,
     imageCode:  resetMember.value.imageCode,
     imageCodeToken: imageCodeToken.value
@@ -202,7 +204,7 @@ const imageCodeSrc = ref();
 const loadImageCode = () => {
   resetMember.value.imageCode = "";
   imageCodeToken.value = Tool.uuid(8);
-  imageCodeSrc.value = 'http://localhost:8080/lyw/web/kaptcha/image-code/' + imageCodeToken.value;
+  imageCodeSrc.value = BASE_URL+'/lyw/web/kaptcha/image-code/' + imageCodeToken.value;
 };
 loadImageCode();
 

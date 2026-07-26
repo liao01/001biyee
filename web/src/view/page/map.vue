@@ -48,6 +48,7 @@ import axios from "axios";
 import { message, Empty } from "ant-design-vue";
 import { RightOutlined } from '@ant-design/icons-vue';
 import LocationCard from "../../components/card/locationCard.vue";
+import { BASE_URL } from "../../utils/baseUrl";
 
 const simpleImage = Empty.PRESENTED_IMAGE_SIMPLE;
 let map = null;
@@ -67,7 +68,7 @@ onMounted(() => {
 });
 
 function loadLocations() {
-  axios.get("http://localhost:8080/lyw/web/location/findLocationAll")
+  axios.get(BASE_URL+"/lyw/web/location/findLocationAll")
       .then(res => {
         if (res.data.success) {
           locations.value = res.data.content || [];
@@ -85,7 +86,7 @@ function handleSearch(value) {
     return;
   }
 
-  axios.get("http://localhost:8080/lyw/web/location/searchLocation", {
+  axios.get(BASE_URL+"/lyw/web/location/searchLocation", {
     params: { keyword }
   }).then(res => {
     if (res.data.success) {

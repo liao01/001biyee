@@ -40,9 +40,10 @@ import axios from "axios"
 import {message, notification} from "ant-design-vue"
 import { useSearchStore } from "../../store/search.js"
 import store from "../../store/index.js";
+import { BASE_URL } from "../../utils/baseUrl";
 
 const cardFileRef = ref(null)
-const baseUrl = 'http://localhost:8080/lyw'
+const baseUrl = BASE_URL+'/lyw'
 const cardList = ref([])
 const MAX_LENGTH = 10
 
@@ -94,7 +95,7 @@ const showCardModal = (item) => {
     avatar: item.raw.avatar
   }
 
-  axios.post("http://localhost:8080/lyw/web/postview/save", {
+  axios.post(BASE_URL+"/lyw/web/postview/save", {
     postId : item.raw.postId
   }).then(response => {
     const data = response.data;

@@ -46,6 +46,7 @@ public class MapService {
     private LocationImageMapper locationImageMapper;
 
     private static final String UPLOAD_DIR = "D:/idea/lyw/uploads/location/";
+//    private static final String UPLOAD_DIR = "/home/lyw/uploads/location/";
 
     /**
      * 根据地址获取地理信息，并插入或更新到数据库

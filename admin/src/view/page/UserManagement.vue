@@ -49,9 +49,10 @@ import axios from 'axios'
 import AddUser from "../../components/addUser.vue";
 import DeleteUser from "../../components/deleteUser.vue";
 import ForgetUser from "../../components/forgetUser.vue";
+import { BASE_URL } from "../../utils/baseUrl";
 
 // 如果你 main.js 里没配 baseURL，这里一定要写全
-axios.defaults.baseURL = 'http://localhost:8080/lyw'
+axios.defaults.baseURL = BASE_URL+'/lyw'
 
 const loading = ref(false)
 const data = ref([])
