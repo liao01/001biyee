@@ -66,26 +66,29 @@
       </div>
     </div>
 
-    <CardFile ref="cardFileRef" />
+    <PostDetail v-model:open="detailOpen" :post-id="selectedPostId" />
   </div>
 </template>
 
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { computed, ref, watch } from 'vue'
 import {message, notification} from 'ant-design-vue'
 import axios from 'axios'
-import store from "../../store/index.js";
+import { useRoute } from 'vue-router'
 import {Waterfall} from "vue-waterfall-plugin-next";
-import CardFile from "../../components/card/card-file.vue";
+import PostDetail from "../../modules/post-detail/PostDetail.vue";
 import { BASE_URL } from "../../utils/baseUrl";
 
 const baseUrl = BASE_URL+'/lyw'
+const defaultAvatar = ''
+const route = useRoute()
 // 用户数据
 const user = ref({})
-const userId = ref(null)
+const userId = computed(() => String(route.params.authorId || ''))
 const cardList = ref([])
-const cardFileRef = ref(null)
+const selectedPostId = ref(null)
+const detailOpen = ref(false)
 const likecount = ref(0)
 const following = ref({})
 const activeTab = ref('note')
@@ -163,9 +166,8 @@ const fetchUserFavorites = async () => {
   }
 };
 
-onMounted(() => {
-  userId.value = sessionStorage.getItem('authorId');
-
+const loadAuthorPage = () => {
+  if (!userId.value) return
   axios.get(BASE_URL+"/lyw/web/UserProFile/findAllUser", {
     params: {
       userId: userId.value
@@ -214,29 +216,11 @@ onMounted(() => {
     message.error('请求失败');
   })
 
-  axios.post(BASE_URL+"/lyw/web/post/post-UserPostQuery", {
-    userid: userId.value
-  }).then(response => {
-    const data = response.data;
-    if (data.success) {
-      cardList.value = (data.content || []).map(post => ({
-        raw: post,
-        title: post.postTitle,
-        description: post.postContent.length > MAX_LENGTH
-            ? post.postContent.substring(0, MAX_LENGTH) + '...'
-            : post.postContent,
-        membername: post.postMembername,
-        postTime: post.postTime
-      }))
-    } else {
-      message.error(data.message)
-    }
-  })
-
   fetchUserPosts();
-
   fetchStatistic();
-})
+}
+
+watch(() => route.params.authorId, loadAuthorPage, { immediate: true })
 
 // 格式化性别
 const genderText = (val) => {
@@ -258,29 +242,8 @@ const formatDate = (isoDate) => {
 }
 
 const showCardModal = (item) => {
-  const fullItem = {
-    title: item.raw.postTitle,
-    description: item.raw.postContent,
-    images: item.raw.imageUrls?.split(',') || [],
-    membername: item.raw.membername,
-    postTime: item.raw.postTime,
-    postId: item.raw.postId,
-    userId: item.raw.userId,
-    avatar: item.raw.avatar,
-  }
-
-  axios.post("http://localhost:8080/lyw/web/postview/save", {
-    postId : item.raw.postId
-  }).then(response => {
-    const data = response.data;
-    if (data.success) {
-      message.success("记录成功!");
-      console.log("登录返回数据", data.content);
-    }
-  })
-
-  cardFileRef.value.showModal(fullItem)
-
+  selectedPostId.value = item.raw.postId
+  detailOpen.value = true
 }
 </script>
 

@@ -26,7 +26,7 @@
       </template>
     </Waterfall>
 
-    <CardFile ref="cardFileRef" />
+    <PostDetail v-model:open="detailOpen" :post-id="selectedPostId" />
   </div>
 </template>
 
@@ -35,13 +35,14 @@
 import { ref, onMounted, watch } from 'vue'
 import { Waterfall } from 'vue-waterfall-plugin-next'
 import 'vue-waterfall-plugin-next/dist/style.css'
-import CardFile from "../../components/card/card-file.vue"
+import PostDetail from "../../modules/post-detail/PostDetail.vue"
 import axios from "axios"
-import {message, notification} from "ant-design-vue"
+import {notification} from "ant-design-vue"
 import { useSearchStore } from "../../store/search.js"
 import { BASE_URL } from "../../utils/baseUrl";
 
-const cardFileRef = ref(null)
+const selectedPostId = ref(null)
+const detailOpen = ref(false)
 const baseUrl = BASE_URL+'/lyw'
 const cardList = ref([])
 const MAX_LENGTH = 15 // 稍微增加长度让视觉更丰满
@@ -74,18 +75,8 @@ onMounted(() => { loadPosts() })
 watch(() => searchStore.keyword, (newKeyword) => { loadPosts(newKeyword) })
 
 const showCardModal = (item) => {
-  const fullItem = {
-    title: item.raw.postTitle,
-    description: item.raw.postContent,
-    images: item.raw.imageUrls?.split(',') || [],
-    membername: item.raw.membername,
-    postTime: item.raw.postTime,
-    postId: item.raw.postId,
-    userId: item.raw.userId,
-    avatar: item.raw.avatar,
-  }
-  axios.post(BASE_URL+"/lyw/web/postview/save", { postId : item.raw.postId })
-  cardFileRef.value.showModal(fullItem)
+  selectedPostId.value = item.raw.postId
+  detailOpen.value = true
 }
 </script>
 

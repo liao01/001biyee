@@ -53,7 +53,8 @@ const routes = [{
       path:"UserProfile",
       component:UserProfile
     },{
-      path: "/AuthorDetail",
+      path: "AuthorDetail/:authorId",
+      name: "author-detail",
       component: AuthorDetail
     }
   ]

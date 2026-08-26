@@ -146,6 +146,29 @@ class ScanTextTests(unittest.TestCase):
             {finding.rule_id for finding in findings},
         )
 
+    def test_ignores_registry_contact_email_in_package_lock(self):
+        contact_email = "registry" + "@example.invalid"
+
+        findings = scan_text(
+            Path("web/package-lock.json"),
+            f'{{"deprecated":"contact {contact_email}"}}',
+        )
+
+        self.assertNotIn(
+            "email-address",
+            {finding.rule_id for finding in findings},
+        )
+
+    def test_still_detects_high_confidence_token_in_package_lock(self):
+        candidate_value = "ghp_" + "exampleSecretValue1234567890"
+
+        findings = scan_text(
+            Path("web/package-lock.json"),
+            f'{{"resolved":"{candidate_value}"}}',
+        )
+
+        self.assertIn("github-token", {finding.rule_id for finding in findings})
+
     def test_all_refs_scan_checks_blob_reused_outside_excluded_path(self):
         candidate_value = "ghp_" + "exampleSecretValue1234567890"
         with tempfile.TemporaryDirectory() as temp_dir:

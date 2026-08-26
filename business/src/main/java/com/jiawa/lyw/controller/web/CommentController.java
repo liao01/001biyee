@@ -25,12 +25,11 @@ public class CommentController {
      * 保存评论信息
      *
      * @param req 评论请求对象，包含需要保存的评论信息
-     * @return 通用响应对象，不包含具体数据
+     * @return 包含服务端正式评论的通用响应对象
      */
     @PostMapping("/save-comment")
-    public CommonResp<Object> saveComment(@RequestBody @Valid CommentReq req) {
-        commentService.saveComment(req);
-        return new CommonResp<>();
+    public CommonResp<CommentResp> saveComment(@RequestBody @Valid CommentReq req) {
+        return new CommonResp<>(commentService.saveComment(req));
     }
 
     @GetMapping("/findall-comment")
@@ -42,14 +41,12 @@ public class CommentController {
     }
 
     @PostMapping("/del-comment")
-    public CommonResp<Object> del(@RequestBody CommentDelReq req){
-        commentService.deleteComment(req);
-        return new CommonResp<>();
+    public CommonResp<String> del(@RequestBody CommentDelReq req){
+        return new CommonResp<>(commentService.deleteComment(req));
     }
 
     @PostMapping("/update-comment")
-    public CommonResp<Object> updateComment(@RequestBody @Valid CommentReq req) {
-        commentService.updateComment(req);
-        return new CommonResp<>();
+    public CommonResp<CommentResp> updateComment(@RequestBody @Valid CommentReq req) {
+        return new CommonResp<>(commentService.updateComment(req));
     }
 }

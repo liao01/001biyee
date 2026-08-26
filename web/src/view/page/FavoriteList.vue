@@ -26,22 +26,22 @@
       </template>
     </Waterfall>
 
-    <!-- 子组件模态框 -->
-    <FavoriteDetail ref="cardFileRef" />
+    <PostDetail v-model:open="detailOpen" :post-id="selectedPostId" />
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { Waterfall } from 'vue-waterfall-plugin-next'
 import 'vue-waterfall-plugin-next/dist/style.css'
-import FavoriteDetail from "../../components/card/FavoriteDetail.vue"
+import PostDetail from "../../modules/post-detail/PostDetail.vue"
 import axios from "axios"
-import {message, notification} from "ant-design-vue"
+import {notification} from "ant-design-vue"
 import { useSearchStore } from "../../store/search.js"
 import { BASE_URL } from "../../utils/baseUrl";
 
-const cardFileRef = ref(null)
+const selectedPostId = ref(null)
+const detailOpen = ref(false)
 const baseUrl = BASE_URL+'/lyw'
 const cardList = ref([])
 const MAX_LENGTH = 10
@@ -83,31 +83,8 @@ watch(() => searchStore.keyword, (newKeyword) => {
 
 // 点击卡片显示子组件模态框
 const showCardModal = (item) => {
-  const fullItem = {
-    title: item.raw.postTitle,
-    description: item.raw.postContent,
-    images: item.raw.imageUrls?.split(',') || [],
-    membername: item.raw.membername,
-    postTime: item.raw.postTime,
-    postId: item.raw.postId,
-    userId: item.raw.userId,
-    avatar: item.raw.avatar
-  }
-
-  axios.post(BASE_URL+"/lyw/web/postview/save", {
-    postId : item.raw.postId
-  }).then(response => {
-    const data = response.data;
-    if (data.success) {
-      message.success("记录成功!");
-      console.log("登录返回数据", data.content);
-    } else {
-      message.error(data.message)
-    }
-  })
-
-  cardFileRef.value.showModal(fullItem)
-
+  selectedPostId.value = item.raw.postId
+  detailOpen.value = true
 }
 </script>
 

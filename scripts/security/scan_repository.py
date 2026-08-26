@@ -164,6 +164,12 @@ def scan_text(
                     )
                 )
         for rule in RULES:
+            if (
+                rule.rule_id == "email-address"
+                and path.name.lower()
+                in {"package-lock.json", "npm-shrinkwrap.json"}
+            ):
+                continue
             if rule.rule_id == "sql-data-row" and path.suffix.lower() != ".sql":
                 continue
             if (

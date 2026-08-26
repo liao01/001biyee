@@ -21,6 +21,7 @@ public enum BusinessExceptionEnum {
     COMMENT_CONTENT_IN("评论内容已存在!!"),
     COMMENT_CONTENT_NOT("帖子不存在!!"),
     COMMENT_CONTENT_PARAM_ERROR("评论ID不能为空!!"),
+    COMMENT_OPERATION_FORBIDDEN("评论不存在或无权操作"),
 
     USER_CANNOT_FOLLOW_SELF("关注失败!!"),
     ALREADY_FOLLOWED("已关注，不能重复关注"),
