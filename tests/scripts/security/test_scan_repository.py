@@ -169,6 +169,32 @@ class ScanTextTests(unittest.TestCase):
 
         self.assertIn("github-token", {finding.rule_id for finding in findings})
 
+    def test_allows_pinned_github_action_commit_in_workflow(self):
+        action_commit = "3d3c42e5aac5ba805825da76410c181273ba90b1"
+
+        findings = scan_text(
+            Path(".github/workflows/ci.yml"),
+            f"uses: actions/checkout@{action_commit} # v7.0.1",
+        )
+
+        self.assertNotIn(
+            "password-hash",
+            {finding.rule_id for finding in findings},
+        )
+
+    def test_still_detects_unscoped_hash_in_workflow(self):
+        suspicious_hash = "a" * 40
+
+        findings = scan_text(
+            Path(".github/workflows/ci.yml"),
+            f"run: echo {suspicious_hash}",
+        )
+
+        self.assertIn(
+            "password-hash",
+            {finding.rule_id for finding in findings},
+        )
+
     def test_all_refs_scan_checks_blob_reused_outside_excluded_path(self):
         candidate_value = "ghp_" + "exampleSecretValue1234567890"
         with tempfile.TemporaryDirectory() as temp_dir:
