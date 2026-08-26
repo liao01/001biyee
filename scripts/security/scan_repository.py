@@ -70,11 +70,11 @@ RULES = (
 
 ASSIGNMENT_PATTERN = re.compile(
     r"""(?ix)
-    \b(
+    (?<![A-Z0-9_])["']?(
         api[-_.]?key|apikey|secret(?:[-_.]?key)?|client[-_.]?secret|
         access[-_.]?key|auth[-_.]?code|password|passwd|token|
         private[-_.]?key
-    )\b
+    )\b["']?
     \s*[:=]\s*
     (?P<value>"[^"]*"|'[^']*'|[^\s,;#>]+)
     """
@@ -136,17 +136,20 @@ def scan_text(
     configuration_suffixes = {
         ".env",
         ".ini",
+        ".json",
         ".properties",
         ".toml",
         ".yaml",
         ".yml",
     }
+    is_configuration = path.suffix.lower() in configuration_suffixes
     for line_number, line in enumerate(text.splitlines(), start=1):
         for match in ASSIGNMENT_PATTERN.finditer(line):
+            if line[match.start()] in {"'", '"'} and not is_configuration:
+                continue
             if _inside_quoted_literal(line, match.start()):
                 continue
             value = match.group("value")
-            is_configuration = path.suffix.lower() in configuration_suffixes
             is_literal = value.startswith(("\"", "'"))
             if (
                 (is_configuration or is_literal)
@@ -183,13 +186,7 @@ def scan_text(
 
 def _is_excluded(path: Path) -> bool:
     normalized_parts = tuple(part.lower() for part in path.parts)
-    if any(part in EXCLUDED_PARTS for part in normalized_parts):
-        return True
-    joined = "/".join(normalized_parts)
-    return (
-        "docs/superpowers/" in joined
-        or "tests/scripts/security/" in joined
-    )
+    return any(part in EXCLUDED_PARTS for part in normalized_parts)
 
 
 def _read_text(path: Path) -> str | None:
@@ -234,20 +231,31 @@ def _run_git(repo: Path, *args: str, text: bool = True) -> subprocess.CompletedP
 
 
 def scan_git_refs(repo: Path) -> list[Finding]:
-    object_listing = _run_git(repo, "rev-list", "--objects", "--all").stdout
+    commits = _run_git(repo, "rev-list", "--all").stdout.splitlines()
+    candidate_blobs: dict[str, PurePosixPath] = {}
+    for commit in commits:
+        tree = _run_git(
+            repo,
+            "ls-tree",
+            "-r",
+            "--full-tree",
+            "-z",
+            commit,
+            text=False,
+        ).stdout
+        for raw_entry in tree.split(b"\0"):
+            metadata, separator, raw_path = raw_entry.partition(b"\t")
+            fields = metadata.split()
+            if not separator or len(fields) != 3 or fields[1] != b"blob":
+                continue
+            object_id = fields[2].decode("ascii")
+            path = PurePosixPath(raw_path.decode("utf-8", errors="surrogateescape"))
+            if _is_excluded(Path(*path.parts)):
+                continue
+            candidate_blobs.setdefault(object_id, path)
+
     findings: list[Finding] = []
-    seen: set[str] = set()
-    for entry in object_listing.splitlines():
-        object_id, separator, object_path = entry.partition(" ")
-        if not separator or object_id in seen:
-            continue
-        seen.add(object_id)
-        path = PurePosixPath(object_path)
-        if _is_excluded(Path(*path.parts)):
-            continue
-        object_type = _run_git(repo, "cat-file", "-t", object_id).stdout.strip()
-        if object_type != "blob":
-            continue
+    for object_id, path in candidate_blobs.items():
         size = int(_run_git(repo, "cat-file", "-s", object_id).stdout.strip())
         if size > MAX_TEXT_BYTES:
             continue
