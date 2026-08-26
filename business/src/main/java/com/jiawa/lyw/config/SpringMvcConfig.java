@@ -31,6 +31,7 @@ public class SpringMvcConfig implements WebMvcConfigurer {
                         "/web/sms-code/send-for-register",
                         "/web/sms-code/send-for-reset",
                         "/web/post/post-findAll",
+                        "/web/post/detail",
                         "/web/comment/findall-comment"
                 );
 

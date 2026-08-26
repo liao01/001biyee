@@ -7,4 +7,6 @@ import java.util.List;
 
 public interface CommentMapperCust {
     List<CommentResp> findCommentByPostId(@Param("postId") Long postId);
+
+    CommentResp findCommentById(@Param("id") Long id);
 }

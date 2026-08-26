@@ -86,6 +86,13 @@ SAFE_VALUE_PATTERNS = (
     re.compile(r"^(?:change-me|example|placeholder|redacted|none|null)$", re.I),
 )
 
+PINNED_GITHUB_ACTION_PATTERN = re.compile(
+    r"^\s*(?:-\s*)?uses:\s*"
+    r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+@"
+    r"[0-9a-f]{40}(?:\s+#.*)?$",
+    re.I,
+)
+
 EXCLUDED_PARTS = {
     ".git",
     ".idea",
@@ -123,6 +130,16 @@ def _inside_quoted_literal(line: str, position: int) -> bool:
         elif char in {"'", '"'}:
             quote = char
     return quote is not None
+
+
+def _is_pinned_github_action(path: Path | PurePosixPath, line: str) -> bool:
+    parts = tuple(part.lower() for part in path.parts)
+    return (
+        len(parts) >= 3
+        and parts[-3:-1] == (".github", "workflows")
+        and path.suffix.lower() in {".yaml", ".yml"}
+        and PINNED_GITHUB_ACTION_PATTERN.fullmatch(line) is not None
+    )
 
 
 def scan_text(
@@ -164,12 +181,23 @@ def scan_text(
                     )
                 )
         for rule in RULES:
+            if (
+                rule.rule_id == "email-address"
+                and path.name.lower()
+                in {"package-lock.json", "npm-shrinkwrap.json"}
+            ):
+                continue
             if rule.rule_id == "sql-data-row" and path.suffix.lower() != ".sql":
                 continue
             if (
                 rule.rule_id == "password-hash"
                 and path.suffix.lower()
                 not in {".env", ".json", ".log", ".properties", ".sql", ".yaml", ".yml"}
+            ):
+                continue
+            if (
+                rule.rule_id == "password-hash"
+                and _is_pinned_github_action(path, line)
             ):
                 continue
             if rule.pattern.search(line):

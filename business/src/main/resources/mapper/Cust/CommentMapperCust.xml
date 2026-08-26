@@ -8,6 +8,7 @@
     <!-- 返回用户名、评论内容和头像 -->
     <resultMap id="CommentRespMap" type="com.jiawa.lyw.resp.CommentResp">
         <id property="id" column="id"/> <!-- 确保 id 被映射 -->
+        <result property="userId" column="user_id"/>
         <result property="commentContent" column="comment_content"/>
         <result property="membername" column="membername"/>
         <result property="commentTime" column="comment_time"/>
@@ -17,6 +18,7 @@
     <select id="findCommentByPostId" resultMap="CommentRespMap">
         SELECT
         c.id AS id,
+        c.user_id AS user_id,
         c.content AS comment_content,
         m.name AS membername,
         u.avatar AS avatar,              <!-- ✅ 新增头像 -->
@@ -26,6 +28,20 @@
         LEFT JOIN user_profile u ON c.user_id = u.user_id
         WHERE c.post_id = #{postId}
         ORDER BY c.create_time ASC
+    </select>
+
+    <select id="findCommentById" resultMap="CommentRespMap">
+        SELECT
+        c.id AS id,
+        c.user_id AS user_id,
+        c.content AS comment_content,
+        m.name AS membername,
+        u.avatar AS avatar,
+        c.create_time AS comment_time
+        FROM comment c
+        LEFT JOIN member m ON c.user_id = m.id
+        LEFT JOIN user_profile u ON c.user_id = u.user_id
+        WHERE c.id = #{id}
     </select>
 
 </mapper>

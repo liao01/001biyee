@@ -23,6 +23,22 @@
         ORDER BY p.create_time DESC;
     </select>
 
+    <select id="findPublicDetailById" resultType="com.jiawa.lyw.resp.PostResp">
+        SELECT
+            p.id AS postId,
+            p.title AS postTitle,
+            p.content AS postContent,
+            p.create_time AS postTime,
+            p.user_id AS userId,
+            m.name AS membername,
+            up.avatar AS avatar
+        FROM post p
+        LEFT JOIN member m ON p.user_id = m.id
+        LEFT JOIN user_profile up ON p.user_id = up.user_id
+        WHERE p.id = #{postId}
+          AND p.status = '1'
+    </select>
+
 
     <select id="searchPostsByKeyword" parameterType="com.jiawa.lyw.req.PostSearchReq"  resultType="com.jiawa.lyw.resp.PostResp">
         <bind name="kw" value="'%' + keyword + '%'" />

@@ -29,7 +29,7 @@ public class CommentService {
     @Autowired
     private CommentMapperCust  commentMapperCust;
 
-    public void saveComment(CommentReq req) {
+    public CommentResp saveComment(CommentReq req) {
         log.info("评论保存开始:{}"+LoginMemberContext.getId());
         CommentExample example = new CommentExample();
         CommentExample.Criteria criteria = example.createCriteria();
@@ -51,6 +51,7 @@ public class CommentService {
 
         commentMapper.insert(comment);
         log.info("评论保存结束:{}"+LoginMemberContext.getId());
+        return commentMapperCust.findCommentById(comment.getId());
     }
 
     public List<CommentResp> findComment(CommentfinndReq req) {
@@ -66,13 +67,25 @@ public class CommentService {
         return comments;
     }
 
-    public void deleteComment(CommentDelReq req) {
+    public String deleteComment(CommentDelReq req) {
         log.info("删除评论开始: {}", req.getId());
-        commentMapper.deleteByPrimaryKey(req.getId());
+        if (req.getId() == null) {
+            throw new BusinessException(BusinessExceptionEnum.COMMENT_CONTENT_PARAM_ERROR);
+        }
+
+        CommentExample commentExample = new CommentExample();
+        commentExample.createCriteria()
+                .andIdEqualTo(req.getId())
+                .andUserIdEqualTo(LoginMemberContext.getId());
+        int deleted = commentMapper.deleteByExample(commentExample);
+        if (deleted != 1) {
+            throw new BusinessException(BusinessExceptionEnum.COMMENT_OPERATION_FORBIDDEN);
+        }
         log.info("删除评论结束: {}", req.getId());
+        return String.valueOf(req.getId());
     }
 
-    public void updateComment(CommentReq req) {
+    public CommentResp updateComment(CommentReq req) {
         log.info("修改评论开始: {}", req.getId());
 
         if (req.getId() == null) {
@@ -80,21 +93,22 @@ public class CommentService {
         }
 
         CommentExample commentExample = new CommentExample();
-        commentExample.createCriteria().andIdEqualTo(req.getId());
-
-        long count = commentMapper.countByExample(commentExample);
-        if (count == 0) {
-            throw new BusinessException(BusinessExceptionEnum.COMMENT_CONTENT_NOT);
-        }
+        commentExample.createCriteria()
+                .andIdEqualTo(req.getId())
+                .andUserIdEqualTo(LoginMemberContext.getId());
 
         Comment comment = new Comment();
         comment.setContent(req.getContent());
         comment.setCreateTime(new Date());
 
         // 推荐使用 selective 避免覆盖其他字段
-        commentMapper.updateByExampleSelective(comment, commentExample);
+        int updated = commentMapper.updateByExampleSelective(comment, commentExample);
+        if (updated != 1) {
+            throw new BusinessException(BusinessExceptionEnum.COMMENT_OPERATION_FORBIDDEN);
+        }
 
         log.info("修改评论结束: {}", req.getId());
+        return commentMapperCust.findCommentById(req.getId());
     }
 
 

@@ -8,16 +8,20 @@ import router from "./router";
 import axios from "axios";
 import store from "./store/index.js";
 import { createPinia } from 'pinia'
+import { createPostDetailNavigation, postDetailNavigationKey } from './modules/post-detail/postDetailNavigation.js'
 
 const app = createApp(App);
 const pinia = createPinia()
-app.use(pinia).use(Antd).use(store).use(router).mount('#app');
+app.provide(postDetailNavigationKey, createPostDetailNavigation(router))
+app.use(pinia).use(Antd).use(store).use(router)
 
 // 全局使用图标
 const icons = Icons;
 for (const i in icons) {
     app.component(i, icons[i]);
 }
+
+app.mount('#app');
 
 //axios拦截器
 axios.interceptors.request.use(function (config) {
