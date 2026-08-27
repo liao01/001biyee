@@ -1,30 +1,17 @@
 <template>
-  <div class="waterfall-container">
-    <Waterfall
-        :list="cardList"
-        :width="240"
-        :gutter="16"
-        class="waterfall-box"
-    >
-      <template #item="{ item }">
-        <a-card
-            hoverable
-            class="custom-card"
-            @click="showCardModal(item)"
-        >
-          <template #cover>
-            <div class="cover-wrapper">
-              <img :src="baseUrl + item.raw.imageUrls?.split(',')[0]" :alt="item.title" />
-            </div>
-          </template>
-          <a-card-meta :title="item.title">
-            <template #description>
-              <span class="card-desc">{{ item.description }}</span>
-            </template>
-          </a-card-meta>
-        </a-card>
-      </template>
-    </Waterfall>
+  <div class="travel-page collection-page">
+    <header class="travel-page__header">
+      <div>
+        <h1 class="travel-page__title">我的收藏</h1>
+        <p class="travel-page__subtitle">把喜欢的风景和路线，留给下一次出发。</p>
+      </div>
+    </header>
+
+    <div v-if="loading" class="travel-empty">正在加载收藏…</div>
+    <div v-else-if="!cardList.length" class="travel-empty">还没有收藏旅行内容。</div>
+    <section v-else class="collection-grid" aria-label="收藏帖子列表">
+      <PostCard v-for="item in cardList" :key="item.id" :post="item" @open="showCardModal" />
+    </section>
 
     <PostDetail v-model:open="detailOpen" :post-id="selectedPostId" />
   </div>
@@ -32,9 +19,8 @@
 
 <script setup>
 import { ref, onMounted, watch } from 'vue'
-import { Waterfall } from 'vue-waterfall-plugin-next'
-import 'vue-waterfall-plugin-next/dist/style.css'
 import PostDetail from "../../modules/post-detail/PostDetail.vue"
+import PostCard from '../../components/travel/PostCard.vue'
 import axios from "axios"
 import {notification} from "ant-design-vue"
 import { useSearchStore } from "../../store/search.js"
@@ -44,30 +30,37 @@ const selectedPostId = ref(null)
 const detailOpen = ref(false)
 const baseUrl = BASE_URL+'/lyw'
 const cardList = ref([])
-const MAX_LENGTH = 10
+const loading = ref(false)
+const MAX_LENGTH = 70
 
 const searchStore = useSearchStore()
 
 // 通用加载函数
 const loadPosts = async (keyword = '') => {
+  loading.value = true
   try {
     const url = keyword ? `${baseUrl}/web/post/post-search` : `${baseUrl}/web/userAction/favorite`
     const { data } = await axios.get(url, { params: keyword ? { keyword } : {} })
     if (data.success) {
       cardList.value = (data.content || []).map(post => ({
+        id: post.postId,
         raw: post,
+        image: baseUrl + (post.imageUrls?.split(',')[0] || ''),
         title: post.postTitle,
-        description: post.postContent.length > MAX_LENGTH
+        description: (post.postContent || '').length > MAX_LENGTH
             ? post.postContent.substring(0, MAX_LENGTH) + '...'
-            : post.postContent,
-        membername: post.postMembername,
-        postTime: post.postTime
+            : (post.postContent || ''),
+        author: post.postMembername,
+        location: post.locationName || post.postLocation || '旅行记录',
+        publishedAt: post.postTime,
       }))
     } else {
       notification.error({ description: data.message })
     }
   } catch (e) {
     notification.error({ description: '请求失败' })
+  } finally {
+    loading.value = false
   }
 }
 
@@ -83,74 +76,26 @@ watch(() => searchStore.keyword, (newKeyword) => {
 
 // 点击卡片显示子组件模态框
 const showCardModal = (item) => {
-  selectedPostId.value = item.raw.postId
+  selectedPostId.value = item.id || item.raw?.postId
   detailOpen.value = true
 }
 </script>
 
 <style scoped>
-/* 1. 容器背景与内边距 */
-.waterfall-container {
-  padding: 30px;
-  background-color: #f4f7f9; /* 浅冷色调背景，让白色卡片更突出 */
-  min-height: 100vh;
+.collection-grid {
+  column-count: 4;
+  column-gap: 22px;
 }
 
-/* 2. 卡片整体样式重塑 */
-:deep(.custom-card) {
-  border-radius: 12px; /* 更圆润的角 */
-  overflow: hidden;
-  border: none; /* 去掉生硬的边框 */
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05); /* 柔和的阴影 */
-  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
-  background: #ffffff;
+@media (max-width: 1399px) {
+  .collection-grid { column-count: 3; }
 }
 
-/* 3. 悬停动效：上浮并加深阴影 */
-:deep(.custom-card:hover) {
-  transform: translateY(-8px);
-  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.12);
+@media (max-width: 999px) {
+  .collection-grid { column-count: 2; }
 }
 
-/* 4. 图片封面处理 */
-.cover-wrapper {
-  overflow: hidden;
-  line-height: 0;
-}
-
-.cover-wrapper img {
-  width: 100%;
-  height: auto;
-  transition: transform 0.5s ease;
-  object-fit: cover;
-}
-
-/* 悬停时图片轻微缩放 */
-:deep(.custom-card:hover) .cover-wrapper img {
-  transform: scale(1.08);
-}
-
-/* 5. 内容区域调整 */
-:deep(.ant-card-meta-title) {
-  font-size: 16px;
-  font-weight: 600;
-  color: #262626;
-  margin-bottom: 8px !important;
-}
-
-:deep(.ant-card-meta-description) {
-  color: #8c8c8c;
-  font-size: 13px;
-  line-height: 1.5;
-}
-
-/* 6. 强制瀑布流居中显示 */
-.waterfall-box {
-  margin: 0 auto;
-}
-
-/* 7. 卡片内边距微调 */
-:deep(.ant-card-body) {
-  padding: 16px !important;
+@media (max-width: 560px) {
+  .collection-grid { column-count: 1; }
 }
 </style>

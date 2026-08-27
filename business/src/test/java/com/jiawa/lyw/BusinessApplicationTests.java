@@ -35,8 +35,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @ExtendWith(MockitoExtension.class)
 class BusinessApplicationTests {
 
-    private static final String TEST_EMAIL = "demo" + "@example.com";
-
     private MockMvc mockMvc;
 
     @Mock
@@ -85,14 +83,14 @@ class BusinessApplicationTests {
     void queryShouldReturnCommonResponseWhenServiceSucceeds() throws Exception {
         DemoQueryResp demo = new DemoQueryResp();
         demo.setId(1L);
-        demo.setMobile(TEST_EMAIL);
+        demo.setMobile("demo@example.com");
         when(demoService.query(any())).thenReturn(List.of(demo));
 
-        mockMvc.perform(get("/query").param("mobile", TEST_EMAIL))
+        mockMvc.perform(get("/query").param("mobile", "demo@example.com"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.content[0].id").value(1))
-                .andExpect(jsonPath("$.content[0].mobile").value(TEST_EMAIL));
+                .andExpect(jsonPath("$.content[0].mobile").value("demo@example.com"));
     }
 
     @Test
@@ -108,7 +106,7 @@ class BusinessApplicationTests {
         when(demoService.query(any()))
                 .thenThrow(new BusinessException(BusinessExceptionEnum.DEMO_MOBILE_NOT_NULL));
 
-        mockMvc.perform(get("/query").param("mobile", TEST_EMAIL))
+        mockMvc.perform(get("/query").param("mobile", "demo@example.com"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.message").value(BusinessExceptionEnum.DEMO_MOBILE_NOT_NULL.getDesc()));
@@ -128,11 +126,11 @@ class BusinessApplicationTests {
     void memberRegisterShouldReturnSuccessWhenRequestIsValid() throws Exception {
         String body = """
                 {
-                  "mobile": "%s",
+                  "mobile": "demo@example.com",
                   "password": "a111111",
                   "code": "123456"
                 }
-                """.formatted(TEST_EMAIL);
+                """;
 
         mockMvc.perform(post("/web/member/register")
                         .contentType("application/json")
@@ -145,11 +143,11 @@ class BusinessApplicationTests {
     void memberRegisterShouldReturnStableResponseWhenRequiredFieldMissing() throws Exception {
         String body = """
                 {
-                  "mobile": "%s",
+                  "mobile": "demo@example.com",
                   "password": "",
                   "code": "123456"
                 }
-                """.formatted(TEST_EMAIL);
+                """;
 
         mockMvc.perform(post("/web/member/register")
                         .contentType("application/json")
@@ -169,12 +167,12 @@ class BusinessApplicationTests {
 
         String body = """
                 {
-                  "mobile": "%s",
+                  "mobile": "demo@example.com",
                   "password": "a111111",
                   "imageCode": "abcd",
                   "imageCodeToken": "token-123"
                 }
-                """.formatted(TEST_EMAIL);
+                """;
 
         mockMvc.perform(post("/web/member/login")
                         .contentType("application/json")
@@ -193,12 +191,12 @@ class BusinessApplicationTests {
 
         String body = """
                 {
-                  "mobile": "%s",
+                  "mobile": "demo@example.com",
                   "password": "a111111",
                   "imageCode": "wrong",
                   "imageCodeToken": "token-123"
                 }
-                """.formatted(TEST_EMAIL);
+                """;
 
         mockMvc.perform(post("/web/member/login")
                         .contentType("application/json")

@@ -1,5 +1,12 @@
 <template>
-  <a-card title="用户资料编辑" bordered style="max-width: 600px; margin: 0 auto;">
+  <div class="travel-page edit-profile-page">
+    <header class="travel-page__header">
+      <div>
+        <h1 class="travel-page__title">编辑个人资料</h1>
+        <p class="travel-page__subtitle">完善旅行者身份，让交流更有温度。</p>
+      </div>
+    </header>
+    <section class="travel-panel edit-profile-page__form">
     <a-form
         layout="vertical"
         :model="form"
@@ -27,8 +34,8 @@
               v-if="form.avatar"
               :src="form.avatar"
               alt="avatar"
-              style="width: 100px; height: 100px; border-radius: 50%;"
-          />
+              class="edit-profile-page__avatar"
+          >
           <div v-else>
             <plus-outlined />
             <div style="margin-top: 8px;">上传头像</div>
@@ -49,7 +56,7 @@
       <a-form-item label="生日" name="birthday" required>
         <a-date-picker
             v-model:value="form.birthday"
-            style="width: 100%;"
+            class="edit-profile-page__date"
             placeholder="请选择生日"
         />
       </a-form-item>
@@ -78,12 +85,13 @@
       <!-- 提交按钮 -->
       <a-form-item>
         <a-space>
-          <a-button type="primary" html-type="submit">保存</a-button>
+          <a-button type="primary" html-type="submit">保存资料</a-button>
           <a-button @click="onReset">重置</a-button>
         </a-space>
       </a-form-item>
     </a-form>
-  </a-card>
+    </section>
+  </div>
 </template>
 
 <script setup>
@@ -176,8 +184,32 @@ const onReset = () => {
 </script>
 
 <style scoped>
+.edit-profile-page__form {
+  max-width: 760px;
+  padding: 30px 34px;
+}
+
+.edit-profile-page__avatar,
 .ant-upload-select {
   width: 100px;
   height: 100px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.edit-profile-page__date {
+  width: 100%;
+}
+
+:deep(.ant-input),
+:deep(.ant-picker),
+:deep(.ant-input-affix-wrapper) {
+  border-radius: 10px;
+  min-height: 42px;
+}
+
+:deep(.ant-btn-primary) {
+  background: var(--travel-color-brand);
+  border-color: var(--travel-color-brand);
 }
 </style>

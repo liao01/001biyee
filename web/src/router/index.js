@@ -3,7 +3,6 @@ import Home from "../view/home.vue"
 import CardList from "../view/page/cardlist.vue"
 import uploadPost from "../view/page/upload-post.vue"
 import Userfollow from "../view/page/Userfollow.vue";
-import AI from "../view/page/ai.vue"
 import AI2 from "../view/page/ai2.vue"
 import PostHistory from "../view/page/PostHistory.vue";
 import Map from "../view/page/map.vue";
@@ -30,7 +29,7 @@ const routes = [{
       component:Userfollow
     },{
       path:"ai",
-      component:AI
+      redirect: "/ai2"
     },{
       path:"ai2",
       component:AI2

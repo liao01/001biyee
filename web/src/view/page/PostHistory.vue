@@ -1,16 +1,14 @@
 <template>
-  <a-card
-      bordered
-      :style="{
-    borderRadius: '12px',
-    boxShadow: '0 2px 12px rgba(0,0,0,0.08)',
-    margin: '20px auto',  /* 增加上下间距，并水平居中 */
-    maxWidth: '1200px',   /* 限制一个最大宽度，防止在大屏幕上无限拉伸 */
-    padding: '0 20px'     /* 增加内部左右缓冲 */
-  }"
-  >
+  <div class="travel-page history-page">
+    <header class="travel-page__header">
+      <div>
+        <h1 class="travel-page__title">发布历史</h1>
+        <p class="travel-page__subtitle">管理已经发布的旅行故事。</p>
+      </div>
+    </header>
+    <section class="travel-panel history-page__panel">
     <div class="card-header">
-      <span class="card-title">  <TeamOutlined style="margin-right:8px"/>笔记管理</span>
+      <span class="card-title"><TeamOutlined /> 旅行内容</span>
     </div>
     <a-table
         :dataSource="UserHistoryList"
@@ -46,7 +44,8 @@
         </template>
       </template>
     </a-table>
-  </a-card>
+    </section>
+  </div>
 </template>
 
 <script setup>
@@ -151,13 +150,21 @@ handleQuery();
 .card-title {
   font-size: 20px;
   font-weight: bold;
-  color: #333;
+  color: var(--travel-color-text);
+  display: inline-flex;
+  gap: 8px;
 }
-.stat-row { margin-bottom: 24px; }
-.chart-container {
-  background: #fff;
-  padding: 16px;
-  border-radius: 12px;
-  box-shadow: inset 0 0 8px rgba(0,0,0,0.03);
+.history-page__panel {
+  overflow: hidden;
+  padding: 24px;
+}
+
+:deep(.ant-table) {
+  color: var(--travel-color-text-secondary);
+}
+
+:deep(.ant-table-thead > tr > th) {
+  background: var(--travel-color-bg-subtle) !important;
+  color: var(--travel-color-text);
 }
 </style>

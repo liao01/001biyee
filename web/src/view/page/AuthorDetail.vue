@@ -1,50 +1,24 @@
 <template>
-  <div class="user-page">
-    <div class="main-container">
+  <div class="travel-page author-page">
+    <ProfileHeader :profile="profileData" :show-actions="false" />
 
-      <div class="user-header-wrapper">
-        <a-avatar
-            :src="user.avatar ? baseUrl + user.avatar : defaultAvatar"
-            :size="100"
-            class="avatar"
-        />
-        <div class="user-info">
-          <h2>{{ user.username }}</h2>
-          <p> IP属地：{{ user.location || '未填写' }}</p>
-          <div class="user-stats">
-            <div class="stat-item">
-              <span class="stat-num">{{ following || 0 }}</span>
-              <span class="stat-label">关注</span>
-            </div>
-            <div class="stat-item">
-              <span class="stat-num">{{ statistic.countFollowers || 0 }}</span>
-              <span class="stat-label">粉丝</span>
-            </div>
-            <div class="stat-item">
-              <span class="stat-num">{{ likecount || 0 }}</span>
-              <span class="stat-label">获赞</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="user-tabs">
+    <section class="author-page__content travel-panel">
+      <div class="travel-tabs author-page__tabs">
         <button
-            class="tab"
-            :class="{ active: activeTab === 'note' }"
+            :class="['travel-tab', { 'is-active': activeTab === 'note' }]"
             @click="switchTab('note')">
-          笔记
+          旅行发布
         </button>
 
         <button
-            class="tab"
-            :class="{ active: activeTab === 'favorite' }"
+            :class="['travel-tab', { 'is-active': activeTab === 'favorite' }]"
             @click="switchTab('favorite')">
           收藏
         </button>
       </div>
 
-      <div class="waterfall-wrapper">
+      <div v-if="!cardList.length" class="travel-empty">这位旅行者还没有公开内容。</div>
+      <div v-else class="waterfall-wrapper">
         <Waterfall
             :list="cardList"
             :width="280"
@@ -55,7 +29,7 @@
           <template #item="{ item }">
             <a-card hoverable class="note-card" @click="showCardModal(item)">
               <template #cover>
-                <img :src="baseUrl + item.raw.imageUrls?.split(',')[0]" :alt="item.title" />
+                <img :src="baseUrl + item.raw.imageUrls?.split(',')[0]" :alt="item.title">
               </template>
               <a-card-meta :title="item.title">
                 <template #description>{{ item.description }}</template>
@@ -64,7 +38,7 @@
           </template>
         </Waterfall>
       </div>
-    </div>
+    </section>
 
     <PostDetail v-model:open="detailOpen" :post-id="selectedPostId" />
   </div>
@@ -78,6 +52,7 @@ import axios from 'axios'
 import { useRoute } from 'vue-router'
 import {Waterfall} from "vue-waterfall-plugin-next";
 import PostDetail from "../../modules/post-detail/PostDetail.vue";
+import ProfileHeader from '../../components/travel/ProfileHeader.vue'
 import { BASE_URL } from "../../utils/baseUrl";
 
 const baseUrl = BASE_URL+'/lyw'
@@ -95,6 +70,17 @@ const activeTab = ref('note')
 
 const MAX_LENGTH = 10
 const statistic = ref({});
+const profileData = computed(() => ({
+  name: user.value.username || user.value.name || '旅行者',
+  bio: user.value.bio,
+  location: user.value.location || 'IP 属地未填写',
+  avatar: user.value.avatar ? baseUrl + user.value.avatar : '',
+  stats: [
+    { label: '关注', value: following.value || 0 },
+    { label: '粉丝', value: statistic.value.countFollowers || 0 },
+    { label: '获赞', value: likecount.value || 0 },
+  ],
+}))
 
 const fetchStatistic = async () => {
   try {
@@ -248,116 +234,34 @@ const showCardModal = (item) => {
 </script>
 
 <style scoped>
-/* 全局背景和对齐 */
-.user-page {
-  background-color: #f7f8fa; /* 稍微深一点的底色，衬托白色的卡片 */
-  min-height: 100vh;
-  width: 100%;
+.author-page {
+  display: grid;
+  gap: 22px;
 }
 
-/* 核心容器：限制最大宽度并居中，解决“突出来”的关键 */
-.main-container {
-  max-width: 1200px;
-  margin: 0 auto;
-  background-color: #ffffff;
-  min-height: 100vh;
-  box-shadow: 0 0 20px rgba(0,0,0,0.02); /* 侧边淡淡的阴影，增加高级感 */
+.author-page__content {
+  overflow: hidden;
 }
 
-/* 用户信息区域美化 */
-.user-header-wrapper {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-direction: column;
-  padding: 60px 20px 30px;
-  background: linear-gradient(to bottom, #f8f9ff 0%, #ffffff 100%);
-  gap: 16px;
+.author-page__tabs {
+  padding: 0 26px;
 }
 
-.avatar {
-  border: 4px solid #fff;
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
-}
-
-.user-info {
-  text-align: center;
-}
-
-.user-info h2 {
-  font-size: 26px;
-  font-weight: 700;
-  margin-bottom: 8px;
-}
-
-/* 统计项美化 */
-.user-stats {
-  margin-top: 20px;
-  display: flex;
-  gap: 40px;
-}
-.stat-item {
-  display: flex;
-  flex-direction: column;
-  cursor: pointer;
-}
-.stat-num {
-  font-size: 18px;
-  font-weight: 700;
-  color: #1a1a1a;
-}
-.stat-label {
-  font-size: 13px;
-  color: #999;
-}
-
-/* Tab 切换栏 */
-.user-tabs {
-  display: flex;
-  justify-content: center;
-  padding: 10px 0;
-  border-bottom: 1px solid #f0f0f0;
-  margin-bottom: 20px;
-  position: sticky;
-  top: 0;
-  background: #fff;
-  z-index: 10;
-}
-
-.tab {
-  padding: 8px 30px;
-  border-radius: 20px;
-  font-size: 15px;
-  border: none;
-  background: none;
-  cursor: pointer;
-  color: #666;
-  transition: all 0.3s;
-}
-
-.tab.active {
-  background: #000;
-  color: #fff;
-  font-weight: 600;
-}
-
-/* 瀑布流容器：增加内边距，不让卡片贴边 */
 .waterfall-wrapper {
-  padding: 0 24px 40px 24px;
+  padding: 24px 24px 40px;
 }
 
-/* 卡片样式优化 */
 .note-card {
-  border: none !important;
+  border: 1px solid var(--travel-color-border) !important;
   border-radius: 12px !important;
   overflow: hidden;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04) !important;
-  transition: transform 0.3s ease !important;
+  box-shadow: none !important;
+  transition: transform var(--travel-transition), box-shadow var(--travel-transition) !important;
 }
 
 .note-card:hover {
-  transform: translateY(-6px);
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08) !important;
+  transform: translateY(-3px);
+  box-shadow: 0 12px 28px rgb(24 30 40 / 8%) !important;
 }
 
 :deep(.ant-card-cover img) {
