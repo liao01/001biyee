@@ -4,6 +4,8 @@
 
 数据库、缓存、邮件、JWT、AI、地图和其他外部服务凭据只允许存放在部署环境变量或本地未跟踪的环境文件中。仓库中的 `.env.example` 只用于说明变量名，不得写入可用凭据。
 
+本地开发也可以使用已被 Git 忽略的 `business/src/main/resources/application.properties` 和 `application.yml`。同目录的 `.example` 文件只负责展示 Spring 配置接线，环境变量清单仍以根目录 `.env.example` 为准。
+
 前端构建变量会进入浏览器产物，因此不得通过 `VITE_` 变量向前端提供服务端密钥。
 
 ## 提交前检查

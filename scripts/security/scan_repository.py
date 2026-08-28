@@ -105,6 +105,16 @@ EXCLUDED_PARTS = {
 }
 
 MAX_TEXT_BYTES = 10 * 1024 * 1024
+RESERVED_EXAMPLE_EMAIL_DOMAINS = {
+    "example.com",
+    "example.org",
+    "example.net",
+    "example.invalid",
+}
+LOCAL_SECRET_CONFIGS = {
+    "business/src/main/resources/application.properties",
+    "business/src/main/resources/application.yml",
+}
 
 
 def _is_safe_value(value: str) -> bool:
@@ -187,6 +197,14 @@ def scan_text(
                 in {"package-lock.json", "npm-shrinkwrap.json"}
             ):
                 continue
+            if rule.rule_id == "email-address":
+                email_matches = rule.pattern.findall(line)
+                if email_matches and all(
+                    match.rsplit("@", 1)[-1].lower()
+                    in RESERVED_EXAMPLE_EMAIL_DOMAINS
+                    for match in email_matches
+                ):
+                    continue
             if rule.rule_id == "sql-data-row" and path.suffix.lower() != ".sql":
                 continue
             if (
@@ -217,6 +235,14 @@ def _is_excluded(path: Path) -> bool:
     return any(part in EXCLUDED_PARTS for part in normalized_parts)
 
 
+def _is_local_secret_config(path: Path, root: Path) -> bool:
+    try:
+        relative = path.relative_to(root)
+    except ValueError:
+        return False
+    return relative.as_posix().lower() in LOCAL_SECRET_CONFIGS
+
+
 def _read_text(path: Path) -> str | None:
     try:
         data = path.read_bytes()
@@ -235,7 +261,11 @@ def scan_paths(paths: Iterable[Path]) -> list[Finding]:
     for root in paths:
         candidates = root.rglob("*") if root.is_dir() else (root,)
         for candidate in candidates:
-            if _is_excluded(candidate) or not candidate.is_file():
+            if (
+                _is_excluded(candidate)
+                or _is_local_secret_config(candidate, root)
+                or not candidate.is_file()
+            ):
                 continue
             text = _read_text(candidate)
             if text is None:
@@ -258,8 +288,14 @@ def _run_git(repo: Path, *args: str, text: bool = True) -> subprocess.CompletedP
     )
 
 
-def scan_git_refs(repo: Path) -> list[Finding]:
-    commits = _run_git(repo, "rev-list", "--all").stdout.splitlines()
+def scan_git_refs(
+    repo: Path,
+    *,
+    refs: Iterable[str] | None = None,
+) -> list[Finding]:
+    selected_refs = tuple(refs or ())
+    revision_args = selected_refs if selected_refs else ("--all",)
+    commits = _run_git(repo, "rev-list", *revision_args).stdout.splitlines()
     candidate_blobs: dict[str, PurePosixPath] = {}
     for commit in commits:
         tree = _run_git(
@@ -317,7 +353,9 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
         description="Scan paths or all reachable Git objects."
     )
     parser.add_argument("path", type=Path)
-    parser.add_argument("--all-refs", action="store_true")
+    history_scope = parser.add_mutually_exclusive_group()
+    history_scope.add_argument("--all-refs", action="store_true")
+    history_scope.add_argument("--ref", action="append", dest="refs")
     parser.add_argument("--report", type=Path)
     return parser.parse_args(argv)
 
@@ -326,8 +364,8 @@ def main(argv: list[str] | None = None) -> int:
     args = _parse_args(argv or sys.argv[1:])
     try:
         findings = (
-            scan_git_refs(args.path)
-            if args.all_refs
+            scan_git_refs(args.path, refs=args.refs)
+            if args.all_refs or args.refs
             else scan_paths([args.path])
         )
         if args.report:

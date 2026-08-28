@@ -1,3 +1,4 @@
+# Environment variable names are defined by the repository-root .env.example.
 rag:
   server:
     url: ${RAG_URL}
