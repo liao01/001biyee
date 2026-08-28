@@ -2,8 +2,11 @@
   <div class="chat-wrapper">
     <div class="chat-box">
       <div class="chat-header">
-        <span class="status-dot"></span>
-        <span class="bot-name">智能助手</span>
+        <div>
+          <span class="bot-name">旅游助手</span>
+          <p>帮你梳理目的地、路线和出行准备</p>
+        </div>
+        <span class="status"><i class="status-dot"></i> 在线</span>
       </div>
 
       <div class="messages" ref="messaggListRef">
@@ -16,7 +19,8 @@
             <img
                 :src="message.isUser ? avatarUrl : '/img/Robot.png'"
                 class="avatar-img"
-            />
+                alt="对话头像"
+            >
           </div>
 
           <div class="bubble-container">
@@ -62,6 +66,8 @@
 <script setup>
 import { onMounted, ref, watch } from 'vue'
 import axios from 'axios'
+import { message } from 'ant-design-vue'
+import { SendOutlined } from '@ant-design/icons-vue'
 import { v4 as uuidv4 } from 'uuid'
 import { BASE_URL } from "../../utils/baseUrl";
 
@@ -186,9 +192,9 @@ const fetchAvatar = async () => {
 /* 全局容器背景 */
 .chat-wrapper {
   width: 100%;
-  height: 100vh;
-  padding: 20px;
-  background-color: #f0f2f5;
+  height: calc(100vh - var(--travel-header-height));
+  padding: 28px clamp(18px, 4vw, 56px);
+  background-color: var(--travel-color-bg-subtle);
   display: flex;
   justify-content: center;
 }
@@ -197,21 +203,22 @@ const fetchAvatar = async () => {
   display: flex;
   flex-direction: column;
   width: 100%;
-  max-width: 900px;
+  max-width: 1060px;
   height: 100%;
   background: #ffffff;
-  border-radius: 16px;
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.05);
+  border: 1px solid var(--travel-color-border);
+  border-radius: var(--travel-radius-lg);
+  box-shadow: none;
   overflow: hidden;
 }
 
 /* 页眉样式 */
 .chat-header {
-  padding: 15px 24px;
-  border-bottom: 1px solid #f0f0f0;
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--travel-color-border);
   display: flex;
   align-items: center;
-  gap: 8px;
+  justify-content: space-between;
 }
 
 .status-dot {
@@ -219,7 +226,8 @@ const fetchAvatar = async () => {
   height: 8px;
   background-color: #52c41a;
   border-radius: 50%;
-  box-shadow: 0 0 0 2px rgba(82, 196, 26, 0.2);
+  display: inline-block;
+  margin-right: 5px;
 }
 
 .bot-name {
@@ -227,13 +235,19 @@ const fetchAvatar = async () => {
   color: #1f1f1f;
   font-size: 16px;
 }
+.chat-header p {
+  color: var(--travel-color-text-muted);
+  font-size: 12px;
+  margin: 4px 0 0;
+}
+.status { color: var(--travel-color-text-secondary); font-size: 12px; }
 
 /* 消息列表区域 */
 .messages {
   flex: 1;
   padding: 24px;
   overflow-y: auto;
-  background-color: #fafafa;
+  background-color: #fff;
   scroll-behavior: smooth;
 }
 
@@ -263,7 +277,7 @@ const fetchAvatar = async () => {
   width: 40px;
   height: 40px;
   flex-shrink: 0;
-  border-radius: 12px;
+  border-radius: 50%;
   overflow: hidden;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
@@ -299,10 +313,10 @@ const fetchAvatar = async () => {
 }
 
 .msg-user .bubble {
-  background: #1677ff;
+  background: var(--travel-color-brand);
   color: #fff;
   border-top-right-radius: 4px;
-  box-shadow: 0 4px 12px rgba(22, 119, 255, 0.2);
+  box-shadow: none;
 }
 
 .content-text :deep(p) {
@@ -327,8 +341,8 @@ const fetchAvatar = async () => {
 
 .chat-input-wrapper:focus-within {
   background: #fff;
-  border: 1px solid #1677ff;
-  box-shadow: 0 0 0 2px rgba(22, 119, 255, 0.1);
+  border: 1px solid var(--travel-color-brand);
+  box-shadow: 0 0 0 3px rgb(255 59 79 / 10%);
 }
 
 .custom-textarea {
@@ -353,6 +367,10 @@ const fetchAvatar = async () => {
   align-items: center;
   justify-content: center;
 }
+:deep(.send-btn.ant-btn-primary) {
+  background: var(--travel-color-brand);
+  border-color: var(--travel-color-brand);
+}
 
 /* Typing 动画微调 */
 .typing {
@@ -364,9 +382,20 @@ const fetchAvatar = async () => {
 .dot {
   width: 5px;
   height: 5px;
-  background: #1677ff;
+  background: var(--travel-color-brand);
   border-radius: 50%;
   margin-right: 3px;
   opacity: 0.6;
+}
+
+@media (max-width: 767px) {
+  .chat-wrapper {
+    height: calc(100vh - 64px - 68px);
+    padding: 0;
+  }
+  .chat-box { border: 0; border-radius: 0; }
+  .messages { padding: 18px 14px; }
+  .msg { max-width: 100%; }
+  .chat-input-container { padding: 12px 14px; }
 }
 </style>

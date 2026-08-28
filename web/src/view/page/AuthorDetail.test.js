@@ -35,7 +35,7 @@ const pageStubs = {
   },
   'a-card': {
     emits: ['click'],
-    template: '<button type="button" class="note-card" @click="$emit(\'click\')"><slot name="cover" /><slot /></button>',
+    template: '<button type="button" class="post-preview" @click="$emit(\'click\')"><slot name="cover" /><slot /></button>',
   },
   'a-card-meta': true,
   'a-avatar': true,
@@ -100,7 +100,7 @@ describe('作者详情路由', () => {
     })
     await flushPromises()
 
-    await wrapper.get('.note-card').trigger('click')
+    await wrapper.get('.post-preview').trigger('click')
 
     const detail = wrapper.get('[data-testid="shared-post-detail"]')
     expect(detail.attributes('data-open')).toBe('true')

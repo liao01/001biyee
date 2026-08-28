@@ -1,5 +1,5 @@
 import { flushPromises, mount } from '@vue/test-utils'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 import PostDetail from './PostDetail.vue'
 import { postDetailHttpKey } from './postDetailHttp.js'
@@ -167,6 +167,8 @@ describe('帖子详情', () => {
 
   it('匿名读者触发互动时得到登录提示且不会发送写请求', async () => {
     let likeWrites = 0
+    const showLogin = vi.fn()
+    window.showLogin = showLogin
     const http = {
       async getPublicDetail() {
         return {
@@ -195,7 +197,9 @@ describe('帖子详情', () => {
     await flushPromises()
 
     expect(wrapper.get('[role="status"]').text()).toContain('请先登录')
+    expect(showLogin).toHaveBeenCalledOnce()
     expect(likeWrites).toBe(0)
+    delete window.showLogin
   })
 
   it('点赞成功后只采用服务端确认的 active 状态和正式计数', async () => {

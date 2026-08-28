@@ -1,16 +1,14 @@
 <template>
-  <a-card
-      bordered
-      :style="{
-    borderRadius: '12px',
-    boxShadow: '0 2px 12px rgba(0,0,0,0.08)',
-    margin: '20px auto',  /* 增加上下间距，并水平居中 */
-    maxWidth: '1200px',   /* 限制一个最大宽度，防止在大屏幕上无限拉伸 */
-    padding: '0 20px'     /* 增加内部左右缓冲 */
-  }"
-  >
+  <div class="travel-page follow-page">
+    <header class="travel-page__header">
+      <div>
+        <h1 class="travel-page__title">粉丝数据</h1>
+        <p class="travel-page__subtitle">了解哪些旅行内容正在建立新的连接。</p>
+      </div>
+    </header>
+    <section class="travel-panel follow-page__panel">
     <div class="card-header">
-      <span class="card-title"><UserOutlined style="margin-right:8px"/> 粉丝数据概览</span>
+      <span class="card-title"><UserOutlined /> 数据概览</span>
     </div>
 
     <a-row :gutter="[24, 24]" class="stat-row">
@@ -43,7 +41,7 @@
     <br>
     <br>
     <div class="card-header">
-      <span class="card-title">  <TeamOutlined style="margin-right:8px"/>粉丝列表概览</span>
+      <span class="card-title"><TeamOutlined /> 粉丝列表</span>
     </div>
     <a-table
         :dataSource="getFollowingListByUserId"
@@ -62,7 +60,8 @@
         </template>
       </template>
     </a-table>
-  </a-card>
+    </section>
+  </div>
 </template>
 
 <script setup>
@@ -174,9 +173,9 @@ const render30Chart = (id, title, data30) => {
       smooth: true,
       symbol: 'circle',
       symbolSize: 6,
-      lineStyle: { width: 3, color: '#1890ff' },
-      itemStyle: { color: '#1890ff' },
-      areaStyle: { color: 'rgba(24,144,255,0.2)' }
+      lineStyle: { width: 3, color: '#ff3b4f' },
+      itemStyle: { color: '#ff3b4f' },
+      areaStyle: { color: 'rgba(255,59,79,0.12)' }
     }]
   });
 };
@@ -199,13 +198,18 @@ handleQuery();
 .card-title {
   font-size: 20px;
   font-weight: bold;
-  color: #333;
+  color: var(--travel-color-text);
+  display: inline-flex;
+  gap: 8px;
 }
 .stat-row { margin-bottom: 24px; }
 .chart-container {
-  background: #fff;
+  background: var(--travel-color-bg-subtle);
   padding: 16px;
   border-radius: 12px;
-  box-shadow: inset 0 0 8px rgba(0,0,0,0.03);
+  border: 1px solid var(--travel-color-border);
+}
+.follow-page__panel {
+  padding: 26px;
 }
 </style>

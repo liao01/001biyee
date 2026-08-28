@@ -1,11 +1,12 @@
 <template>
-  <div class="travel-page history-page">
-    <header class="travel-page__header">
-      <div>
-        <h1 class="travel-page__title">发布历史</h1>
-        <p class="travel-page__subtitle">管理已经发布的旅行故事。</p>
-      </div>
-    </header>
+  <ContentListPage
+    class="history-page"
+    title="发布历史"
+    subtitle="管理已经发布的旅行故事。"
+    :loading="loading"
+    :has-custom-content="UserHistoryList.length > 0"
+    empty-text="暂无发布内容"
+  >
     <section class="travel-panel history-page__panel">
     <div class="card-header">
       <span class="card-title"><TeamOutlined /> 旅行内容</span>
@@ -45,7 +46,7 @@
       </template>
     </a-table>
     </section>
-  </div>
+  </ContentListPage>
 </template>
 
 <script setup>
@@ -56,6 +57,7 @@ import {message, notification} from "ant-design-vue";
 import {onMounted, ref} from "vue";
 import store from "../../store/index.js";
 import { BASE_URL } from "../../utils/baseUrl";
+import ContentListPage from "../../components/travel/ContentListPage.vue";
 
 const loading = ref(false);
 
@@ -78,7 +80,7 @@ const pagination = ref({
   pageSize : 5
 });
 
-const UserHistoryList =ref();
+const UserHistoryList = ref([]);
 
 const handleQuery = (param) => {
   if (!param) {

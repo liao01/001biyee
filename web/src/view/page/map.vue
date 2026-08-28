@@ -3,7 +3,10 @@
     <div id="mapDiv" class="full-map"></div>
 
     <div class="sidebar">
-      <!-- 搜索框 -->
+      <div class="map-sidebar__heading">
+        <strong>目的地地图</strong>
+        <span>探索旅行者分享过的地点</span>
+      </div>
       <a-input-search
           v-model:value="searchQuery"
           placeholder="搜索景区 / 城市 / 地址"
@@ -195,9 +198,9 @@ function handleClose() {
 .map-container {
   position: relative;
   width: 100%;
-  height: calc(100vh - 64px); /* 减去你的导航栏高度 */
+  height: calc(100vh - var(--travel-header-height));
   overflow: hidden;
-  background: #f0f205;
+  background: var(--travel-color-bg-subtle);
 }
 
 .full-map {
@@ -205,7 +208,6 @@ function handleClose() {
   height: 100%;
 }
 
-/* 左侧侧边栏 - 玻璃拟态 */
 .sidebar {
   position: absolute;
   left: 20px;
@@ -213,14 +215,21 @@ function handleClose() {
   bottom: 20px;
   width: 320px;
   z-index: 100;
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(10px);
-  border-radius: 16px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  background: rgb(255 255 255 / 96%);
+  border: 1px solid var(--travel-color-border);
+  border-radius: var(--travel-radius-lg);
+  box-shadow: var(--travel-shadow-float);
   display: flex;
   flex-direction: column;
   padding: 20px;
 }
+.map-sidebar__heading {
+  display: grid;
+  gap: 4px;
+  margin-bottom: 18px;
+}
+.map-sidebar__heading strong { font-size: 19px; }
+.map-sidebar__heading span { color: var(--travel-color-text-muted); font-size: 12px; }
 
 .search-box {
   margin-bottom: 20px;
@@ -239,18 +248,18 @@ function handleClose() {
   padding: 12px;
   border-radius: 12px;
   cursor: pointer;
-  transition: all 0.3s;
+  transition: background var(--travel-transition), color var(--travel-transition);
   margin-bottom: 8px;
   border: 1px solid transparent;
 }
 
 .list-item:hover {
-  background: rgba(24, 144, 255, 0.1);
-  color: #1890ff;
+  background: var(--travel-color-brand-soft);
+  color: var(--travel-color-brand);
 }
 
 .list-item.active {
-  background: #1890ff;
+  background: var(--travel-color-brand);
   color: white;
 }
 
@@ -286,11 +295,31 @@ function handleClose() {
 :deep(.marker-pin) {
   width: 24px;
   height: 24px;
-  background: #1890ff;
+  background: var(--travel-color-brand);
   border: 3px solid #fff;
   border-radius: 50% 50% 50% 0;
   transform: rotate(-45deg);
   box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+}
+
+@media (max-width: 767px) {
+  .map-container {
+    height: calc(100vh - 64px - 68px);
+  }
+  .sidebar {
+    bottom: auto;
+    left: 12px;
+    max-height: 42%;
+    right: 12px;
+    top: 12px;
+    width: auto;
+  }
+  .location-card-overlay {
+    bottom: 14px;
+    left: 12px;
+    right: 12px;
+    width: auto;
+  }
 }
 
 :deep(.marker-label) {

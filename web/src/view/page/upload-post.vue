@@ -1,10 +1,25 @@
 <template>
-  <div style="padding: 30px">
-    <a-card title="新的创作" class="post-editor" :bordered="false">
-      <!-- 标题 -->
-      <a-input v-model:value="title" style="height: 30px;font-size: 30px" :bordered="false" placeholder="输入标题" />
-      <a-textarea v-model:value="content" style="font-size: 20px;margin-top: 20px" placeholder="Basic usage" :rows="4" />
-      <div class="clearfix">
+  <div class="travel-page publish-page">
+    <header class="travel-page__header">
+      <div>
+        <h1 class="travel-page__title">发布一段新的旅行</h1>
+        <p class="travel-page__subtitle">用图片、文字和标签，把值得记住的风景分享出去。</p>
+      </div>
+    </header>
+
+    <section class="travel-panel post-editor">
+      <div class="publish-page__writing">
+        <label>标题</label>
+        <a-input v-model:value="title" class="publish-page__title-input" :bordered="false" placeholder="给这段旅程起个标题" />
+        <label>旅行正文</label>
+        <a-textarea v-model:value="content" class="publish-page__content-input" placeholder="写下路线、感受和实用建议…" :rows="8" />
+      </div>
+
+      <div class="publish-page__media">
+        <div class="publish-page__section-heading">
+          <strong>旅行图片</strong>
+          <span>{{ fileList.length }}/8</span>
+        </div>
         <a-upload
             v-model:file-list="fileList"
             :customRequest="handleUpload"
@@ -13,7 +28,7 @@
         >
           <div v-if="fileList.length < 8">
             <plus-outlined />
-            <div style="margin-top: 8px">Upload</div>
+            <div class="publish-page__upload-copy">添加图片</div>
           </div>
         </a-upload>
 
@@ -23,11 +38,12 @@
             :footer="null"
             @cancel="handleCancel"
         >
-          <img alt="preview" style="width: 100%" :src="previewImage" />
+          <img alt="preview" class="publish-page__preview" :src="previewImage">
         </a-modal>
       </div>
-      <span style="margin-right: 8px">标签:</span>
-      <a-space :size="[0, 8]" wrap>
+      <div class="publish-page__tags">
+        <strong>内容标签</strong>
+        <a-space :size="[8, 8]" wrap>
         <a-checkable-tag
             v-for="(tag, index) in tagsData"
             :key="tag"
@@ -36,12 +52,13 @@
         >
           {{ tag }}
         </a-checkable-tag>
-      </a-space>
-      <br>
-      <a-button type="primary" @click="submitPost" style="margin-top: 16px">
-      发布
-    </a-button>
-    </a-card>
+        </a-space>
+      </div>
+      <footer class="publish-page__footer">
+        <span>发布前请确认图片和文字均为你有权分享的内容。</span>
+        <a-button type="primary" @click="submitPost">发布旅行</a-button>
+      </footer>
+    </section>
   </div>
 </template>
 <script setup>
@@ -165,25 +182,103 @@ const handleUpload = async ({ file, onSuccess, onError }) => {
 };
 </script>
 
-<style>
+<style scoped>
 .post-editor {
-  max-width: 800px;
-  margin: 0 auto;
-  padding: 20px;
-  width: 1800px;
-  height: 500px;
-}
-.ant-upload-select-picture-card i {
-  font-size: 32px;
-  color: #999;
+  max-width: 980px;
+  overflow: hidden;
+  padding: 34px;
 }
 
-.ant-upload-select-picture-card .ant-upload-text {
-  margin-top: 8px;
-  color: #666;
+.publish-page__writing {
+  display: grid;
+  gap: 12px;
 }
-.clearfix{
-  margin-top: 20px;
+
+.publish-page__writing label,
+.publish-page__section-heading strong,
+.publish-page__tags > strong {
+  color: var(--travel-color-text);
+  font-size: 14px;
+  font-weight: 680;
+}
+
+.publish-page__title-input {
+  border-bottom: 1px solid var(--travel-color-border) !important;
+  border-radius: 0;
+  font-size: clamp(24px, 3vw, 34px);
+  font-weight: 720;
+  height: 58px;
+  padding-inline: 0;
+}
+
+.publish-page__content-input {
+  border-color: var(--travel-color-border);
+  border-radius: var(--travel-radius-md);
+  font-size: 16px;
+  line-height: 1.8;
+  margin-bottom: 8px;
+  padding: 16px;
+}
+
+.publish-page__media,
+.publish-page__tags {
+  border-top: 1px solid var(--travel-color-border);
+  margin-top: 24px;
+  padding-top: 24px;
+}
+
+.publish-page__section-heading {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.publish-page__section-heading span,
+.publish-page__footer span {
+  color: var(--travel-color-text-muted);
+  font-size: 12px;
+}
+
+.publish-page__upload-copy {
+  color: var(--travel-color-text-secondary);
+  margin-top: 8px;
+}
+
+.publish-page__preview {
+  width: 100%;
+}
+
+.publish-page__tags {
+  display: grid;
+  gap: 14px;
+}
+
+.publish-page__footer {
+  align-items: center;
+  border-top: 1px solid var(--travel-color-border);
+  display: flex;
+  justify-content: space-between;
+  margin: 28px -34px -34px;
+  padding: 20px 34px;
+}
+
+:deep(.ant-btn-primary) {
+  background: var(--travel-color-brand);
+  border-color: var(--travel-color-brand);
+  border-radius: 10px;
+  height: 42px;
+  padding-inline: 22px;
+}
+
+@media (max-width: 599px) {
+  .post-editor { padding: 22px; }
+  .publish-page__footer {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 12px;
+    margin: 24px -22px -22px;
+    padding: 18px 22px;
+  }
 }
 
 </style>

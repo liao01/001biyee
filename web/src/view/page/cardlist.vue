@@ -13,16 +13,16 @@
     </div>
 
     <div v-if="loading" class="travel-empty">正在整理旅行灵感…</div>
-    <div v-else-if="!cardList.length" class="travel-empty">
+    <div v-else-if="!postPreviews.length" class="travel-empty">
       <CompassOutlined />
       <p>暂时没有找到相关旅行记录，换个关键词试试。</p>
     </div>
     <section v-else class="discovery-grid" aria-label="旅行帖子列表">
-      <PostCard
-        v-for="item in cardList"
+      <PostPreview
+        v-for="item in postPreviews"
         :key="item.id"
         :post="item"
-        @open="showCardModal"
+        @open="showPostDetail"
       />
     </section>
 
@@ -35,7 +35,8 @@
 import { ref, onMounted, watch } from 'vue'
 import { CompassOutlined } from '@ant-design/icons-vue'
 import PostDetail from "../../modules/post-detail/PostDetail.vue"
-import PostCard from '../../components/travel/PostCard.vue'
+import PostPreview from '../../components/travel/PostPreview.vue'
+import { toPostPreview } from '../../components/travel/postPreviewAdapter.js'
 import axios from "axios"
 import {notification} from "ant-design-vue"
 import { useSearchStore } from "../../store/search.js"
@@ -44,11 +45,10 @@ import { BASE_URL } from "../../utils/baseUrl";
 const selectedPostId = ref(null)
 const detailOpen = ref(false)
 const baseUrl = BASE_URL+'/lyw'
-const cardList = ref([])
+const postPreviews = ref([])
 const loading = ref(false)
 const activeCategory = ref('推荐')
 const categories = ['推荐', '最新', '城市漫游', '自然风光', '美食']
-const MAX_LENGTH = 70
 
 const searchStore = useSearchStore()
 
@@ -58,18 +58,7 @@ const loadPosts = async (keyword = '') => {
     const url = keyword ? `${baseUrl}/web/post/post-search` : `${baseUrl}/web/post/post-findAll`
     const { data } = await axios.get(url, { params: keyword ? { keyword } : {} })
     if (data.success) {
-      cardList.value = (data.content || []).map(post => ({
-        id: post.postId,
-        raw: post,
-        image: baseUrl + (post.imageUrls?.split(',')[0] || ''),
-        title: post.postTitle,
-        description: (post.postContent || '').length > MAX_LENGTH
-            ? post.postContent.substring(0, MAX_LENGTH) + '...'
-            : (post.postContent || ''),
-        author: post.postMembername,
-        location: post.locationName || post.postLocation || '旅行记录',
-        publishedAt: post.postTime,
-      }))
+      postPreviews.value = (data.content || []).map(post => toPostPreview(post, { baseUrl }))
     } else {
       notification.error({ description: data.message })
     }
@@ -83,7 +72,7 @@ const loadPosts = async (keyword = '') => {
 onMounted(() => { loadPosts() })
 watch(() => searchStore.keyword, (newKeyword) => { loadPosts(newKeyword) })
 
-const showCardModal = (item) => {
+const showPostDetail = (item) => {
   selectedPostId.value = item.id || item.raw?.postId
   detailOpen.value = true
 }
