@@ -211,9 +211,14 @@ const resetPostState = () => {
   commentPendingId.value = null
 }
 
+const requestLogin = () => {
+  interactionMessage.value = '请先登录后再互动'
+  window.showLogin?.()
+}
+
 const runViewerMutation = async ({ pending, currentActive, write, apply, failureMessage }) => {
   if (!viewerState.value) {
-    interactionMessage.value = '请先登录后再互动'
+    requestLogin()
     return
   }
   if (pending.value) return

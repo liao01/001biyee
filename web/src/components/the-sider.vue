@@ -1,75 +1,61 @@
 <template>
-  <a-layout-sider
-      v-model:collapsed="collapsed"
-      collapsible
-      width="240"
-      class="custom-sider"
-  >
-
-    <a-menu
-        v-model:selectedKeys="selectedKeys"
-        v-model:openKeys="openKeys"
-        mode="inline"
-        class="custom-menu"
-    >
-      <a-menu-item key="/CardList" @click="handleMenuClick('/CardList')">
-        <template #icon><HomeOutlined /></template>
-        <span>发现</span>
-      </a-menu-item>
-
-      <a-sub-menu key="sub1">
-        <template #icon><PlusSquareOutlined /></template>
-        <template #title>关于我的</template>
-
-        <a-menu-item key="/uploadPost" @click="handleMenuClick('/uploadPost', true)">
-          <span>发布</span>
-        </a-menu-item>
-        <a-menu-item key="/Userfollow" @click="handleMenuClick('/Userfollow', true)">
-          <span>粉丝数据</span>
-        </a-menu-item>
-        <a-menu-item key="/PostHistory" @click="handleMenuClick('/PostHistory', true)">
-          <span>发布历史</span>
-        </a-menu-item>
-        <a-menu-item key="/CardlistView" @click="handleMenuClick('/CardlistView', true)">
-          <span>浏览历史</span>
-        </a-menu-item>
-        <a-menu-item key="/FavoriteList" @click="handleMenuClick('/FavoriteList', true)">
-          <span>我的收藏</span>
-        </a-menu-item>
-      </a-sub-menu>
-
-      <a-menu-item key="/AI2" @click="handleMenuClick('/AI2', true)">
-        <template #icon><RobotOutlined /></template>
-        <span>旅游助手</span>
-      </a-menu-item>
-
-      <a-menu-item key="/Map" @click="handleMenuClick('/Map', true)">
-        <template #icon><CompassOutlined /></template>
-        <span>地图</span>
-      </a-menu-item>
-    </a-menu>
-
-    <div class="login-btn-wrapper" v-if="!collapsed">
-      <the-login ref="loginRef"></the-login>
+  <nav :class="['travel-sider', { 'travel-sider--mobile': mobile }]" aria-label="主导航">
+    <div class="travel-sider__primary">
+      <button
+        v-for="item in visibleItems"
+        :key="item.path"
+        :class="['travel-sider__item', { 'is-active': selectedKeys.includes(item.path) }]"
+        type="button"
+        @click="handleMenuClick(item.path, item.needLogin)"
+      >
+        <component :is="item.icon" class="travel-sider__icon" />
+        <span>{{ item.label }}</span>
+      </button>
     </div>
-  </a-layout-sider>
+
+    <div v-if="!mobile" class="travel-sider__footer">
+      <p>分享旅行 · 遇见世界</p>
+      <the-login ref="loginRef" />
+    </div>
+  </nav>
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import {
   HomeOutlined, PlusSquareOutlined, RobotOutlined,
-  CompassOutlined, UserOutlined
+  CompassOutlined, UserOutlined, HistoryOutlined, StarOutlined, BarChartOutlined
 } from '@ant-design/icons-vue'
 import TheLogin from "./the-login.vue"
 import { useRouter } from "vue-router"
 import { useStore } from "vuex"
 
-const collapsed = ref(false)
+const props = defineProps({
+  mobile: {
+    type: Boolean,
+    default: false,
+  },
+})
+
 const selectedKeys = ref(['/CardList'])
-const openKeys = ref([])
 const store = useStore()
 const router = useRouter()
+
+const navigationItems = [
+  { path: '/CardList', label: '发现', icon: HomeOutlined, needLogin: false, mobile: true },
+  { path: '/uploadPost', label: '发布', icon: PlusSquareOutlined, needLogin: true, mobile: true },
+  { path: '/Map', label: '地图', icon: CompassOutlined, needLogin: true, mobile: true },
+  { path: '/AI2', label: '旅游助手', icon: RobotOutlined, needLogin: true, mobile: true },
+  { path: '/UserProfile', label: '我的', icon: UserOutlined, needLogin: true, mobile: true },
+  { path: '/Userfollow', label: '粉丝数据', icon: BarChartOutlined, needLogin: true },
+  { path: '/PostHistory', label: '发布历史', icon: HistoryOutlined, needLogin: true },
+  { path: '/CardlistView', label: '浏览历史', icon: HistoryOutlined, needLogin: true },
+  { path: '/FavoriteList', label: '我的收藏', icon: StarOutlined, needLogin: true },
+]
+
+const visibleItems = computed(() => props.mobile
+  ? navigationItems.filter((item) => item.mobile)
+  : navigationItems)
 
 const handleMenuClick = (path, needLogin = false) => {
   if (needLogin && !store.state.member.token) {
@@ -85,89 +71,85 @@ watch(() => router.currentRoute.value.path, (newPath) => {
 </script>
 
 <style scoped>
-/* 1. 基础容器：纯白 + 阴影 */
-.custom-sider {
-  background: #ffffff !important;
-  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.05);
-  height: 100vh;
-  position: sticky;
-  top: 0;
-  z-index: 100;
-}
-
-/* 2. Logo 样式：与管理端完全一致 */
-.sider-logo {
-  height: 72px;
+.travel-sider {
+  background: var(--travel-color-bg);
   display: flex;
+  flex-direction: column;
+  height: 100%;
+  justify-content: space-between;
+  padding: 18px 14px 24px;
+}
+
+.travel-sider__primary {
+  display: grid;
+  gap: 4px;
+}
+
+.travel-sider__item {
   align-items: center;
-  padding: 0 24px;
+  background: transparent;
+  border: 0;
+  border-radius: 10px;
+  color: var(--travel-color-text-secondary);
   cursor: pointer;
-  overflow: hidden;
-}
-
-.logo-dot {
-  width: 10px;
-  height: 10px;
-  background: #ff2442;
-  border-radius: 50%;
-  flex-shrink: 0;
-  margin-right: 12px;
-  box-shadow: 0 0 8px rgba(255, 36, 66, 0.5);
-}
-
-.logo-title {
-  font-size: 16px;
-  font-weight: 700;
-  color: #333;
-  white-space: nowrap;
-}
-
-/* 3. 菜单整体定制 */
-.custom-menu {
-  border-inline-end: none !important;
-  padding: 8px !important;
-}
-
-/* 每一个项的圆角和间距 */
-.custom-menu :deep(.ant-menu-item),
-.custom-menu :deep(.ant-menu-submenu-title) {
-  border-radius: 8px !important;
-  margin-bottom: 4px !important;
-  height: 44px !important;
-  line-height: 44px !important;
-}
-
-/* 4. 交互：悬停与选中状态 */
-/* 悬停态 */
-.custom-menu :deep(.ant-menu-item:hover),
-.custom-menu :deep(.ant-menu-submenu-title:hover) {
-  color: #ff2442 !important;
-  background: #fff1f0 !important;
-}
-
-/* 选中态：品牌红底+白字 */
-.custom-menu :deep(.ant-menu-item-selected) {
-  background: #ff2442 !important;
-  color: #ffffff !important;
-}
-
-/* 5. 底部登录按钮 */
-.login-btn-wrapper {
-  position: absolute;
-  bottom: 60px; /* 避开收起按钮 */
+  display: flex;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 560;
+  gap: 13px;
+  min-height: 44px;
+  padding: 0 14px;
+  text-align: left;
+  transition: background var(--travel-transition), color var(--travel-transition);
   width: 100%;
-  padding: 0 16px;
-  text-align: center;
 }
 
-/* 针对折叠状态的微调 */
-:deep(.ant-layout-sider-collapsed) .sider-logo {
-  padding: 0 35px;
+.travel-sider__item:hover {
+  background: var(--travel-color-bg-subtle);
+  color: var(--travel-color-text);
 }
 
-:deep(.ant-layout-sider-trigger) {
-  background: #fff !important;
-  color: #999 !important;
-  border-top: 1px solid #f0f0f0;
+.travel-sider__item.is-active {
+  background: var(--travel-color-brand-soft);
+  color: var(--travel-color-brand);
+  font-weight: 680;
+}
+
+.travel-sider__icon {
+  font-size: 18px;
+}
+
+.travel-sider__footer {
+  border-top: 1px solid var(--travel-color-border);
+  color: var(--travel-color-text-muted);
+  font-size: 12px;
+  line-height: 1.6;
+  padding: 18px 10px 0;
+}
+
+.travel-sider--mobile {
+  border-top: 1px solid var(--travel-color-border);
+  box-shadow: 0 -8px 24px rgb(24 30 40 / 8%);
+  display: block;
+  height: 68px;
+  padding: 5px 8px env(safe-area-inset-bottom);
+}
+
+.travel-sider--mobile .travel-sider__primary {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+}
+
+.travel-sider--mobile .travel-sider__item {
+  flex-direction: column;
+  font-size: 10px;
+  gap: 2px;
+  justify-content: center;
+  min-height: 56px;
+  padding: 4px;
+}
+
+.travel-sider--mobile .travel-sider__item.is-active {
+  background: transparent;
 }
 </style>

@@ -1,9 +1,9 @@
 import { mount } from '@vue/test-utils'
 import { describe, expect, test } from 'vitest'
 
-import PostCard from './PostCard.vue'
+import PostPreview from './PostPreview.vue'
 
-describe('旅行帖子卡片', () => {
+describe('旅行帖子预览', () => {
   test('展示核心元信息并通过 open 事件打开帖子', async () => {
     const post = {
       id: 'post-1',
@@ -14,7 +14,7 @@ describe('旅行帖子卡片', () => {
       location: '云南·大理',
       publishedAt: '2026-08-27',
     }
-    const wrapper = mount(PostCard, { props: { post } })
+    const wrapper = mount(PostPreview, { props: { post } })
 
     expect(wrapper.text()).toContain(post.title)
     expect(wrapper.text()).toContain(post.author)

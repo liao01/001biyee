@@ -1,3 +1,4 @@
+# Environment variable names are defined by the repository-root .env.example.
 spring.application.name=business
 server.servlet.context-path=/lyw
 server.port=8080
@@ -27,6 +28,10 @@ langchain4j.community.dashscope.streaming-chat-model.api-key=${DASHSCOPE_API_KEY
 langchain4j.community.dashscope.streaming-chat-model.model-name=${DASHSCOPE_STREAMING_MODEL:qwen-plus}
 
 spring.data.mongodb.uri=${MONGODB_URI:mongodb://localhost:27017/db_chat_memory}
+
+mail.username=${MAIL_USERNAME}
+mail.auth-code=${MAIL_AUTH_CODE}
+jwt.secret=${JWT_SECRET}
 
 spring.servlet.multipart.max-file-size=10MB
 spring.servlet.multipart.max-request-size=20MB

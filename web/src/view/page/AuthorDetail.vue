@@ -17,17 +17,17 @@
         </button>
       </div>
 
-      <div v-if="!cardList.length" class="travel-empty">这位旅行者还没有公开内容。</div>
+      <div v-if="!postList.length" class="travel-empty">这位旅行者还没有公开内容。</div>
       <div v-else class="waterfall-wrapper">
         <Waterfall
-            :list="cardList"
+            :list="postList"
             :width="280"
             :gutter="16"
             :has-around-gutter="true"
             background-color="transparent"
         >
           <template #item="{ item }">
-            <a-card hoverable class="note-card" @click="showCardModal(item)">
+            <a-card hoverable class="post-preview" @click="showPostDetail(item)">
               <template #cover>
                 <img :src="baseUrl + item.raw.imageUrls?.split(',')[0]" :alt="item.title">
               </template>
@@ -61,7 +61,7 @@ const route = useRoute()
 // 用户数据
 const user = ref({})
 const userId = computed(() => String(route.params.authorId || ''))
-const cardList = ref([])
+const postList = ref([])
 const selectedPostId = ref(null)
 const detailOpen = ref(false)
 const likecount = ref(0)
@@ -113,7 +113,7 @@ const fetchUserPosts = async () => {
     });
     const data = response.data;
     if (data.success) {
-      cardList.value = (data.content || []).map(post => ({
+      postList.value = (data.content || []).map(post => ({
         raw: post,
         title: post.postTitle,
         description: post.postContent.length > MAX_LENGTH ? post.postContent.substring(0, MAX_LENGTH) + '...' : post.postContent,
@@ -136,7 +136,7 @@ const fetchUserFavorites = async () => {
     });
     const data = response.data;
     if (data.success) {
-      cardList.value = (data.content || []).map(post => ({
+      postList.value = (data.content || []).map(post => ({
         raw: post,
         title: post.postTitle,
         description: post.postContent.length > MAX_LENGTH ? post.postContent.substring(0, MAX_LENGTH) + '...' : post.postContent,
@@ -208,26 +208,7 @@ const loadAuthorPage = () => {
 
 watch(() => route.params.authorId, loadAuthorPage, { immediate: true })
 
-// 格式化性别
-const genderText = (val) => {
-  switch (val) {
-    case 1:
-      return '男'
-    case 2:
-      return '女'
-    default:
-      return '未知'
-  }
-}
-
-// 格式化生日
-const formatDate = (isoDate) => {
-  if (!isoDate) return '未填写'
-  const date = new Date(isoDate)
-  return date.toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' })
-}
-
-const showCardModal = (item) => {
+const showPostDetail = (item) => {
   selectedPostId.value = item.raw.postId
   detailOpen.value = true
 }
@@ -251,7 +232,7 @@ const showCardModal = (item) => {
   padding: 24px 24px 40px;
 }
 
-.note-card {
+.post-preview {
   border: 1px solid var(--travel-color-border) !important;
   border-radius: 12px !important;
   overflow: hidden;
@@ -259,7 +240,7 @@ const showCardModal = (item) => {
   transition: transform var(--travel-transition), box-shadow var(--travel-transition) !important;
 }
 
-.note-card:hover {
+.post-preview:hover {
   transform: translateY(-3px);
   box-shadow: 0 12px 28px rgb(24 30 40 / 8%) !important;
 }

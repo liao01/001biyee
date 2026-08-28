@@ -1,5 +1,9 @@
 .worktrees/
 
+**/target/
+**/dist/
+.pytest_cache/
+
 .env
 .env.*
 !.env.example
@@ -9,6 +13,13 @@ log/
 logs/
 business/log/
 uploads/
+
+# Local Spring configuration with real credentials. The adjacent example files
+# are safe to commit; .env.example remains the environment-variable catalog.
+/business/src/main/resources/application.properties
+/business/src/main/resources/application.yml
+!/business/src/main/resources/application.properties.example
+!/business/src/main/resources/application.yml.example
 
 *.p12
 *.pfx

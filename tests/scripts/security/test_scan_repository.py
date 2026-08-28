@@ -107,6 +107,17 @@ class ScanTextTests(unittest.TestCase):
 
         self.assertEqual([], findings)
 
+    def test_worktree_scan_skips_explicit_local_spring_secret_files(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            local_config = root / "business/src/main/resources/application.properties"
+            local_config.parent.mkdir(parents=True)
+            local_config.write_text("service.password=real-local-value", encoding="utf-8")
+
+            findings = scan_paths([root])
+
+        self.assertEqual([], findings)
+
     def test_scans_security_test_directory_for_real_secrets(self):
         candidate_value = "ghp_" + "exampleSecretValue1234567890"
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -158,6 +169,18 @@ class ScanTextTests(unittest.TestCase):
             "email-address",
             {finding.rule_id for finding in findings},
         )
+
+    def test_allows_reserved_example_email_addresses(self):
+        for domain in ("example.com", "example.org", "example.net", "example.invalid"):
+            findings = scan_text(
+                Path("business/src/test/java/ExampleTest.java"),
+                f'var email = "demo@{domain}";',
+            )
+
+            self.assertNotIn(
+                "email-address",
+                {finding.rule_id for finding in findings},
+            )
 
     def test_still_detects_high_confidence_token_in_package_lock(self):
         candidate_value = "ghp_" + "exampleSecretValue1234567890"
@@ -268,6 +291,27 @@ class ScanTextTests(unittest.TestCase):
 
         self.assertIn("github-token", {finding.rule_id for finding in findings})
 
+    def test_ref_scan_only_reads_requested_history(self):
+        candidate_value = "ghp_" + "exampleSecretValue1234567890"
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repository = Path(temp_dir)
+            subprocess.run(["git", "init", "-b", "main"], cwd=repository, check=True, capture_output=True)
+            subprocess.run(["git", "config", "user.email", "security@example.invalid"], cwd=repository, check=True)
+            subprocess.run(["git", "config", "user.name", "Security Test"], cwd=repository, check=True)
+            (repository / "README.md").write_text("clean\n", encoding="utf-8")
+            subprocess.run(["git", "add", "."], cwd=repository, check=True)
+            subprocess.run(["git", "commit", "-m", "clean"], cwd=repository, check=True, capture_output=True)
+            subprocess.run(["git", "switch", "-c", "contaminated"], cwd=repository, check=True, capture_output=True)
+            (repository / "credential.txt").write_text(candidate_value, encoding="utf-8")
+            subprocess.run(["git", "add", "."], cwd=repository, check=True)
+            subprocess.run(["git", "commit", "-m", "contaminated"], cwd=repository, check=True, capture_output=True)
+
+            clean_findings = scan_git_refs(repository, refs=["main"])
+            all_findings = scan_git_refs(repository)
+
+        self.assertNotIn("github-token", {finding.rule_id for finding in clean_findings})
+        self.assertIn("github-token", {finding.rule_id for finding in all_findings})
+
 
 class CommandLineTests(unittest.TestCase):
     def test_cli_report_omits_secret_value_and_returns_one_for_findings(self):
@@ -304,8 +348,8 @@ class CommandLineTests(unittest.TestCase):
         repository = Path(__file__).resolve().parents[3]
         protected_files = [
             repository
-            / "business/src/main/resources/application.properties",
-            repository / "business/src/main/resources/application.yml",
+            / "business/src/main/resources/application.properties.example",
+            repository / "business/src/main/resources/application.yml.example",
             repository
             / "business/src/main/java/com/jiawa/lyw/Util/MailUtils.java",
             repository
@@ -332,7 +376,11 @@ class CommandLineTests(unittest.TestCase):
             "log/runtime.log",
             "logs/runtime.log",
             "business/log/runtime.log",
+            "business/target/classes/App.class",
+            "gengerator/target/classes/App.class",
             "uploads/member-avatar.jpg",
+            "business/src/main/resources/application.properties",
+            "business/src/main/resources/application.yml",
             "identity.p12",
             "identity.pfx",
             "identity.pem",
@@ -361,6 +409,19 @@ class CommandLineTests(unittest.TestCase):
             check=False,
         )
         self.assertEqual(1, example.returncode)
+
+        for safe_example in (
+            "business/src/main/resources/application.properties.example",
+            "business/src/main/resources/application.yml.example",
+        ):
+            completed = subprocess.run(
+                ["git", "check-ignore", "-q", "--no-index", "--", safe_example],
+                cwd=repository,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertEqual(1, completed.returncode, safe_example)
 
 
 if __name__ == "__main__":

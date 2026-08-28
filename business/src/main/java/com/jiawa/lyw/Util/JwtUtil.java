@@ -7,15 +7,23 @@ import cn.hutool.json.JSONObject;
 import cn.hutool.jwt.JWT;
 import cn.hutool.jwt.JWTPayload;
 import cn.hutool.jwt.JWTUtil;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
+
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 
+@Component
 public final class JwtUtil {
     private static final int MINIMUM_SECRET_BYTES = 32;
-    private static final String JWT_SECRET_ENV = "JWT_SECRET";
+    private static byte[] signingKey;
 
-    private JwtUtil() {
+    public JwtUtil(@Value("${jwt.secret}") String secret) {
+        if (secret == null || secret.getBytes(StandardCharsets.UTF_8).length < MINIMUM_SECRET_BYTES) {
+            throw new IllegalArgumentException("jwt.secret must contain at least 32 UTF-8 bytes");
+        }
+        signingKey = secret.getBytes(StandardCharsets.UTF_8);
     }
 
     public static String createLoginToken(Map<String, Object> map) {
@@ -34,18 +42,18 @@ public final class JwtUtil {
         payload.put(JWTPayload.EXPIRES_AT, expTime);
         payload.put(JWTPayload.NOT_BEFORE, now);
         payload.putAll(map);
-        return JWTUtil.createToken(payload, signingKey());
+        return JWTUtil.createToken(payload, requiredSigningKey());
     }
 
     public static boolean validate(String token) {
         GlobalBouncyCastleProvider.setUseBouncyCastle(false);
-        JWT jwt = JWTUtil.parseToken(token).setKey(signingKey());
+        JWT jwt = JWTUtil.parseToken(token).setKey(requiredSigningKey());
         return jwt.validate(0);
     }
 
     public static JSONObject getJSONObject(String token) {
         GlobalBouncyCastleProvider.setUseBouncyCastle(false);
-        JWT jwt = JWTUtil.parseToken(token).setKey(signingKey());
+        JWT jwt = JWTUtil.parseToken(token).setKey(requiredSigningKey());
         JSONObject payloads = jwt.getPayloads();
         payloads.remove(JWTPayload.ISSUED_AT);
         payloads.remove(JWTPayload.EXPIRES_AT);
@@ -53,19 +61,10 @@ public final class JwtUtil {
         return payloads;
     }
 
-    private static byte[] signingKey() {
-        String value = System.getenv(JWT_SECRET_ENV);
-        if (value == null || value.isBlank()) {
-            throw new IllegalStateException(
-                    "Missing required environment variable: " + JWT_SECRET_ENV
-            );
+    private static byte[] requiredSigningKey() {
+        if (signingKey == null) {
+            throw new IllegalStateException("jwt.secret has not been configured");
         }
-        byte[] key = value.getBytes(StandardCharsets.UTF_8);
-        if (key.length < MINIMUM_SECRET_BYTES) {
-            throw new IllegalStateException(
-                    "JWT_SECRET must contain at least 32 UTF-8 bytes"
-            );
-        }
-        return key;
+        return signingKey;
     }
 }

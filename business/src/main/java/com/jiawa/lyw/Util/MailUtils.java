@@ -9,21 +9,32 @@ import javax.mail.Session;
 import javax.mail.Transport;
 import javax.mail.internet.InternetAddress;
 import javax.mail.internet.MimeMessage;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
 
 /**
  * 邮件发送工具。邮箱账号和授权码只从运行环境读取。
  */
+@Component
 public final class MailUtils {
-    private static final String MAIL_USERNAME_ENV = "MAIL_USERNAME";
-    private static final String MAIL_AUTH_CODE_ENV = "MAIL_AUTH_CODE";
+    private final String username;
+    private final String authCode;
 
-    public MailUtils() {
+    public MailUtils(
+            @Value("${mail.username}") String username,
+            @Value("${mail.auth-code}") String authCode
+    ) {
+        if (username == null || username.isBlank()) {
+            throw new IllegalArgumentException("mail.username must not be blank");
+        }
+        if (authCode == null || authCode.isBlank()) {
+            throw new IllegalArgumentException("mail.auth-code must not be blank");
+        }
+        this.username = username;
+        this.authCode = authCode;
     }
 
-    public static boolean sendMail(String to, String text, String title) {
-        String username = requiredEnvironmentValue(MAIL_USERNAME_ENV);
-        String authCode = requiredEnvironmentValue(MAIL_AUTH_CODE_ENV);
-
+    public boolean sendMail(String to, String text, String title) {
         Properties properties = new Properties();
         properties.put("mail.smtp.auth", "true");
         properties.put("mail.smtp.host", "smtp.163.com");
@@ -57,13 +68,4 @@ public final class MailUtils {
         }
     }
 
-    private static String requiredEnvironmentValue(String name) {
-        String value = System.getenv(name);
-        if (value == null || value.isBlank()) {
-            throw new IllegalStateException(
-                    "Missing required environment variable: " + name
-            );
-        }
-        return value;
-    }
 }
