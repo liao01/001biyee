@@ -4,7 +4,6 @@
       :profile="profileData"
       is-self
       @edit="goToEdit"
-      @publish="goToPublish"
     />
 
     <section class="profile-page__details travel-panel">
@@ -56,7 +55,6 @@ const profileData = computed(() => ({
   stats: [],
 }))
 const goToEdit = () => appRouter?.push('/UserDetail')
-const goToPublish = () => appRouter?.push('/uploadPost')
 
 // 生命周期加载数据
 onMounted(async () => {

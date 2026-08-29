@@ -16,10 +16,11 @@ public class PostReq {
     private String content;    // 帖子内容
     private Long locationId;   // 关联地点ID
     private Integer status;    // 0 草稿, 1 公开, 2 删除
+    @NotBlank(message = "请选择帖子分类")
+    private String categoryCode;
     @NotEmpty(message = "图片不能为空")
     private List<PostImage> images;  // 多张图片列表
 
-    @NotEmpty(message = "标签不能为空")
     private List<TagDTO> tags;
 
     @Data

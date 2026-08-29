@@ -73,7 +73,7 @@ describe('帖子来源接入共享详情', () => {
     })
     await flushPromises()
 
-    expect(axios.get.mock.calls[0][0]).toContain(endpoint)
+    expect(axios.get.mock.calls.some(([url]) => url.includes(endpoint))).toBe(true)
     await wrapper.get('.custom-card').trigger('click')
 
     const detail = wrapper.get('[data-testid="shared-post-detail"]')

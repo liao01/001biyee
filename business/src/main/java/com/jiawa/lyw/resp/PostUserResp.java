@@ -12,4 +12,6 @@ public class PostUserResp {
     private String tagTitle;       // 标签列表（用逗号拼接）
     private String imageUrls;      // 图片URL列表（用逗号拼接）
     private String avatar;   // 对应 image_urls
+    private String categoryCode;
+    private String categoryName;
 }

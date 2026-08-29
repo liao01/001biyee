@@ -17,11 +17,13 @@
         :loading="loading"
         :pagination="pagination"
         @change="handleTableChange"
-        rowKey="followId"
+        rowKey="postId"
     >
       <template #bodyCell="{ column, record }">
         <template v-if="column.dataIndex === 'postTitle'">
-          {{ record.postTitle }}
+          <button class="history-page__title-link" type="button" :aria-label="`查看帖子 ${record.postTitle}`" @click="openDetail(record.postId)">
+            {{ record.postTitle }}
+          </button>
         </template>
         <template v-if="column.dataIndex === 'postContent'">
           {{ record.postContent }}
@@ -29,8 +31,8 @@
         <template v-if="column.dataIndex === 'postTime'">
           {{ record.postTime }}
         </template>
-        <template v-if="column.dataIndex === 'tagTitle'">
-          {{ record.tagTitle }}
+        <template v-if="column.dataIndex === 'categoryName'">
+          {{ record.categoryName || '待分类' }}
         </template>
         <template v-if="column.dataIndex === 'action'">
           <a-space>
@@ -46,6 +48,7 @@
       </template>
     </a-table>
     </section>
+    <PostDetail v-model:open="detailOpen" :post-id="selectedPostId" />
   </ContentListPage>
 </template>
 
@@ -53,11 +56,12 @@
 
 
 import axios from "axios";
+import { TeamOutlined } from '@ant-design/icons-vue';
 import {message, notification} from "ant-design-vue";
-import {onMounted, ref} from "vue";
-import store from "../../store/index.js";
+import {ref} from "vue";
 import { BASE_URL } from "../../utils/baseUrl";
 import ContentListPage from "../../components/travel/ContentListPage.vue";
+import PostDetail from "../../modules/post-detail/PostDetail.vue";
 
 const loading = ref(false);
 
@@ -65,7 +69,7 @@ const columns = [
   { title: '文章标题', dataIndex: 'postTitle' },
   { title: '文章内容', dataIndex: 'postContent' },
   { title: '发布时间', dataIndex: 'postTime' },
-  { title: '分类', dataIndex: 'tagTitle',width: 160 },
+  { title: '分类', dataIndex: 'categoryName',width: 160 },
   {
     title: '操作',
     dataIndex: 'action',
@@ -76,11 +80,18 @@ const columns = [
 //--------列表查询-----------
 const pagination = ref({
   total : 0,
-  current : 5,
+  current : 1,
   pageSize : 5
 });
 
 const UserHistoryList = ref([]);
+const selectedPostId = ref(null);
+const detailOpen = ref(false);
+
+const openDetail = (postId) => {
+  selectedPostId.value = postId;
+  detailOpen.value = true;
+};
 
 const handleQuery = (param) => {
   if (!param) {
@@ -159,6 +170,21 @@ handleQuery();
 .history-page__panel {
   overflow: hidden;
   padding: 24px;
+}
+
+.history-page__title-link {
+  background: transparent;
+  border: 0;
+  color: var(--travel-color-text);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 650;
+  padding: 0;
+  text-align: left;
+}
+
+.history-page__title-link:hover {
+  color: var(--travel-color-brand);
 }
 
 :deep(.ant-table) {

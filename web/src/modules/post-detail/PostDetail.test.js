@@ -16,13 +16,15 @@ describe('帖子详情', () => {
             title: '桂林山水之旅',
             description: '沿着漓江慢慢看山水。',
             postTime: '2026-08-20T10:00:00Z',
+            categoryCode: 'NATURAL_SCENERY',
+            categoryName: '自然风光',
           },
           author: {
             id: '7',
             name: '旅行者小林',
             avatar: '/uploads/avatar/xiaolin.png',
           },
-          images: ['/uploads/guilin.jpg'],
+          images: ['/uploads/guilin.jpg', '/uploads/river.jpg'],
           comments: [
             {
               id: '501',
@@ -63,14 +65,27 @@ describe('帖子详情', () => {
     expect(dialog.text()).toContain('桂林山水之旅')
     expect(dialog.text()).toContain('旅行者小林')
     expect(dialog.text()).toContain('沿着漓江慢慢看山水。')
+    expect(dialog.text()).toContain('自然风光')
+    expect(dialog.get('.post-detail__layout').classes()).toContain('post-detail__layout--two-column')
+    expect(dialog.get('.post-detail__gallery-main').find('img').exists()).toBe(true)
+    expect(dialog.findAll('.post-detail__author')).toHaveLength(1)
+    expect(dialog.get('.post-detail__byline').find('button[aria-label="关注作者"]').exists()).toBe(true)
+    expect(dialog.get('.post-detail__byline').find('button[aria-label="点赞"]').exists()).toBe(true)
+    expect(dialog.get('.post-detail__byline').find('button[aria-label="收藏"]').exists()).toBe(true)
     expect(dialog.get('img[alt="桂林山水之旅 图片 1"]').attributes('src'))
       .toBe('/uploads/guilin.jpg')
+    await dialog.get('button[aria-label="下一张图片"]').trigger('click')
+    expect(dialog.get('img[alt="桂林山水之旅 图片 2"]').attributes('src'))
+      .toBe('/uploads/river.jpg')
+    expect(dialog.text()).toContain('2 / 2')
     expect(dialog.text()).toContain('山水读者')
+    expect(dialog.text()).not.toContain('#501')
+    expect(dialog.text()).not.toContain('2026-08-21T09:00:00Z')
     expect(dialog.text()).toContain('景色真漂亮')
     const comment = dialog.get('li[data-comment-id="501"]')
     expect(comment.get('img[alt="山水读者的头像"]').attributes('src'))
       .toBe('/uploads/avatar/reader.png')
-    expect(comment.get('time').attributes('datetime')).toBe('2026-08-21T09:00:00Z')
+    expect(comment.find('time').exists()).toBe(false)
   })
 
   it('通过受控 open interface 关闭详情', async () => {
@@ -414,7 +429,7 @@ describe('帖子详情', () => {
     const comment = wrapper.get('li[data-comment-id="900"]')
     expect(comment.text()).toContain('当前读者')
     expect(comment.text()).toContain('服务端，请给我正式评论')
-    expect(comment.get('time').attributes('datetime')).toBe('2026-08-26T09:00:00Z')
+    expect(comment.text()).not.toContain('2026-08-26T09:00:00Z')
     expect(wrapper.get('textarea[aria-label="添加评论内容"]').element.value).toBe('')
   })
 
@@ -490,7 +505,7 @@ describe('帖子详情', () => {
 
     const updated = wrapper.get('li[data-comment-id="900"]')
     expect(updated.text()).toContain('服务端确认的修改')
-    expect(updated.get('time').attributes('datetime')).toBe('2026-08-26T09:10:00Z')
+    expect(updated.text()).not.toContain('2026-08-26T09:10:00Z')
 
     await wrapper.get('button[aria-label="删除评论 900"]').trigger('click')
     await flushPromises()

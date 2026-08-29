@@ -9,6 +9,7 @@
     <result column="create_time" jdbcType="TIMESTAMP" property="createTime" />
     <result column="update_time" jdbcType="TIMESTAMP" property="updateTime" />
     <result column="status" jdbcType="CHAR" property="status" />
+    <result column="category_code" jdbcType="VARCHAR" property="categoryCode" />
   </resultMap>
   <resultMap extends="BaseResultMap" id="ResultMapWithBLOBs" type="com.jiawa.lyw.domain.Post">
     <result column="content" jdbcType="LONGVARCHAR" property="content" />
@@ -72,7 +73,7 @@
     </where>
   </sql>
   <sql id="Base_Column_List">
-    id, user_id, title, location_id, create_time, update_time, `status`
+    id, user_id, title, location_id, create_time, update_time, `status`, category_code
   </sql>
   <sql id="Blob_Column_List">
     content
@@ -128,10 +129,10 @@
   <insert id="insert" parameterType="com.jiawa.lyw.domain.Post">
     insert into post (id, user_id, title, 
        create_time, update_time,
-      `status`, content)
+      `status`, category_code, content)
     values (#{id,jdbcType=BIGINT}, #{userId,jdbcType=BIGINT}, #{title,jdbcType=VARCHAR}, 
        #{createTime,jdbcType=TIMESTAMP}, #{updateTime,jdbcType=TIMESTAMP},
-      #{status,jdbcType=CHAR}, #{content,jdbcType=LONGVARCHAR})
+      #{status,jdbcType=CHAR}, #{categoryCode,jdbcType=VARCHAR}, #{content,jdbcType=LONGVARCHAR})
   </insert>
   <insert id="insertSelective" parameterType="com.jiawa.lyw.domain.Post">
     insert into post
@@ -156,6 +157,9 @@
       </if>
       <if test="status != null">
         `status`,
+      </if>
+      <if test="categoryCode != null">
+        category_code,
       </if>
       <if test="content != null">
         content,
@@ -182,6 +186,9 @@
       </if>
       <if test="status != null">
         #{status,jdbcType=CHAR},
+      </if>
+      <if test="categoryCode != null">
+        #{categoryCode,jdbcType=VARCHAR},
       </if>
       <if test="content != null">
         #{content,jdbcType=LONGVARCHAR},
@@ -218,6 +225,9 @@
       <if test="record.status != null">
         `status` = #{record.status,jdbcType=CHAR},
       </if>
+      <if test="record.categoryCode != null">
+        category_code = #{record.categoryCode,jdbcType=VARCHAR},
+      </if>
       <if test="record.content != null">
         content = #{record.content,jdbcType=LONGVARCHAR},
       </if>
@@ -235,6 +245,7 @@
       create_time = #{record.createTime,jdbcType=TIMESTAMP},
       update_time = #{record.updateTime,jdbcType=TIMESTAMP},
       `status` = #{record.status,jdbcType=CHAR},
+      category_code = #{record.categoryCode,jdbcType=VARCHAR},
       content = #{record.content,jdbcType=LONGVARCHAR}
     <if test="_parameter != null">
       <include refid="Update_By_Example_Where_Clause" />
@@ -249,6 +260,7 @@
       create_time = #{record.createTime,jdbcType=TIMESTAMP},
       update_time = #{record.updateTime,jdbcType=TIMESTAMP},
       `status` = #{record.status,jdbcType=CHAR}
+      , category_code = #{record.categoryCode,jdbcType=VARCHAR}
     <if test="_parameter != null">
       <include refid="Update_By_Example_Where_Clause" />
     </if>
@@ -274,6 +286,9 @@
       <if test="status != null">
         `status` = #{status,jdbcType=CHAR},
       </if>
+      <if test="categoryCode != null">
+        category_code = #{categoryCode,jdbcType=VARCHAR},
+      </if>
       <if test="content != null">
         content = #{content,jdbcType=LONGVARCHAR},
       </if>
@@ -288,6 +303,7 @@
       create_time = #{createTime,jdbcType=TIMESTAMP},
       update_time = #{updateTime,jdbcType=TIMESTAMP},
       `status` = #{status,jdbcType=CHAR},
+      category_code = #{categoryCode,jdbcType=VARCHAR},
       content = #{content,jdbcType=LONGVARCHAR}
     where id = #{id,jdbcType=BIGINT}
   </update>
@@ -298,7 +314,8 @@
       location_id = #{locationId,jdbcType=BIGINT},
       create_time = #{createTime,jdbcType=TIMESTAMP},
       update_time = #{updateTime,jdbcType=TIMESTAMP},
-      `status` = #{status,jdbcType=CHAR}
+      `status` = #{status,jdbcType=CHAR},
+      category_code = #{categoryCode,jdbcType=VARCHAR}
     where id = #{id,jdbcType=BIGINT}
   </update>
 </mapper>

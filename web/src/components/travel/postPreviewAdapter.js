@@ -10,7 +10,8 @@ export const toPostPreview = (post, { baseUrl, maxDescriptionLength = 70 }) => {
       ? description.substring(0, maxDescriptionLength) + '...'
       : description,
     author: post.postMembername,
-    location: post.locationName || post.postLocation || '旅行记录',
+    categoryCode: post.categoryCode || '',
+    categoryName: post.categoryName || '',
     publishedAt: post.postTime,
   }
 }

@@ -45,6 +45,9 @@ public class PostService {
     @Autowired
     private PostMapperCust postMapperCust;
 
+    @Autowired
+    private PostCategoryService postCategoryService;
+
     @Resource
     private StringRedisTemplate stringRedisTemplate;
 
@@ -53,6 +56,8 @@ public class PostService {
 
     @Transactional
     public void savePost(PostReq req) throws IOException {
+        postCategoryService.requireEnabled(req.getCategoryCode());
+
         Date now = new Date();
         long postID = IdUtil.getSnowflakeNextId();
 
@@ -64,6 +69,7 @@ public class PostService {
         post.setTitle(req.getTitle());
         post.setContent(req.getContent());
         post.setStatus(PostStatusEnum.OPEN.getCode());
+        post.setCategoryCode(req.getCategoryCode());
         post.setCreateTime(now);
         post.setUpdateTime(now);
         postMapper.insert(post);
@@ -126,7 +132,7 @@ public class PostService {
 
         // 保存标签逻辑保持不变
         log.info("保存tag表开始:{}", postID);
-        for (PostReq.TagDTO tagDTO : req.getTags()) {
+        for (PostReq.TagDTO tagDTO : req.getTags() == null ? List.<PostReq.TagDTO>of() : req.getTags()) {
             String tagName = tagDTO.getName();
             tagsExample tagsExample = new tagsExample();
             tagsExample.createCriteria().andNameEqualTo(tagName);
@@ -166,9 +172,14 @@ public class PostService {
         return postMapper.selectByExample(postExample);
     }
 
-    public List<PostResp> findAll() {
+    public List<PostResp> findAll(String view, String categoryCode) {
         log.info("查找全部数据开始");
-        return postMapperCust.findAll();
+        String normalizedView = "LATEST".equalsIgnoreCase(view) ? "LATEST" : "RECOMMENDED";
+        String normalizedCategory = categoryCode == null || categoryCode.isBlank() ? null : categoryCode;
+        if (normalizedCategory != null) {
+            postCategoryService.requireEnabled(normalizedCategory);
+        }
+        return postMapperCust.findAll(normalizedView, normalizedCategory);
     }
 
     public List<PostResp> searchPostsByKeyword(PostSearchReq req) {

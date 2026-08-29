@@ -19,6 +19,8 @@ public class PostDetailResp {
         private String title;
         private String description;
         private LocalDateTime postTime;
+        private String categoryCode;
+        private String categoryName;
     }
 
     @Data

@@ -8,6 +8,7 @@ import com.jiawa.lyw.interceptor.WebLoginInterceptor;
 import com.jiawa.lyw.resp.PostDetailResp;
 import com.jiawa.lyw.service.PostService;
 import com.jiawa.lyw.service.PostDetailService;
+import com.jiawa.lyw.service.PostCategoryService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -51,6 +52,9 @@ class PostDetailAnonymousAccessTests {
     private PostDetailService postDetailService;
 
     @MockitoBean
+    private PostCategoryService postCategoryService;
+
+    @MockitoBean
     private WebLoginInterceptor webLoginInterceptor;
 
     @MockitoBean
@@ -70,6 +74,18 @@ class PostDetailAnonymousAccessTests {
         when(postDetailService.findPublicDetail(42L)).thenReturn(new PostDetailResp());
 
         mockMvc.perform(get("/web/post/detail").param("postId", "42"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true));
+
+        verify(webLoginInterceptor, never()).preHandle(any(), any(), any());
+    }
+
+    @Test
+    void publicCategoriesShouldBypassLoginInterceptor() throws Exception {
+        when(logInterceptor.preHandle(any(), any(), any())).thenReturn(true);
+        when(postCategoryService.listEnabled()).thenReturn(java.util.List.of());
+
+        mockMvc.perform(get("/web/post/categories"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true));
 

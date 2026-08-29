@@ -2,13 +2,13 @@
   <div class="travel-page discovery-page">
     <div class="travel-tabs discovery-page__tabs" aria-label="内容分类">
       <button
-        v-for="category in categories"
-        :key="category"
-        :class="['travel-tab', { 'is-active': activeCategory === category }]"
+        v-for="tab in tabs"
+        :key="tab.key"
+        :class="['travel-tab', { 'is-active': activeTabKey === tab.key }]"
         type="button"
-        @click="activeCategory = category"
+        @click="selectTab(tab)"
       >
-        {{ category }}
+        {{ tab.label }}
       </button>
     </div>
 
@@ -32,11 +32,12 @@
 
 <script setup>
 /* ... 保持原有逻辑不变 ... */
-import { ref, onMounted, watch } from 'vue'
+import { computed, ref, onMounted, watch } from 'vue'
 import { CompassOutlined } from '@ant-design/icons-vue'
 import PostDetail from "../../modules/post-detail/PostDetail.vue"
 import PostPreview from '../../components/travel/PostPreview.vue'
 import { toPostPreview } from '../../components/travel/postPreviewAdapter.js'
+import { buildDiscoveryParams, fetchPostCategories } from '../../api/postCategories.js'
 import axios from "axios"
 import {notification} from "ant-design-vue"
 import { useSearchStore } from "../../store/search.js"
@@ -47,16 +48,31 @@ const detailOpen = ref(false)
 const baseUrl = BASE_URL+'/lyw'
 const postPreviews = ref([])
 const loading = ref(false)
-const activeCategory = ref('推荐')
-const categories = ['推荐', '最新', '城市漫游', '自然风光', '美食']
+const activeTabKey = ref('RECOMMENDED')
+const categoryOptions = ref([])
+const viewTabs = [
+  { key: 'RECOMMENDED', label: '推荐', view: 'RECOMMENDED' },
+  { key: 'LATEST', label: '最新', view: 'LATEST' },
+]
+const tabs = computed(() => [
+  ...viewTabs,
+  ...categoryOptions.value.map(category => ({
+    key: category.code,
+    label: category.name,
+    categoryCode: category.code,
+  })),
+])
 
 const searchStore = useSearchStore()
+
+const activeTab = () => tabs.value.find(tab => tab.key === activeTabKey.value) || viewTabs[0]
 
 const loadPosts = async (keyword = '') => {
   loading.value = true
   try {
     const url = keyword ? `${baseUrl}/web/post/post-search` : `${baseUrl}/web/post/post-findAll`
-    const { data } = await axios.get(url, { params: keyword ? { keyword } : {} })
+    const params = keyword ? { keyword } : buildDiscoveryParams(activeTab())
+    const { data } = await axios.get(url, { params })
     if (data.success) {
       postPreviews.value = (data.content || []).map(post => toPostPreview(post, { baseUrl }))
     } else {
@@ -69,7 +85,23 @@ const loadPosts = async (keyword = '') => {
   }
 }
 
-onMounted(() => { loadPosts() })
+const loadCategories = async () => {
+  try {
+    categoryOptions.value = await fetchPostCategories(axios, baseUrl)
+  } catch (error) {
+    notification.error({ description: error.message || '分类加载失败' })
+  }
+}
+
+const selectTab = (tab) => {
+  activeTabKey.value = tab.key
+  loadPosts(searchStore.keyword)
+}
+
+onMounted(async () => {
+  await loadCategories()
+  await loadPosts()
+})
 watch(() => searchStore.keyword, (newKeyword) => { loadPosts(newKeyword) })
 
 const showPostDetail = (item) => {

@@ -11,6 +11,8 @@ describe('帖子预览适配器', () => {
       postMembername: '旅行者小林',
       imageUrls: '/first.jpg,/second.jpg',
       postTime: '2026-08-20',
+      categoryCode: 'NATURAL_SCENERY',
+      categoryName: '自然风光',
     }, { baseUrl: 'http://localhost/lyw', maxDescriptionLength: 6 })
 
     expect(preview).toEqual({
@@ -20,7 +22,8 @@ describe('帖子预览适配器', () => {
       title: '山海之间',
       description: '一段足够长的...',
       author: '旅行者小林',
-      location: '旅行记录',
+      categoryCode: 'NATURAL_SCENERY',
+      categoryName: '自然风光',
       publishedAt: '2026-08-20',
     })
   })

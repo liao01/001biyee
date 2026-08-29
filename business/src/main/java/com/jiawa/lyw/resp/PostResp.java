@@ -16,4 +16,6 @@ public class PostResp {
      private String membername;   // 对应 membername
     private LocalDateTime postTime;
     private String userId;
+    private String categoryCode;
+    private String categoryName;
 }

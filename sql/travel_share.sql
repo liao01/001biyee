@@ -75,19 +75,42 @@ CREATE TABLE `member_login_log`  (
   PRIMARY KEY (`id`) USING BTREE
 ) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '会员登录日志表' ROW_FORMAT = Dynamic;
 
+DROP TABLE IF EXISTS `post_category`;
+
+CREATE TABLE `post_category`  (
+  `code` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '稳定分类编码',
+  `name` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '分类名称',
+  `sort_order` int NOT NULL COMMENT '展示顺序',
+  `enabled` tinyint(1) NOT NULL DEFAULT 1 COMMENT '是否允许新发布内容选择',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`code`) USING BTREE
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '帖子正式分类表' ROW_FORMAT = Dynamic;
+
+INSERT INTO `post_category` (`code`, `name`, `sort_order`, `enabled`) VALUES
+('CITY_WALK', '城市漫游', 10, 1),
+('NATURAL_SCENERY', '自然风光', 20, 1),
+('FOOD', '美食', 30, 1);
+
 DROP TABLE IF EXISTS `post`;
 
 CREATE TABLE `post`  (
   `id` bigint NOT NULL AUTO_INCREMENT,
   `user_id` bigint NOT NULL COMMENT '作者id -> member.id',
   `title` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL COMMENT '标题',
+  `location_id` bigint NULL DEFAULT NULL COMMENT '关联地点ID',
   `content` mediumtext CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL COMMENT '文字内容',
   `create_time` datetime NULL DEFAULT NULL COMMENT '发布时间',
   `update_time` datetime NULL DEFAULT NULL COMMENT '更新时间',
   `status` char(1) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL COMMENT '0草稿 1公开 2删除',
+  `category_code` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL COMMENT '正式分类编码',
   PRIMARY KEY (`id`) USING BTREE,
   INDEX `user_id`(`user_id` ASC) USING BTREE,
-  CONSTRAINT `post_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `member` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+  INDEX `idx_post_location_id`(`location_id` ASC) USING BTREE,
+  INDEX `idx_post_category_code`(`category_code` ASC) USING BTREE,
+  CONSTRAINT `post_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `member` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `fk_post_location_record` FOREIGN KEY (`location_id`) REFERENCES `location_record` (`id`) ON DELETE SET NULL ON UPDATE RESTRICT,
+  CONSTRAINT `fk_post_category` FOREIGN KEY (`category_code`) REFERENCES `post_category` (`code`) ON DELETE RESTRICT ON UPDATE RESTRICT
 ) ENGINE = InnoDB AUTO_INCREMENT = 2042856504251994113 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '帖子表' ROW_FORMAT = Dynamic;
 
 DROP TABLE IF EXISTS `post_image`;

@@ -24,11 +24,6 @@
     </div>
 
     <nav class="travel-header__actions" aria-label="快捷操作">
-      <button class="travel-header__publish" type="button" @click="openPublish">
-        <EditOutlined />
-        <span>发布旅行</span>
-      </button>
-
       <a-dropdown :trigger="['click']" placement="bottomRight">
         <button class="user-trigger" type="button" :aria-label="member.name ? '打开账户菜单' : '登录'">
           <a-avatar :src="avatarUrl" :size="36">
@@ -40,7 +35,6 @@
         <template #overlay>
           <a-menu class="user-dropdown-menu">
             <template v-if="member.name">
-              <a-menu-item @click="goToProfile"><UserOutlined /> 个人资料</a-menu-item>
               <a-menu-item @click="goToEdit"><EditOutlined /> 修改资料</a-menu-item>
               <a-menu-divider />
               <a-menu-item @click="logout" danger><LogoutOutlined /> 退出登录</a-menu-item>
@@ -93,17 +87,9 @@ const fetchAvatar = async () => {
 
 const heart = () => axios.get(BASE_URL+'/lyw/web/member/heart').catch(() => {})
 const showLogin = () => loginRef.value?.showModal()
-const openPublish = () => {
-  if (!member.value?.name) {
-    showLogin()
-    return
-  }
-  router.push('/uploadPost')
-}
 const logout = () => { store.commit('clearMember'); message.success('已安全退出') }
 const onSearch = (val) => { searchStore.setKeyword(val) }
 const goToEdit = () => router.push('/UserDetail')
-const goToProfile = () => router.push('/UserProfile')
 
 watch(() => member.value?.name, (newName) => {
   if (newName) {
@@ -218,21 +204,6 @@ onBeforeUnmount(() => { if (heartTimer) clearInterval(heartTimer); delete window
   justify-self: end;
 }
 
-.travel-header__publish {
-  align-items: center;
-  background: var(--travel-color-brand);
-  border: 1px solid var(--travel-color-brand);
-  border-radius: 10px;
-  color: #fff;
-  cursor: pointer;
-  display: inline-flex;
-  font-size: 14px;
-  font-weight: 650;
-  gap: 7px;
-  height: 40px;
-  padding: 0 16px;
-}
-
 .user-trigger {
   align-items: center;
   background: transparent;
@@ -267,7 +238,6 @@ onBeforeUnmount(() => { if (heartTimer) clearInterval(heartTimer); delete window
     padding-inline: 18px;
   }
 
-  .travel-header__publish span,
   .username,
   .drop-icon {
     display: none;
@@ -295,8 +265,7 @@ onBeforeUnmount(() => { if (heartTimer) clearInterval(heartTimer); delete window
     height: 38px;
   }
 
-  .travel-search__button,
-  .travel-header__publish {
+  .travel-search__button {
     display: none;
   }
 }

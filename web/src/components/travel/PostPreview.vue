@@ -3,9 +3,9 @@
     <button class="post-card__action custom-card" type="button" @click="emit('open', post)">
       <div class="post-card__media">
         <img :src="post.image" :alt="post.title" loading="lazy">
-        <span v-if="post.location" class="post-card__location">
-          <EnvironmentOutlined />
-          {{ post.location }}
+        <span class="post-card__category">
+          <TagOutlined />
+          {{ post.categoryName || '待分类' }}
         </span>
       </div>
 
@@ -25,7 +25,7 @@
 </template>
 
 <script setup>
-import { EnvironmentOutlined, UserOutlined } from '@ant-design/icons-vue'
+import { TagOutlined, UserOutlined } from '@ant-design/icons-vue'
 
 defineProps({
   post: {
@@ -94,7 +94,7 @@ const formatDate = (value) => {
   transform: scale(1.025);
 }
 
-.post-card__location {
+.post-card__category {
   align-items: center;
   background: rgb(255 255 255 / 92%);
   border-radius: 8px;

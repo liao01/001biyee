@@ -9,18 +9,26 @@
             m.name AS membername,
             up.avatar AS avatar,                   -- ✅ 新增头像
             p.create_time AS post_time,
+            p.category_code AS category_code,
+            pc.name AS category_name,
             GROUP_CONCAT(DISTINCT t.name) AS tag_title,
             GROUP_CONCAT(DISTINCT pi.image_url) AS image_urls,
             p.user_id AS userId
         FROM post p
                  LEFT JOIN member m ON p.user_id = m.id
                  LEFT JOIN user_profile up ON p.user_id = up.user_id   -- ✅ 关联头像
+                 LEFT JOIN post_category pc ON pc.code = p.category_code
                  LEFT JOIN post_tag pt ON p.id = pt.post_id
                  LEFT JOIN tag t ON pt.tag_id = t.id
                  LEFT JOIN post_image pi ON p.id = pi.post_id
         WHERE p.status = '1'
-        GROUP BY p.id, p.title, p.content, m.name, up.avatar, p.create_time
-        ORDER BY p.create_time DESC;
+        <if test="categoryCode != null and categoryCode != ''">
+          AND p.category_code = #{categoryCode}
+        </if>
+        GROUP BY p.id, p.title, p.content, m.name, up.avatar, p.create_time, p.category_code, pc.name
+        ORDER BY
+          CASE WHEN #{view} = 'LATEST' THEN p.create_time END DESC,
+          p.create_time DESC;
     </select>
 
     <select id="findPublicDetailById" resultType="com.jiawa.lyw.resp.PostResp">
@@ -31,10 +39,13 @@
             p.create_time AS postTime,
             p.user_id AS userId,
             m.name AS membername,
-            up.avatar AS avatar
+            up.avatar AS avatar,
+            p.category_code AS category_code,
+            pc.name AS category_name
         FROM post p
         LEFT JOIN member m ON p.user_id = m.id
         LEFT JOIN user_profile up ON p.user_id = up.user_id
+        LEFT JOIN post_category pc ON pc.code = p.category_code
         WHERE p.id = #{postId}
           AND p.status = '1'
     </select>
@@ -50,17 +61,20 @@
         m.name AS member_name,
         up.avatar AS avatar,
         p.create_time AS post_time,
+        p.category_code AS category_code,
+        pc.name AS category_name,
         GROUP_CONCAT(DISTINCT t.name) AS tag_title,
         GROUP_CONCAT(DISTINCT pi.image_url) AS image_urls
         FROM post p
         LEFT JOIN member m ON p.user_id = m.id
         LEFT JOIN user_profile up ON p.user_id = up.user_id
+        LEFT JOIN post_category pc ON pc.code = p.category_code
         LEFT JOIN post_tag pt ON p.id = pt.post_id
         LEFT JOIN tag t ON pt.tag_id = t.id
         LEFT JOIN post_image pi ON p.id = pi.post_id
         WHERE (p.title LIKE #{kw} OR p.content LIKE #{kw})
         AND p.status = '1'
-        GROUP BY p.id, p.title, p.content, p.user_id, m.name, up.avatar, p.create_time
+        GROUP BY p.id, p.title, p.content, p.user_id, m.name, up.avatar, p.create_time, p.category_code, pc.name
         ORDER BY p.create_time DESC;
     </select>
 
@@ -72,17 +86,20 @@
             m.name AS member_name,
             up.avatar AS avatar,                     -- ✅ 新增头像
             p.create_time AS post_time,
+            p.category_code AS category_code,
+            pc.name AS category_name,
             GROUP_CONCAT(DISTINCT t.name) AS tag_title,
             GROUP_CONCAT(DISTINCT pi.image_url) AS image_urls
         FROM post p
                  LEFT JOIN member m ON p.user_id = m.id
                  LEFT JOIN user_profile up ON p.user_id = up.user_id   -- ✅ 关联头像
+                 LEFT JOIN post_category pc ON pc.code = p.category_code
                  LEFT JOIN post_tag pt ON p.id = pt.post_id
                  LEFT JOIN tag t ON pt.tag_id = t.id
                  LEFT JOIN post_image pi ON p.id = pi.post_id
         WHERE p.user_id = #{userId}
           AND p.status = '1'
-        GROUP BY p.id, p.title, p.content, m.name, up.avatar, p.create_time
+        GROUP BY p.id, p.title, p.content, m.name, up.avatar, p.create_time, p.category_code, pc.name
         ORDER BY p.create_time DESC
     </select>
 
@@ -94,18 +111,21 @@
             m.name AS membername,
             up.avatar AS avatar,                   -- ✅ 新增头像
             p.create_time AS post_time,
+            p.category_code AS category_code,
+            pc.name AS category_name,
             GROUP_CONCAT(DISTINCT t.name) AS tag_title,
             GROUP_CONCAT(DISTINCT pi.image_url) AS image_urls,
             p.user_id AS userId
         FROM post p
                  LEFT JOIN member m ON p.user_id = m.id
                  LEFT JOIN user_profile up ON p.user_id = up.user_id   -- ✅ 关联头像
+                 LEFT JOIN post_category pc ON pc.code = p.category_code
                  LEFT JOIN post_tag pt ON p.id = pt.post_id
                  LEFT JOIN tag t ON pt.tag_id = t.id
                  LEFT JOIN post_image pi ON p.id = pi.post_id
         WHERE p.user_id = #{userId}
           AND p.status = '1'
-        GROUP BY p.id, p.title, p.content, m.name, up.avatar, p.create_time
+        GROUP BY p.id, p.title, p.content, m.name, up.avatar, p.create_time, p.category_code, pc.name
         ORDER BY p.create_time DESC;
     </select>
 
@@ -117,6 +137,8 @@
             m.name AS membername,
             up.avatar AS avatar,                      -- 作者头像
             p.create_time AS post_time,
+            p.category_code AS category_code,
+            pc.name AS category_name,
             GROUP_CONCAT(DISTINCT t.name) AS tag_title,
             GROUP_CONCAT(DISTINCT pi.image_url) AS image_urls,
             p.user_id AS userId
@@ -124,6 +146,7 @@
                  LEFT JOIN post p ON ua.post_id = p.id
                  LEFT JOIN member m ON p.user_id = m.id
                  LEFT JOIN user_profile up ON p.user_id = up.user_id
+                 LEFT JOIN post_category pc ON pc.code = p.category_code
                  LEFT JOIN post_tag pt ON p.id = pt.post_id
                  LEFT JOIN tag t ON pt.tag_id = t.id
                  LEFT JOIN post_image pi ON p.id = pi.post_id
@@ -131,7 +154,7 @@
           AND ua.action_type = 'favorite'
           AND p.status = '1'
         GROUP BY
-            p.id, p.title, p.content, m.name, up.avatar, p.create_time
+            p.id, p.title, p.content, m.name, up.avatar, p.create_time, p.category_code, pc.name
         ORDER BY p.create_time DESC;
     </select>
 

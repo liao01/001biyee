@@ -77,6 +77,8 @@ public class PostDetailService {
         post.setTitle(source.getPostTitle());
         post.setDescription(source.getPostContent());
         post.setPostTime(source.getPostTime());
+        post.setCategoryCode(source.getCategoryCode());
+        post.setCategoryName(source.getCategoryName());
 
         PostDetailResp.Author author = new PostDetailResp.Author();
         author.setId(source.getUserId());

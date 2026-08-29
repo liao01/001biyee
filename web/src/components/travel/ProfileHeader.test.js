@@ -23,5 +23,6 @@ describe('旅行者身份区', () => {
 
     await wrapper.get('button[aria-label="编辑个人资料"]').trigger('click')
     expect(wrapper.emitted('edit')).toHaveLength(1)
+    expect(wrapper.text()).not.toContain('发布旅行')
   })
 })

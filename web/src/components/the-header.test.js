@@ -37,8 +37,8 @@ const LoginStub = {
   },
 }
 
-describe('顶部发布入口', () => {
-  it('未登录时打开现有登录弹窗而不是跳转发布页', async () => {
+describe('顶部快捷操作', () => {
+  it('不再重复提供发布和个人资料入口', () => {
     const wrapper = mount(TheHeader, {
       global: {
         stubs: {
@@ -52,9 +52,8 @@ describe('顶部发布入口', () => {
       },
     })
 
-    await wrapper.get('.travel-header__publish').trigger('click')
-
-    expect(mocks.loginShow).toHaveBeenCalledOnce()
-    expect(mocks.routerPush).not.toHaveBeenCalledWith('/uploadPost')
+    expect(wrapper.find('.travel-header__publish').exists()).toBe(false)
+    expect(wrapper.text()).not.toContain('发布旅行')
+    expect(wrapper.text()).not.toContain('个人资料')
   })
 })

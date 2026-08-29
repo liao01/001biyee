@@ -37,6 +37,7 @@ public enum BusinessExceptionEnum {
     IMAGE_HAVE_ERROR("图片上传失败1111"),
     IMAGE_NO_ERROR("图片未找到"),
     INVALID_GENDER("性别参数错误"),
+    POST_CATEGORY_INVALID("请选择有效的帖子分类"),
     POST_ID_EMPTY("贴子为找到");
 
 

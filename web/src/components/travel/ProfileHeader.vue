@@ -25,7 +25,6 @@
     <div v-if="showActions" class="profile-header__actions">
       <template v-if="isSelf">
         <button class="travel-secondary-button" type="button" aria-label="编辑个人资料" @click="emit('edit')">编辑资料</button>
-        <button class="travel-primary-button" type="button" @click="emit('publish')">发布旅行</button>
       </template>
       <button
         v-else
@@ -61,7 +60,7 @@ defineProps({
   },
 })
 
-const emit = defineEmits(['edit', 'publish', 'follow'])
+const emit = defineEmits(['edit', 'follow'])
 
 const formatNumber = (value) => new Intl.NumberFormat('zh-CN').format(Number(value) || 0)
 </script>

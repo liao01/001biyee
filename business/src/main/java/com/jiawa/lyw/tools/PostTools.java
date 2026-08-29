@@ -20,7 +20,7 @@ public class PostTools {
             value = "调用该工具可获取全部帖子数据。工具会执行 findAll 方法查询并返回所有帖子列表，供模型在回答用户时直接使用。"
     )
     public CommonResp<List<PostResp>> findAll(){
-        List<PostResp> list = postService.findAll();
+        List<PostResp> list = postService.findAll(null, null);
         return new CommonResp<>(list);
     }
 }

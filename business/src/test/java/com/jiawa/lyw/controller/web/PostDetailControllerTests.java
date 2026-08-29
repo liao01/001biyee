@@ -73,6 +73,8 @@ class PostDetailControllerTests {
         post.setUserId("7");
         post.setMembername("旅行者小林");
         post.setAvatar("/uploads/avatar/xiaolin.png");
+        post.setCategoryCode("NATURAL_SCENERY");
+        post.setCategoryName("自然风光");
         when(postMapperCust.findPublicDetailById(42L)).thenReturn(post);
 
         PostImage firstImage = new PostImage();
@@ -100,6 +102,8 @@ class PostDetailControllerTests {
                 .andExpect(jsonPath("$.content.post.id").value("42"))
                 .andExpect(jsonPath("$.content.post.title").value("桂林山水之旅"))
                 .andExpect(jsonPath("$.content.post.description").value("沿着漓江慢慢看山水。"))
+                .andExpect(jsonPath("$.content.post.categoryCode").value("NATURAL_SCENERY"))
+                .andExpect(jsonPath("$.content.post.categoryName").value("自然风光"))
                 .andExpect(jsonPath("$.content.author.id").value("7"))
                 .andExpect(jsonPath("$.content.author.name").value("旅行者小林"))
                 .andExpect(jsonPath("$.content.author.avatar").value("/uploads/avatar/xiaolin.png"))

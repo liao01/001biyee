@@ -26,40 +26,94 @@
         <button class="travel-primary-button" type="button" aria-label="重试帖子详情" @click="loadDetail">重试</button>
       </div>
 
-      <article v-else-if="detail" class="post-detail__layout">
+      <article v-else-if="detail" class="post-detail__layout post-detail__layout--two-column">
+        <section v-if="detail.images?.length" class="post-detail__gallery" aria-label="旅行图片">
+          <div class="post-detail__gallery-main">
+            <img
+              :src="detail.images[activeImageIndex]"
+              :alt="`${detail.post.title} 图片 ${activeImageIndex + 1}`"
+            >
+            <template v-if="detail.images.length > 1">
+              <button class="post-detail__gallery-control post-detail__gallery-control--previous" type="button" aria-label="上一张图片" @click="showPreviousImage">
+                <LeftOutlined />
+              </button>
+              <button class="post-detail__gallery-control post-detail__gallery-control--next" type="button" aria-label="下一张图片" @click="showNextImage">
+                <RightOutlined />
+              </button>
+            </template>
+          </div>
+          <div v-if="detail.images.length > 1" class="post-detail__gallery-footer">
+            <span>{{ activeImageIndex + 1 }} / {{ detail.images.length }}</span>
+            <div class="post-detail__gallery-dots" aria-label="选择图片">
+              <button
+                v-for="(_, index) in detail.images"
+                :key="index"
+                type="button"
+                :class="{ 'is-active': activeImageIndex === index }"
+                :aria-label="`查看第 ${index + 1} 张图片`"
+                :aria-pressed="activeImageIndex === index"
+                @click="activeImageIndex = index"
+              />
+            </div>
+          </div>
+        </section>
+        <div v-else class="post-detail__gallery post-detail__gallery--empty">
+          <span>这篇旅行记录暂未添加图片</span>
+        </div>
+
         <main class="post-detail__reader">
           <header class="post-detail__heading">
-            <span class="post-detail__back-label">旅行正文</span>
+            <span class="post-detail__back-label">{{ detail.post.categoryName || '待分类' }}</span>
             <h2 id="post-detail-title">{{ detail.post.title }}</h2>
 
             <div class="post-detail__byline">
-              <button
-                type="button"
-                class="post-detail__author"
-                :aria-label="`查看作者 ${detail.author.name}`"
-                @click="navigation.openAuthor(detail.author.id)"
-              >
-                <img
-                  v-if="detail.author.avatar"
-                  :src="detail.author.avatar"
-                  :alt="`${detail.author.name}的头像`"
+              <div class="post-detail__byline-meta">
+                <button
+                  type="button"
+                  class="post-detail__author"
+                  :aria-label="`查看作者 ${detail.author.name}`"
+                  @click="navigation.openAuthor(detail.author.id)"
                 >
-                <span>{{ detail.author.name }}</span>
-              </button>
-              <time v-if="detail.post.postTime" :datetime="detail.post.postTime">
-                {{ formatDisplayDate(detail.post.postTime) }}
-              </time>
+                  <img
+                    v-if="detail.author.avatar"
+                    :src="detail.author.avatar"
+                    :alt="`${detail.author.name}的头像`"
+                  >
+                  <span>{{ detail.author.name }}</span>
+                </button>
+                <time v-if="detail.post.postTime" :datetime="detail.post.postTime">
+                  {{ formatDisplayDate(detail.post.postTime) }}
+                </time>
+              </div>
+              <div class="post-detail__byline-actions">
+                <div class="post-detail__interactions">
+                  <button type="button" aria-label="点赞" :aria-pressed="viewerState?.liked ?? false" :disabled="likePending" @click="handleLike">
+                    <HeartOutlined />
+                    <span>点赞</span>
+                    <strong>{{ detail.interactionCounts.like }}</strong>
+                  </button>
+                  <button type="button" aria-label="收藏" :aria-pressed="viewerState?.favorited ?? false" :disabled="favoritePending" @click="handleFavorite">
+                    <StarOutlined />
+                    <span>收藏</span>
+                    <strong>{{ detail.interactionCounts.favorite }}</strong>
+                  </button>
+                </div>
+                <button
+                  v-if="!viewerState?.selfAuthor"
+                  class="post-detail__follow"
+                  type="button"
+                  aria-label="关注作者"
+                  :aria-pressed="viewerState?.followed ?? false"
+                  :disabled="followPending"
+                  @click="handleFollow"
+                >{{ viewerState?.followed ? '已关注' : '关注' }}</button>
+              </div>
             </div>
           </header>
 
-          <div v-if="detail.images?.length" class="post-detail__images">
-            <img
-              v-for="(image, index) in detail.images"
-              :key="image"
-              :src="image"
-              :alt="`${detail.post.title} 图片 ${index + 1}`"
-            >
-          </div>
+          <p v-if="viewerStateUnavailable || interactionMessage" class="post-detail__status" role="status">
+            {{ interactionMessage || '登录后可查看个人互动状态' }}
+          </p>
 
           <div class="post-detail__copy">
             <h3>旅行正文</h3>
@@ -88,8 +142,6 @@
                 <div class="post-detail__comment-content">
                   <div class="post-detail__comment-meta">
                     <strong>{{ comment.membername }}</strong>
-                    <small>#{{ comment.id }}</small>
-                    <time v-if="comment.commentTime" :datetime="comment.commentTime">{{ comment.commentTime }}</time>
                   </div>
                   <span>{{ comment.commentContent }}</span>
                   <div v-if="editingCommentId === String(comment.id)" class="post-detail__comment-edit">
@@ -106,40 +158,6 @@
             </ul>
           </section>
         </main>
-
-        <aside class="post-detail__aside">
-          <div class="post-detail__author-card">
-            <button type="button" class="post-detail__author post-detail__author--large" :aria-label="`查看作者 ${detail.author.name}`" @click="navigation.openAuthor(detail.author.id)">
-              <img v-if="detail.author.avatar" :src="detail.author.avatar" :alt="`${detail.author.name}的头像`">
-              <span>{{ detail.author.name }}</span>
-            </button>
-            <button
-              v-if="!viewerState?.selfAuthor"
-              class="post-detail__follow"
-              type="button"
-              aria-label="关注作者"
-              :aria-pressed="viewerState?.followed ?? false"
-              :disabled="followPending"
-              @click="handleFollow"
-            >{{ viewerState?.followed ? '已关注' : '关注' }}</button>
-          </div>
-
-          <div class="post-detail__interactions">
-            <button type="button" aria-label="点赞" :aria-pressed="viewerState?.liked ?? false" :disabled="likePending" @click="handleLike">
-              <HeartOutlined />
-              <span>点赞</span>
-              <strong>{{ detail.interactionCounts.like }}</strong>
-            </button>
-            <button type="button" aria-label="收藏" :aria-pressed="viewerState?.favorited ?? false" :disabled="favoritePending" @click="handleFavorite">
-              <StarOutlined />
-              <span>收藏</span>
-              <strong>{{ detail.interactionCounts.favorite }}</strong>
-            </button>
-          </div>
-          <p v-if="viewerStateUnavailable || interactionMessage" class="post-detail__status" role="status">
-            {{ interactionMessage || '登录后可查看个人互动状态' }}
-          </p>
-        </aside>
       </article>
     </section>
   </div>
@@ -147,7 +165,7 @@
 
 <script setup>
 import { inject, ref, watch } from 'vue'
-import { CloseOutlined, HeartOutlined, StarOutlined } from '@ant-design/icons-vue'
+import { CloseOutlined, HeartOutlined, LeftOutlined, RightOutlined, StarOutlined } from '@ant-design/icons-vue'
 
 import { postDetailHttp, postDetailHttpKey } from './postDetailHttp.js'
 import { postDetailNavigationKey } from './postDetailNavigation.js'
@@ -167,6 +185,7 @@ const emit = defineEmits(['update:open'])
 const http = inject(postDetailHttpKey, postDetailHttp)
 const navigation = inject(postDetailNavigationKey, { openAuthor: () => {} })
 const detail = ref(null)
+const activeImageIndex = ref(0)
 const viewerState = ref(null)
 const viewerStateUnavailable = ref(false)
 const interactionMessage = ref('')
@@ -197,6 +216,7 @@ const resetPostState = () => {
   loading.value = false
   errorMessage.value = ''
   detail.value = null
+  activeImageIndex.value = 0
   viewerState.value = null
   viewerStateUnavailable.value = false
   interactionMessage.value = ''
@@ -272,6 +292,18 @@ const handleFollow = () => {
     },
     failureMessage: '关注失败，请重试',
   })
+}
+
+const showPreviousImage = () => {
+  const imageCount = detail.value?.images?.length || 0
+  if (!imageCount) return
+  activeImageIndex.value = (activeImageIndex.value - 1 + imageCount) % imageCount
+}
+
+const showNextImage = () => {
+  const imageCount = detail.value?.images?.length || 0
+  if (!imageCount) return
+  activeImageIndex.value = (activeImageIndex.value + 1) % imageCount
 }
 
 const handleCreateComment = async () => {
@@ -409,7 +441,7 @@ watch(
 .post-detail-backdrop {
   background: rgb(17 19 23 / 46%);
   inset: 0;
-  padding: 3vh 3vw;
+  padding: 7vh 32px;
   position: fixed;
   z-index: 1000;
 }
@@ -418,11 +450,12 @@ watch(
   background: #fff;
   border-radius: var(--travel-radius-lg);
   box-shadow: var(--travel-shadow-float);
-  height: 94vh;
+  height: 86vh;
   margin: 0 auto;
-  max-width: 1320px;
-  overflow: auto;
+  max-width: 1180px;
+  overflow-y: auto;
   position: relative;
+  width: min(1180px, calc(100vw - 64px));
 }
 
 .post-detail__close {
@@ -436,8 +469,8 @@ watch(
   font-size: 16px;
   height: 38px;
   justify-content: center;
-  position: sticky;
   float: right;
+  position: sticky;
   right: 20px;
   top: 18px;
   width: 38px;
@@ -455,14 +488,101 @@ watch(
 }
 
 .post-detail__layout {
+  align-items: stretch;
   display: grid;
-  gap: 44px;
-  grid-template-columns: minmax(0, 1fr) 300px;
-  padding: 48px;
+  grid-template-columns: minmax(0, 54fr) minmax(400px, 46fr);
+  min-height: 100%;
 }
 
 .post-detail__reader {
   min-width: 0;
+  padding: 34px 34px 52px;
+}
+
+.post-detail__gallery {
+  align-self: stretch;
+  background: #fff;
+  border-right: 1px solid var(--travel-color-border);
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  height: 86vh;
+  min-width: 0;
+  padding: 24px;
+  position: sticky;
+  top: 0;
+}
+
+.post-detail__gallery-main {
+  align-items: center;
+  background: #e9ecef;
+  border-radius: var(--travel-radius-md);
+  display: flex;
+  flex: 1;
+  justify-content: center;
+  min-height: 0;
+  overflow: hidden;
+  position: relative;
+}
+
+.post-detail__gallery-main img {
+  display: block;
+  height: 100%;
+  object-fit: cover;
+  width: 100%;
+}
+
+.post-detail__gallery-control {
+  align-items: center;
+  background: rgb(17 19 23 / 58%);
+  border: 0;
+  border-radius: 50%;
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  height: 42px;
+  justify-content: center;
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 42px;
+}
+
+.post-detail__gallery-control--previous { left: 16px; }
+.post-detail__gallery-control--next { right: 16px; }
+
+.post-detail__gallery-footer {
+  align-items: center;
+  background: rgb(17 19 23 / 48%);
+  border-radius: 999px;
+  bottom: 40px;
+  color: #fff;
+  display: flex;
+  font-size: 12px;
+  justify-content: space-between;
+  left: 40px;
+  padding: 7px 10px;
+  position: absolute;
+  right: 40px;
+}
+
+.post-detail__gallery-dots { display: flex; gap: 7px; }
+.post-detail__gallery-dots button {
+  background: #c6cbd2;
+  border: 0;
+  border-radius: 999px;
+  cursor: pointer;
+  height: 7px;
+  padding: 0;
+  transition: background var(--travel-transition), width var(--travel-transition);
+  width: 7px;
+}
+.post-detail__gallery-dots button.is-active { background: var(--travel-color-brand); width: 22px; }
+
+.post-detail__gallery--empty {
+  align-items: center;
+  color: var(--travel-color-text-muted);
+  justify-items: center;
 }
 
 .post-detail__back-label {
@@ -473,13 +593,19 @@ watch(
 
 .post-detail__heading h2 {
   color: var(--travel-color-text);
-  font-size: clamp(30px, 4vw, 48px);
+  font-size: clamp(26px, 2.4vw, 32px);
   letter-spacing: -.045em;
   line-height: 1.16;
   margin: 10px 0 18px;
 }
 
+.post-detail__heading {
+  margin-bottom: 30px;
+}
+
 .post-detail__byline,
+.post-detail__byline-meta,
+.post-detail__byline-actions,
 .post-detail__author {
   align-items: center;
   display: flex;
@@ -489,6 +615,17 @@ watch(
   color: var(--travel-color-text-muted);
   font-size: 13px;
   gap: 16px;
+  justify-content: space-between;
+  min-width: 0;
+}
+
+.post-detail__byline-meta,
+.post-detail__byline-actions {
+  gap: 12px;
+}
+
+.post-detail__byline-meta time {
+  white-space: nowrap;
 }
 
 .post-detail__author {
@@ -509,26 +646,6 @@ watch(
   width: 36px;
 }
 
-.post-detail__images {
-  display: grid;
-  gap: 10px;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  margin: 30px 0 36px;
-}
-
-.post-detail__images img {
-  aspect-ratio: 4 / 3;
-  border-radius: var(--travel-radius-md);
-  height: 100%;
-  object-fit: cover;
-  width: 100%;
-}
-
-.post-detail__images img:first-child {
-  grid-column: 1 / -1;
-  max-height: 520px;
-}
-
 .post-detail__copy h3,
 .post-detail__section-heading h3 {
   font-size: 20px;
@@ -543,30 +660,14 @@ watch(
   white-space: pre-wrap;
 }
 
-.post-detail__aside {
-  align-self: start;
-  display: grid;
-  gap: 14px;
-  position: sticky;
-  top: 38px;
-}
-
-.post-detail__author-card,
 .post-detail__interactions {
-  border: 1px solid var(--travel-color-border);
-  border-radius: var(--travel-radius-md);
-  padding: 18px;
-}
-
-.post-detail__author-card {
   align-items: center;
+  background: var(--travel-color-bg-subtle);
+  border-radius: 999px;
   display: flex;
-  justify-content: space-between;
-}
-
-.post-detail__author--large img {
-  height: 44px;
-  width: 44px;
+  flex: 0 0 auto;
+  gap: 2px;
+  padding: 3px;
 }
 
 .post-detail__follow {
@@ -579,16 +680,13 @@ watch(
   font-weight: 650;
   height: 36px;
   padding: 0 14px;
+  margin-left: 0;
+  flex: 0 0 auto;
 }
 
 .post-detail__follow[aria-pressed="true"] {
   background: var(--travel-color-brand-soft);
   color: var(--travel-color-brand);
-}
-
-.post-detail__interactions {
-  display: grid;
-  gap: 2px;
 }
 
 .post-detail__interactions button {
@@ -598,11 +696,13 @@ watch(
   border-radius: 8px;
   color: var(--travel-color-text);
   cursor: pointer;
-  display: grid;
+  display: flex;
   font: inherit;
-  grid-template-columns: 22px 1fr auto;
-  padding: 11px 8px;
-  text-align: left;
+  font-size: 13px;
+  gap: 6px;
+  min-height: 30px;
+  padding: 6px 9px;
+  white-space: nowrap;
 }
 
 .post-detail__interactions button:hover,
@@ -614,7 +714,7 @@ watch(
 .post-detail__status {
   color: var(--travel-color-brand-strong);
   font-size: 13px;
-  margin: 0;
+  margin: -16px 0 30px;
 }
 
 .post-detail__comments {
@@ -712,16 +812,53 @@ watch(
   .post-detail {
     border-radius: 0;
     height: 100vh;
+    overflow-y: auto;
+    width: 100%;
   }
 
   .post-detail__layout {
     display: block;
+    height: auto;
+  }
+
+  .post-detail__gallery {
+    height: auto;
+    padding: 12px;
+    position: relative;
+  }
+
+  .post-detail__gallery-main {
+    aspect-ratio: 4 / 3;
+    flex: none;
+  }
+
+  .post-detail__gallery-footer {
+    bottom: 24px;
+    left: 24px;
+    right: 24px;
+  }
+
+  .post-detail__reader {
+    overflow: visible;
     padding: 38px 20px 80px;
   }
 
-  .post-detail__aside {
-    margin-top: 28px;
-    position: static;
+}
+
+@media (max-width: 560px) {
+  .post-detail__byline {
+    align-items: flex-start;
+    flex-wrap: wrap;
   }
+
+  .post-detail__byline-actions {
+    justify-content: flex-start;
+    width: 100%;
+  }
+
+  .post-detail__follow {
+    margin-left: 0;
+  }
+
 }
 </style>

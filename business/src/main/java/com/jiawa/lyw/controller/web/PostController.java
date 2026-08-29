@@ -11,6 +11,7 @@ import com.jiawa.lyw.resp.PostUserResp;
 import com.jiawa.lyw.resp.PostViewerStateResp;
 import com.jiawa.lyw.service.PostService;
 import com.jiawa.lyw.service.PostDetailService;
+import com.jiawa.lyw.service.PostCategoryService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -27,17 +28,26 @@ public class PostController {
     @Autowired
     private PostDetailService postDetailService;
 
+    @Autowired
+    private PostCategoryService postCategoryService;
+
     @PostMapping("/post-save")
     public CommonResp<Object> savePost(@Valid @RequestBody PostReq req) throws IOException {
-        System.out.println(req.getUserId());
         postService.savePost(req);
         return new CommonResp<>();
     }
 
+    @GetMapping("/categories")
+    public CommonResp<List<com.jiawa.lyw.resp.PostCategoryResp>> categories() {
+        return new CommonResp<>(postCategoryService.listEnabled());
+    }
+
 
     @GetMapping("/post-findAll")
-    public CommonResp<List<PostResp>> findAll(){
-        List<PostResp> list = postService.findAll();
+    public CommonResp<List<PostResp>> findAll(
+            @RequestParam(required = false) String view,
+            @RequestParam(required = false) String categoryCode) {
+        List<PostResp> list = postService.findAll(view, categoryCode);
         return new CommonResp<>(list);
     }
 

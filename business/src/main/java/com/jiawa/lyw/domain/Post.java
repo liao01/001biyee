@@ -17,6 +17,8 @@ public class Post {
 
     private String status;
 
+    private String categoryCode;
+
     private String content;
 
     public Long getId() {
@@ -75,6 +77,14 @@ public class Post {
         this.status = status;
     }
 
+    public String getCategoryCode() {
+        return categoryCode;
+    }
+
+    public void setCategoryCode(String categoryCode) {
+        this.categoryCode = categoryCode;
+    }
+
     public String getContent() {
         return content;
     }
@@ -96,6 +106,7 @@ public class Post {
         sb.append(", createTime=").append(createTime);
         sb.append(", updateTime=").append(updateTime);
         sb.append(", status=").append(status);
+        sb.append(", categoryCode=").append(categoryCode);
         sb.append(", content=").append(content);
         sb.append("]");
         return sb.toString();
