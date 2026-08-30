@@ -67,7 +67,7 @@ import { computed, ref, watch } from 'vue'
 import { message, Avatar } from 'ant-design-vue'
 import { SafetyOutlined, LoadingOutlined } from '@ant-design/icons-vue'
 import axios from 'axios'
-import { BASE_URL } from "../utils/baseUrl";
+import { BASE_URL, buildApiUrl } from "../utils/baseUrl";
 
 const props = defineProps({
   open: Boolean,
@@ -114,7 +114,7 @@ const onOk = async () => {
 
   loading.value = true
   try {
-    const res = await axios.post('http://localhost:8080/lyw/admin/member/delete', {
+    const res = await axios.post(buildApiUrl('/lyw/admin/member/delete'), {
       id: props.user.id,
       imageCode: form.value.imageCode,
       imageCodeToken: imageCodeToken.value

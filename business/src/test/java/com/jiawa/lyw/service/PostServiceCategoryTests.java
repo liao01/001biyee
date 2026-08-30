@@ -1,5 +1,6 @@
 package com.jiawa.lyw.service;
 
+import com.jiawa.lyw.config.StorageProperties;
 import com.jiawa.lyw.context.LoginMemberContext;
 import com.jiawa.lyw.domain.Post;
 import com.jiawa.lyw.domain.PostCategory;
@@ -14,6 +15,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.io.TempDir;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -22,6 +24,7 @@ import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
+import java.nio.file.Path;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -32,6 +35,8 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class PostServiceCategoryTests {
+
+    @TempDir Path tempDir;
 
     @Mock private PostMapper postMapper;
     @Mock private PostImageMapper postImageMapper;
@@ -54,6 +59,9 @@ class PostServiceCategoryTests {
         ReflectionTestUtils.setField(service, "postMapperCust", postMapperCust);
         ReflectionTestUtils.setField(service, "stringRedisTemplate", stringRedisTemplate);
         ReflectionTestUtils.setField(service, "postCategoryService", postCategoryService);
+        StorageProperties storageProperties = new StorageProperties();
+        storageProperties.setUploadDir(tempDir.resolve("uploads"));
+        ReflectionTestUtils.setField(service, "storageProperties", storageProperties);
         MemberLoginResp member = new MemberLoginResp();
         member.setId(100L);
         LoginMemberContext.setMember(member);

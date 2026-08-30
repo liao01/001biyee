@@ -3,6 +3,7 @@ package com.jiawa.lyw.service;
 import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.util.IdUtil;
 import com.jiawa.lyw.context.LoginMemberContext;
+import com.jiawa.lyw.config.StorageProperties;
 import com.jiawa.lyw.domain.Member;
 import com.jiawa.lyw.domain.MemberExample;
 import com.jiawa.lyw.domain.UserProfile;
@@ -22,6 +23,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
 import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 
 @Service
@@ -37,8 +40,8 @@ public class UserProFileService {
     @Autowired
     private MemberMapper memberMapper;
 
-    private static final String UPLOAD_DIR = "D:/idea/lyw/uploads/avatar/";
-//    private static final String UPLOAD_DIR = "/home/lyw/uploads/avatar/";
+    @Autowired
+    private StorageProperties storageProperties;
 
     /**
      * 通过 UserProfilereq 新增用户资料
@@ -105,6 +108,8 @@ public class UserProFileService {
         String newFileName = userId + "_" + java.util.UUID.randomUUID().toString().replace("-", "");
 
         try {
+            Path uploadDir = storageProperties.avatarsDir();
+            Files.createDirectories(uploadDir);
             if (avatarData.startsWith("data:image")) {
                 // Base64 图片
                 String[] parts = avatarData.split(",");
@@ -115,12 +120,12 @@ public class UserProFileService {
                 else if (parts[0].contains("gif")) suffix = ".gif";
 
                 newFileName += suffix;
-                FileUtil.writeBytes(data, UPLOAD_DIR + newFileName);
+                FileUtil.writeBytes(data, uploadDir.resolve(newFileName).toFile());
             } else {
                 // URL 下载
                 String suffix = avatarData.contains(".") ? avatarData.substring(avatarData.lastIndexOf(".")) : "";
                 newFileName += suffix;
-                FileUtil.writeFromStream(new URL(avatarData).openStream(), UPLOAD_DIR + newFileName);
+                FileUtil.writeFromStream(new URL(avatarData).openStream(), uploadDir.resolve(newFileName).toFile());
             }
 
             log.info("用户头像上传成功: {}", newFileName);

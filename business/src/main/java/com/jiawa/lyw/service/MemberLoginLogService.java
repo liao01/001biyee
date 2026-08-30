@@ -22,7 +22,7 @@ public class MemberLoginLogService {
     private MemberLoginLogMapper memberLoginLogMapper;
 
     public void  save(MemberLoginResp memberLoginResp) {
-        log.info("用户登录日志:{}", memberLoginResp);
+        log.info("记录用户登录，会员id:{}", memberLoginResp.getId());
         Date now = new Date();
         MemberLoginLog memberLoginLog = new MemberLoginLog();
         memberLoginLog.setId(IdUtil.getSnowflakeNextId());
@@ -38,7 +38,7 @@ public class MemberLoginLogService {
     public void upadteHeartInfo(){
         MemberLoginResp member = LoginMemberContext.getMember();
         String token = member.getToken();
-        log.info("更新会员信息:{}", token);
+        log.info("更新会员心跳，会员id:{}", member.getId());
         MemberLoginLogExample example = new MemberLoginLogExample();
         example.createCriteria().andTokenEqualTo(token);
         example.setOrderByClause("id desc");
@@ -46,7 +46,7 @@ public class MemberLoginLogService {
         List<MemberLoginLog> memberLoginLogs = memberLoginLogMapper.selectByExample(example);
 
         if (CollUtil.isEmpty(memberLoginLogs)) {
-            log.warn("未找到该token的登录信息:{},会员id:{}", token, member.getId());
+            log.warn("未找到会员登录信息，会员id:{}", member.getId());
             save(member);
             return;
         }

@@ -5,6 +5,7 @@ import com.alibaba.fastjson.JSONObject;
 import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
 import com.jiawa.lyw.Util.AmapUtils;
+import com.jiawa.lyw.config.StorageProperties;
 import com.jiawa.lyw.domain.LocationImage;
 import com.jiawa.lyw.domain.LocationImageExample;
 import com.jiawa.lyw.domain.LocationRecord;
@@ -25,7 +26,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.*;
 
 
@@ -45,8 +47,8 @@ public class MapService {
     @Autowired
     private LocationImageMapper locationImageMapper;
 
-    private static final String UPLOAD_DIR = "D:/idea/lyw/uploads/location/";
-//    private static final String UPLOAD_DIR = "/home/lyw/uploads/location/";
+    @Autowired
+    private StorageProperties storageProperties;
 
     /**
      * 根据地址获取地理信息，并插入或更新到数据库
@@ -138,13 +140,9 @@ public class MapService {
         String suffix = originalFilename.substring(originalFilename.lastIndexOf("."));
         String fileName = UUID.randomUUID() + suffix;
 
-        File dir = new File(UPLOAD_DIR);
-        if (!dir.exists()) {
-            dir.mkdirs();
-        }
-
-        File dest = new File(UPLOAD_DIR + fileName);
-        file.transferTo(dest);
+        Path uploadDir = storageProperties.locationsDir();
+        Files.createDirectories(uploadDir);
+        file.transferTo(uploadDir.resolve(fileName).toFile());
 
         String imageUrl = "/uploads/location/" + fileName;
 

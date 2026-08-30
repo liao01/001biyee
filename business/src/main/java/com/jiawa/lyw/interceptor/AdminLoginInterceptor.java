@@ -11,7 +11,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
-import org.springframework.web.servlet.ModelAndView;
 
 @Slf4j
 @Component
@@ -29,23 +28,33 @@ public class AdminLoginInterceptor implements HandlerInterceptor {
 
 //获取header的token参数
         String token = request.getHeader("token");
-        log.info("控台登录验证开始，token：{}", token);
+        log.info("控台登录验证开始");
         if (token == null || token.isEmpty()) {
             log.info( "token为空，请求被拦截" );
             response.setStatus(HttpStatus.UNAUTHORIZED.value());
             return false;
-        }else {
-            log.info("获取用户登录token：{}", token);
-            JSONObject loginUser = JwtUtil.getJSONObject(token);//通过JwtUtil看看解不解析的出来
-            log.info("当前登录用户：{}", loginUser);
-            UserLoginResp user = JSONUtil.toBean(loginUser, UserLoginResp.class);//这个是刚刚解析的时JSON格式，这个将JSON格式转化为实体类
-            LoginUserContext.setUser(user);//最后获得了实体类我们就去在线程的本地变量去放
-            return true;
+        } else {
+            try {
+                if (!JwtUtil.validate(token)) {
+                    log.info("token校验不通过，请求被拦截");
+                    response.setStatus(HttpStatus.UNAUTHORIZED.value());
+                    return false;
+                }
+                JSONObject loginUser = JwtUtil.getJSONObject(token);//通过JwtUtil看看解不解析的出来
+                UserLoginResp user = JSONUtil.toBean(loginUser, UserLoginResp.class);//这个是刚刚解析的时JSON格式，这个将JSON格式转化为实体类
+                LoginUserContext.setUser(user);//最后获得了实体类我们就去在线程的本地变量去放
+                log.info("用户登录验证通过，用户id：{}", user.getId());
+                return true;
+            } catch (RuntimeException exception) {
+                log.info("token格式非法，请求被拦截");
+                response.setStatus(HttpStatus.UNAUTHORIZED.value());
+                return false;
+            }
         }
     }
 
     @Override
-    public void postHandle(HttpServletRequest request, HttpServletResponse response, Object handler, ModelAndView modelAndView) throws Exception {
+    public void afterCompletion(HttpServletRequest request, HttpServletResponse response, Object handler, Exception exception) {
         LoginUserContext.removeUser();
     }
 }

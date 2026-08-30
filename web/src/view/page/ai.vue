@@ -31,6 +31,7 @@
 <script setup>
 import {ref, nextTick, onMounted} from 'vue';
 import axios from 'axios';
+import { buildApiUrl } from '../../utils/baseUrl.js';
 
 const userMessage = ref('');
 const chatHistory = ref([]);
@@ -49,7 +50,7 @@ const sendMessage = async () => {
   chatLog.value.scrollTop = chatLog.value.scrollHeight;
 
   try {
-    const res = await axios.post('http://localhost:8080/lyw/web/customerService/message', {
+    const res = await axios.post(buildApiUrl('/lyw/web/customerService/message'), {
       sessionId: '123456',
       message: messageToSend,
     });
@@ -72,7 +73,7 @@ const sendMessage = async () => {
 
 const loadChatHistory = async () => {
   try {
-    const res = await axios.get('http://localhost:8080/lyw/web/customerService/history');
+    const res = await axios.get(buildApiUrl('/lyw/web/customerService/history'));
     const data = res.data.data || [];
 
     // 转换成前端渲染格式

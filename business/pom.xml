@@ -173,4 +173,23 @@
         </plugins>
     </build>
 
+    <profiles>
+        <profile>
+            <id>deployment</id>
+            <build>
+                <resources>
+                    <resource>
+                        <directory>src/main/resources</directory>
+                        <excludes>
+                            <exclude>application.properties</exclude>
+                            <exclude>application.yml</exclude>
+                            <exclude>application.properties.example</exclude>
+                            <exclude>application.yml.example</exclude>
+                        </excludes>
+                    </resource>
+                </resources>
+            </build>
+        </profile>
+    </profiles>
+
 </project>

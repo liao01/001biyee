@@ -8,6 +8,7 @@ import router from "./router";
 import axios from "axios";
 import store from "./store/index.js";
 import { createPinia } from 'pinia'
+import { configureGlobalAxios } from './utils/baseUrl.js'
 
 const app = createApp(App);
 const pinia = createPinia()
@@ -41,6 +42,4 @@ axios.interceptors.response.use(function (response) {
     return Promise.reject(error);
 });
 
-console.log(import.meta.env.VITE_SERVER);
-
-axios.defaults.baseURL = import.meta.env.VITE_SERVER
+configureGlobalAxios(axios)

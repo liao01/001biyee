@@ -5,6 +5,7 @@ import cn.hutool.core.util.IdUtil;
 import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
 import com.jiawa.lyw.context.LoginMemberContext;
+import com.jiawa.lyw.config.StorageProperties;
 import com.jiawa.lyw.domain.*;
 import com.jiawa.lyw.enums.PostStatusEnum;
 import com.jiawa.lyw.exception.BusinessException;
@@ -21,6 +22,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
 import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.LocalDate;
 import java.util.Date;
 import java.util.List;
@@ -47,6 +50,9 @@ public class PostService {
 
     @Autowired
     private PostCategoryService postCategoryService;
+
+    @Autowired
+    private StorageProperties storageProperties;
 
     @Resource
     private StringRedisTemplate stringRedisTemplate;
@@ -80,8 +86,8 @@ public class PostService {
         }
 
         log.info("保存帖子图片开始:{}", postID);
-        String uploadDir = "D:/idea/lyw/uploads/"; // 本地存储路径
-//        String uploadDir = "/home/lyw/uploads/";
+        Path uploadDir = storageProperties.postsDir();
+        Files.createDirectories(uploadDir);
 
         for (PostReq.PostImage img : images) {
             String imageUrl = img.getImageUrl();
@@ -103,7 +109,7 @@ public class PostService {
                     else if (parts[0].contains("gif")) suffix = ".gif";
 
                     newFileName += suffix;
-                    FileUtil.writeBytes(data, uploadDir + newFileName);
+                    FileUtil.writeBytes(data, uploadDir.resolve(newFileName).toFile());
                 } else {
                     // URL 下载
                     String suffix = "";
@@ -111,7 +117,7 @@ public class PostService {
                         suffix = imageUrl.substring(imageUrl.lastIndexOf("."));
                     }
                     newFileName += suffix;
-                    FileUtil.writeFromStream(new URL(imageUrl).openStream(), uploadDir + newFileName);
+                    FileUtil.writeFromStream(new URL(imageUrl).openStream(), uploadDir.resolve(newFileName).toFile());
                 }
 
             } catch (IOException e) {

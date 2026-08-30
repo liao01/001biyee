@@ -13,7 +13,6 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
-import org.springframework.web.servlet.ModelAndView;
 import java.util.concurrent.TimeUnit;
 import java.time.LocalDate;
 
@@ -37,7 +36,7 @@ public class WebLoginInterceptor implements HandlerInterceptor {
 
         //获取header的token参数
         String token = request.getHeader("token");
-        log.info("网站登录验证开始，token：{}", token);
+        log.info("网站登录验证开始");
         if (token == null || token.isEmpty()) {
             log.info( "token为空，请求被拦截" );
             response.setStatus(HttpStatus.UNAUTHORIZED.value());
@@ -47,7 +46,7 @@ public class WebLoginInterceptor implements HandlerInterceptor {
             response.setStatus(HttpStatus.UNAUTHORIZED.value());
             return false;
         } else {
-            log.info("获取会员登录token：{}", token);
+            log.info("会员登录验证通过");
             JSONObject loginMember = JwtUtil.getJSONObject(token);
             log.info("当前登录会员：{}", loginMember);
             MemberLoginResp member = JSONUtil.toBean(loginMember, MemberLoginResp.class);
@@ -68,7 +67,7 @@ public class WebLoginInterceptor implements HandlerInterceptor {
     }
 
     @Override
-    public void postHandle(HttpServletRequest request, HttpServletResponse response, Object handler, ModelAndView modelAndView) throws Exception {
+    public void afterCompletion(HttpServletRequest request, HttpServletResponse response, Object handler, Exception exception) {
         LoginMemberContext.removeMember();
     }
 }
