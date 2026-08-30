@@ -30,6 +30,22 @@ class ScanTextTests(unittest.TestCase):
 
         self.assertEqual([], findings)
 
+    def test_known_historical_fixtures_are_scoped_to_their_documented_paths(self):
+        plan_path = Path(
+            "docs/superpowers/plans/2026-08-29-intelligent-travel-platform-phase-0-foundation.md"
+        )
+        fixture_findings = scan_text(plan_path, "password: 'Secret123'")
+        production_findings = scan_text(
+            Path("application.properties"),
+            "password=Secret123",
+        )
+
+        self.assertEqual([], fixture_findings)
+        self.assertIn(
+            "generic-secret-assignment",
+            {finding.rule_id for finding in production_findings},
+        )
+
     def test_allows_quoted_xml_environment_placeholder(self):
         findings = scan_text(
             Path("generator.xml"),
@@ -59,6 +75,25 @@ class ScanTextTests(unittest.TestCase):
         self.assertNotIn(
             "sql-data-row",
             {finding.rule_id for finding in findings},
+        )
+
+    def test_allows_post_category_reference_seed_but_not_business_rows(self):
+        category_findings = scan_text(
+            Path("sql/migrations/post_categories.sql"),
+            "INSERT INTO post_category (code, name) VALUES ('FOOD', '美食');",
+        )
+        member_findings = scan_text(
+            Path("sql/migrations/member_seed.sql"),
+            "INSERT INTO member (id, name) VALUES (1, 'traveler');",
+        )
+
+        self.assertNotIn(
+            "sql-data-row",
+            {finding.rule_id for finding in category_findings},
+        )
+        self.assertIn(
+            "sql-data-row",
+            {finding.rule_id for finding in member_findings},
         )
 
     def test_allows_empty_password_form_field(self):

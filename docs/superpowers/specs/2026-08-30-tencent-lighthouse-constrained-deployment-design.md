@@ -45,13 +45,14 @@
 │   ├── mysql/
 │   ├── mongo/
 │   ├── redis/
-│   └── uploads/
+│   ├── uploads/
+│   └── prometheus/
 ├── secrets/runtime.env
 ├── backups/
 └── nginx/
 ```
 
-Compose 项目包含五个容器：
+Compose 项目包含六个长期运行容器和一个一次性上传目录初始化容器：
 
 | 容器 | 职责 | 网络 |
 | --- | --- | --- |
@@ -60,6 +61,7 @@ Compose 项目包含五个容器：
 | `lyw-redis` | 验证码、登录状态和统计缓存 | `lyw_internal` |
 | `lyw-backend` | Spring Boot 业务 API 与上传文件读取 | `lyw_internal`、Dify 外部网络 |
 | `lyw-frontend` | 同时托管用户端与管理端静态产物 | Dify 外部网络 |
+| `lyw-prometheus` | 抓取后端有限 Actuator 指标 | `lyw_internal` |
 
 `lyw_internal` 是旅游平台私有网络。数据库容器不加入 Dify 网络，不发布宿主机端口。`lyw-backend` 和 `lyw-frontend` 加入 Dify Compose 已有的外部网络 `dify_default`，使 `dify-nginx-1` 能通过容器 DNS 名称访问它们。部署前必须再次以 `docker network ls` 验证该网络存在，不在网络缺失时创建同名替代网络。
 
@@ -109,7 +111,7 @@ Dify 继续占用根地址及其现有 API 路径。新增入口为：
 
 ### MongoDB、Redis 与上传文件
 
-MongoDB、Redis 和上传目录使用 `/opt/lyw/data` 下的独立持久化目录。停止或重建应用容器不得删除这些目录。常规回滚使用 `docker compose down`，不使用 `down -v`，也不删除数据目录。
+MongoDB、Redis、上传目录和 Prometheus 时序数据使用 `/opt/lyw/data` 下的独立持久化目录。停止或重建应用容器不得删除这些目录。常规回滚使用 `docker compose down`，不使用 `down -v`，也不删除数据目录。
 
 Redis 只服务旅游平台，不复用或读取 Dify Redis 的密码和数据。MongoDB 只保存旅游平台聊天记忆，不与 Dify 向量库或 PostgreSQL 混用。
 
@@ -134,10 +136,11 @@ Redis 只服务旅游平台，不复用或读取 Dify Redis 的密码和数据�
 - MongoDB：容器上限 384MB，WiredTiger 缓存 0.25GB。
 - Redis：容器上限 96MB，`maxmemory` 64MB，淘汰策略 `allkeys-lru`。
 - 前端 Nginx：单容器托管两个静态站点，容器上限 64MB。
+- Prometheus：容器上限 128MB，15 天本地保留，只抓取后端内部 `/lyw/actuator/prometheus`。
 
 这些值是可验证的首发参数，不是保证占用量。任何调整必须一次只改变一个资源参数，并以容器重启、OOM、响应时间、Dify 状态和 Swap 变化验证；不得同时放宽多个容器上限。
 
-所有容器使用 `restart: unless-stopped`，并配置实际健康检查。后端只在 MySQL、MongoDB 和 Redis 健康后启动。资源上限不得通过停止 Dify、复用 Dify 数据组件或取消健康检查来规避。
+所有长期运行容器使用 `restart: unless-stopped`，并配置实际健康检查。后端只在 MySQL、MongoDB 和 Redis 健康后启动，Prometheus 只在后端健康后启动。资源上限不得通过停止 Dify、复用 Dify 数据组件或取消健康检查来规避。
 
 服务器预期会使用 Swap。部署后持续检查容器 OOM 标记、重启次数、CPU、内存、Swap、磁盘和 Dify HTTP 状态。若出现 OOM、持续重启、明显响应恶化或 Dify 健康回退，立即移除旅游平台公网入口并停止旅游平台容器，保留数据与发布产物等待后续处理。
 
@@ -192,6 +195,7 @@ Dify Nginx 的正式模板位于 `/opt/dify/nginx/conf.d/default.conf.template`�
 - `docker compose ps` 显示全部旅游平台容器健康，重启计数为 0，OOM 标记为 false。
 - MySQL、MongoDB 和 Redis 不监听公网地址。
 - `GET /business/lyw/web/post/categories` 返回正式分类。
+- 后端内部健康端点返回 `UP`，Prometheus 能抓取指标；公网 `/business/lyw/actuator/` 被 Nginx 拒绝。
 - `/travel/`、用户端深链接、`/travel-admin/` 和管理端深链接返回正确站点。
 - `/business/lyw/uploads/...` 能读取持久化目录中的资源。
 - Dify 根页面和现有 API 路径在 Nginx reload 前后保持可用。
@@ -220,5 +224,6 @@ Dify Nginx 的正式模板位于 `/opt/dify/nginx/conf.d/default.conf.template`�
 - 真实秘密不出现在 Git、Jar、镜像、Compose、Nginx 配置或日志中。
 - 本地自动化测试和生产构建全部通过。
 - 旅游平台容器健康、无 OOM、无持续重启；Dify 容器状态不回退。
+- Prometheus 仅位于私有网络，健康与指标端点不泄露配置或凭据。
 - Nginx 修改有备份、标记、语法验证和明确回滚路径。
 - 若 2GB 资源无法支撑共存，旅游平台被安全停止且 Dify 保持可用，不能把不稳定状态报告为部署完成。

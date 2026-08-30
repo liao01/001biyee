@@ -132,3 +132,52 @@ jobs:
 
       - name: Audit dependencies
         run: npm audit --audit-level=low --registry=https://registry.npmjs.org
+
+  migration-tests:
+    name: MySQL migration tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      mysql:
+        image: mysql:8.4.6
+        env:
+          MYSQL_DATABASE: lyw
+          MYSQL_USER: migration
+          MYSQL_PASSWORD: change-me
+          MYSQL_ROOT_PASSWORD: change-me
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -pchange-me --silent"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=12
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install MySQL client
+        run: sudo apt-get update && sudo apt-get install -y default-mysql-client
+
+      - name: Run migration and Python regression tests
+        env:
+          LYW_MIGRATION_TEST_DSN: mysql://migration:change-me@127.0.0.1:3306/lyw
+        run: python3 -m unittest discover -s tests -t . -v
+
+  compose-contract:
+    name: Compose contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Validate single-server topology
+        env:
+          LYW_RUNTIME_ENV_FILE: ${{ runner.temp }}/lyw-runtime.env
+        run: |
+          touch "$LYW_RUNTIME_ENV_FILE"
+          docker compose -f deploy/compose.yaml config --quiet
+          python3 -m unittest tests.scripts.test_deployment_compose_contract -v

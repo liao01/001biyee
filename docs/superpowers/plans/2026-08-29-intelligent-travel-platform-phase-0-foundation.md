@@ -529,9 +529,9 @@ git commit -m "feat: expose email identity api"
 ```javascript
 it('sends raw password only to the email identity endpoint', async () => {
   mock.onPost('/web/identity/login').reply(200, { success: true, content: tokens })
-  await identityHttp.login({ email: 'alice@example.com', password: 'Secret123' })
+  await identityHttp.login({ email: 'alice@example.com', password: 'change-me' })
   expect(JSON.parse(mock.history.post[0].data)).toEqual({
-    email: 'alice@example.com', password: 'Secret123'
+    email: 'alice@example.com', password: 'change-me'
   })
 })
 ```

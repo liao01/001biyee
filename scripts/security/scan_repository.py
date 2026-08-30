@@ -93,6 +93,21 @@ PINNED_GITHUB_ACTION_PATTERN = re.compile(
     re.I,
 )
 
+KNOWN_NON_SECRET_FIXTURES = {
+    (
+        "business/src/test/java/com/jiawa/lyw/security/SensitiveLoggingTests.java",
+        "sensitive-member-session-token",
+    ),
+    (
+        "docs/superpowers/plans/2026-08-29-intelligent-travel-platform-phase-0-foundation.md",
+        "Secret123",
+    ),
+}
+
+NON_SENSITIVE_REFERENCE_SEED_PATTERN = re.compile(
+    r"(?i)^\s*INSERT\s+INTO\s+`?post_category`?\b"
+)
+
 EXCLUDED_PARTS = {
     ".git",
     ".idea",
@@ -122,6 +137,11 @@ def _is_safe_value(value: str) -> bool:
     if not normalized:
         return True
     return any(pattern.fullmatch(normalized) for pattern in SAFE_VALUE_PATTERNS)
+
+
+def _is_known_non_secret_fixture(path: Path | PurePosixPath, value: str) -> bool:
+    normalized = value.strip("\"'")
+    return (path.as_posix(), normalized) in KNOWN_NON_SECRET_FIXTURES
 
 
 def _inside_quoted_literal(line: str, position: int) -> bool:
@@ -181,6 +201,7 @@ def scan_text(
             if (
                 (is_configuration or is_literal)
                 and not _is_safe_value(value)
+                and not _is_known_non_secret_fixture(path, value)
             ):
                 findings.append(
                     Finding(
@@ -206,6 +227,11 @@ def scan_text(
                 ):
                     continue
             if rule.rule_id == "sql-data-row" and path.suffix.lower() != ".sql":
+                continue
+            if (
+                rule.rule_id == "sql-data-row"
+                and NON_SENSITIVE_REFERENCE_SEED_PATTERN.search(line)
+            ):
                 continue
             if (
                 rule.rule_id == "password-hash"

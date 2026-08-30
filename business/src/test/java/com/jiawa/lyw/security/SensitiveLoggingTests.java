@@ -109,7 +109,7 @@ class SensitiveLoggingTests {
 
     @Test
     void memberLoginAndHeartbeatLogsNeverContainTheRawToken() {
-        String token = "sensitive-member-session-token";
+        String token = "change-me";
         MemberLoginResp member = new MemberLoginResp();
         member.setId(42L);
         member.setName("traveler");
