@@ -4,11 +4,29 @@ import re
 import secrets
 import subprocess
 import tempfile
+from dataclasses import dataclass
 from pathlib import Path
+from urllib.parse import unquote, urlparse
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 LOCAL_PROPERTIES = PROJECT_ROOT / "business" / "src" / "main" / "resources" / "application.properties"
+
+
+@dataclass(frozen=True)
+class MigrationSpec:
+    name: str
+    apply_variable: str
+    schema_prefix: str
+
+    def __post_init__(self):
+        mysql_identifier = re.compile(r"[a-z][a-z0-9_]*")
+        if not mysql_identifier.fullmatch(self.name):
+            raise ValueError("Migration name must be a lowercase identifier")
+        if not mysql_identifier.fullmatch(self.apply_variable):
+            raise ValueError("Migration apply variable must be a lowercase identifier")
+        if not re.fullmatch(r"lyw_[a-z0-9_]+_migration_test", self.schema_prefix):
+            raise ValueError("Migration schema prefix must be an isolated lyw_*_migration_test name")
 
 
 def _resolve_property(value: str) -> str:
@@ -19,9 +37,35 @@ def _resolve_property(value: str) -> str:
     return os.environ.get(env_name, fallback)
 
 
-def load_local_mysql_config() -> dict[str, str | int]:
+def load_local_mysql_config(properties_path: Path = LOCAL_PROPERTIES) -> dict[str, str | int]:
+    dsn = os.environ.get("LYW_MIGRATION_TEST_DSN")
+    if dsn:
+        parsed = urlparse(dsn)
+        database = parsed.path.lstrip("/")
+        if (
+            parsed.scheme != "mysql"
+            or parsed.hostname not in {"localhost", "127.0.0.1"}
+            or not parsed.username
+            or parsed.password is None
+            or not database
+        ):
+            raise RuntimeError(
+                "LYW_MIGRATION_TEST_DSN must be mysql://user:password@localhost:port/database"
+            )
+        return {
+            "host": parsed.hostname,
+            "port": parsed.port or 3306,
+            "user": unquote(parsed.username),
+            "password": unquote(parsed.password),
+            "database": database,
+        }
+    if not properties_path.is_file():
+        raise RuntimeError(
+            "MySQL migration tests require LYW_MIGRATION_TEST_DSN or a local "
+            f"configuration file at {properties_path}"
+        )
     properties: dict[str, str] = {}
-    for raw_line in LOCAL_PROPERTIES.read_text(encoding="utf-8").splitlines():
+    for raw_line in properties_path.read_text(encoding="utf-8").splitlines():
         line = raw_line.strip()
         if not line or line.startswith("#") or "=" not in line:
             continue
@@ -99,9 +143,10 @@ class MySqlMigrationHarness:
 
 
 @contextlib.contextmanager
-def temporary_schema():
-    schema = f"lyw_post_category_migration_test_{secrets.token_hex(5)}"
-    if not re.fullmatch(r"lyw_post_category_migration_test_[0-9a-f]{10}", schema):
+def temporary_schema(migration: MigrationSpec):
+    schema = f"{migration.schema_prefix}_{secrets.token_hex(5)}"
+    expected_schema = rf"{re.escape(migration.schema_prefix)}_[0-9a-f]{{10}}"
+    if len(schema) > 64 or not re.fullmatch(expected_schema, schema):
         raise RuntimeError("Unsafe temporary schema name")
     with MySqlMigrationHarness(load_local_mysql_config()) as harness:
         harness.execute(f"CREATE DATABASE `{schema}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;")
@@ -111,11 +156,17 @@ def temporary_schema():
             harness.execute(f"DROP DATABASE IF EXISTS `{schema}`;")
 
 
-def run_sql_script(harness: MySqlMigrationHarness, schema: str, path: Path, apply: bool) -> str:
+def run_sql_script(
+    harness: MySqlMigrationHarness,
+    schema: str,
+    path: Path,
+    migration: MigrationSpec,
+    apply: bool,
+) -> str:
     sql = path.read_text(encoding="utf-8")
     apply_value = 1 if apply else 0
     return harness.execute(
-        f"SET @apply_post_category_migration = {apply_value};\n{sql}",
+        f"SET @{migration.apply_variable} = {apply_value};\n{sql}",
         database=schema,
         include_headers=True,
     )
