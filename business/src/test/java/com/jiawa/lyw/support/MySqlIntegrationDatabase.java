@@ -2,6 +2,11 @@ package com.jiawa.lyw.support;
 
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.jdbc.datasource.init.ScriptUtils;
+import org.testcontainers.containers.MySQLContainer;
+import org.testcontainers.utility.MountableFile;
+import com.github.dockerjava.api.model.ExposedPort;
+import com.github.dockerjava.api.model.PortBinding;
+import com.github.dockerjava.api.model.Ports;
 
 import java.net.URI;
 import java.nio.file.Path;
@@ -9,39 +14,69 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.UUID;
+import java.util.Map;
 
-/** 测试专用隔离库；凭据只从环境读取，异常不携带连接信息。 */
+/** 测试专用隔离库；未指定外部测试 DSN 时，由 Testcontainers 管理本批 MySQL。 */
 public final class MySqlIntegrationDatabase implements AutoCloseable {
     private final String serverUrl;
     private final String username;
     private final String password;
     private final String schema;
+    private final MySQLContainer<?> container;
 
     public MySqlIntegrationDatabase() {
+        String batch = UUID.randomUUID().toString().replace("-", "");
+        schema = "lyw_identity_http_test_" + batch;
         String dsn = System.getenv("LYW_MIGRATION_TEST_DSN");
         if (dsn == null || dsn.isBlank()) {
-            throw new IllegalStateException("MySQL integration tests require LYW_MIGRATION_TEST_DSN");
+            container = new MySQLContainer<>("mysql:8.4.6")
+                    .withDatabaseName("lyw_test_bootstrap")
+                    .withUsername("root").withPassword("change-me")
+                    .withReuse(false)
+                    .withLabel("lyw.purpose", "identity-integration-test")
+                    .withLabel("lyw.test-batch", batch)
+                    .withTmpFs(Map.of("/var/lib/mysql", "rw,size=512m"))
+                    .withCopyFileToContainer(MountableFile.forHostPath(
+                            Path.of("..", "deploy", "mysql", "low-memory.cnf")),
+                            "/etc/mysql/conf.d/low-memory.cnf")
+                    .withCreateContainerCmdModifier(command -> {
+                        command.withName("lyw-identity-test-" + batch);
+                        command.getHostConfig().withMemory(768L * 1024 * 1024)
+                                .withNanoCPUs(1_500_000_000L)
+                                .withPortBindings(new PortBinding(Ports.Binding.bindIp("127.0.0.1"), ExposedPort.tcp(3306)));
+                    });
+            try {
+                container.start();
+                serverUrl = "jdbc:mysql://" + container.getHost() + ":" + container.getMappedPort(3306) + "/";
+                username = container.getUsername();
+                password = container.getPassword();
+            } catch (RuntimeException failure) {
+                container.close();
+                throw new IllegalStateException("Cannot start isolated Testcontainers MySQL; check the local Docker engine", failure);
+            }
+        } else {
+            container = null;
+            URI uri;
+            try {
+                uri = URI.create(dsn);
+            } catch (IllegalArgumentException ignored) {
+                throw new IllegalStateException("Invalid MySQL integration DSN");
+            }
+            if (!"mysql".equals(uri.getScheme())
+                    || !("127.0.0.1".equals(uri.getHost()) || "localhost".equals(uri.getHost()))
+                    || uri.getUserInfo() == null || !uri.getUserInfo().contains(":")) {
+                throw new IllegalStateException("MySQL integration tests only allow authenticated loopback connections");
+            }
+            String[] credentials = uri.getUserInfo().split(":", 2);
+            username = credentials[0];
+            password = credentials[1];
+            int port = uri.getPort() < 0 ? 3306 : uri.getPort();
+            serverUrl = "jdbc:mysql://" + uri.getHost() + ":" + port + "/";
         }
-        URI uri;
-        try {
-            uri = URI.create(dsn);
-        } catch (IllegalArgumentException ignored) {
-            throw new IllegalStateException("Invalid MySQL integration DSN");
-        }
-        if (!"mysql".equals(uri.getScheme())
-                || !("127.0.0.1".equals(uri.getHost()) || "localhost".equals(uri.getHost()))
-                || uri.getUserInfo() == null || !uri.getUserInfo().contains(":")) {
-            throw new IllegalStateException("MySQL integration tests only allow authenticated loopback connections");
-        }
-        String[] credentials = uri.getUserInfo().split(":", 2);
-        username = credentials[0];
-        password = credentials[1];
-        int port = uri.getPort() < 0 ? 3306 : uri.getPort();
-        serverUrl = "jdbc:mysql://" + uri.getHost() + ":" + port + "/";
-        schema = "lyw_identity_http_test_" + UUID.randomUUID().toString().replace("-", "");
         try (Connection connection = open("mysql")) {
             connection.createStatement().execute("CREATE DATABASE `" + schema + "` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
         } catch (SQLException ignored) {
+            if (container != null) container.close();
             throw new IllegalStateException("Cannot create isolated MySQL integration database");
         }
         try (Connection connection = open(schema)) {
@@ -90,6 +125,8 @@ public final class MySqlIntegrationDatabase implements AutoCloseable {
             }
         } catch (SQLException ignored) {
             throw new IllegalStateException("Isolated test database cleanup failed: " + schema);
+        } finally {
+            if (container != null) container.close();
         }
     }
 }

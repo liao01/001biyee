@@ -184,9 +184,7 @@ jobs:
         run: npm ci --registry=https://registry.npmjs.org
 
       - name: Run isolated identity HTTP integration tests
-        env:
-          LYW_MIGRATION_TEST_DSN: mysql://root:change-me@127.0.0.1:3306/lyw
-        run: python3 -m scripts.run_backend_integration
+        run: python3 -m scripts.run_backend_integration --containers
 
   compose-contract:
     name: Compose contract

@@ -58,19 +58,21 @@
 
 ## 本地与 CI 验证
 
-从仓库根运行：
+已启动本机 Docker 时，从仓库根运行：
 
 ```powershell
-python -m scripts.run_backend_integration
+python -m scripts.run_backend_integration --containers
 ```
 
-运行器优先使用 `LYW_MIGRATION_TEST_DSN`，否则读取既有 Git 忽略的本地 MySQL 配置，拒绝非回环目标。凭据只通过子进程环境传递，不放在命令参数或输出中。
+容器模式忽略 `LYW_MIGRATION_TEST_DSN` 和本机数据库配置，为每个测试类启动独立 MySQL；不迁移业务数据库，不连接 Dify。数据使用 tmpfs，端口仅绑定回环地址，不复用已有容器或持久卷。生命周期与正式 schema 初始化以 [MySqlIntegrationDatabase.java](../../business/src/test/java/com/jiawa/lyw/support/MySqlIntegrationDatabase.java) 为准。需要可用 Docker 引擎，以及首次获取测试镜像和辅助镜像的网络或预置缓存；不会静默跳过集成测试。
+
+无 Docker 时，仍可显式选择原有预置 MySQL 模式：运行 `python -m scripts.run_backend_integration`。该模式优先使用 `LYW_MIGRATION_TEST_DSN`，否则读取既有 Git 忽略的本地 MySQL 配置，拒绝非回环目标。凭据只通过子进程环境传递，不放在命令参数或输出中。两种模式运行相同的 HTTP 契约，不能把预置模式结果当作容器环境证据。
 
 运行器现包含 `IdentitySocketIT`，因此还要求 Node.js 和已安装的 `web` 锁定依赖（在 `web` 目录执行 `npm ci`）。测试直接运行本地 Vitest 入口，不通过临时下载执行器寻找或安装软件。独立的 `vitest.identity-runtime.config.js` 只由隔离运行器调用，普通 `npm test` 不会静默跳过一项伪装成通过的真实环境用例。
 
 每次测试创建带随机批次标识的 `lyw_identity_http_test_` 隔离库，使用正式空库结构；不修改原业务库。测试通过真实 MVC、拦截器、MyBatis 和 MySQL 事务执行，邮件和时间采用明确的外部边界替身，不发送真实邮件。测试结束精确删除本次数据库并回查不存在。
 
-普通 Maven `test` 不要求 MySQL，也不自动运行 `*IT`。CI 的 MySQL 作业另行执行上述运行器，不能用普通单元测试成功代替集成测试证据。远端 CI 及同镜像容器复验状态见迁移记录。
+普通 Maven `test` 不要求 MySQL 或 Docker，也不自动运行 `*IT`。CI 的 MySQL 作业仍为 Python 迁移测试提供独立服务；Java HTTP 集成步骤改用上述容器模式，不能用普通单元测试成功代替集成测试证据。远端 CI 及同镜像容器复验状态见迁移记录。
 
 ### 2026-08-31 本地验证记录
 
@@ -111,3 +113,16 @@ python -m scripts.run_backend_integration
 ### 2026-08-31 CI 同镜像本地复验
 
 Docker 恢复后，已改用独立 MySQL 容器运行完整迁移与身份集成套件。测试全部通过且隔离资源已清理；镜像摘要、批次、测试数量和清理证据见[迁移复验记录](identity-migration.md#2026-08-31-docker-恢复后的隔离复验)。这补充了本地运行环境证据，未改变上述远端及真实浏览器验收边界。
+
+### 2026-08-31 Testcontainers 接入验证
+
+按 #12 的测试要求，将未提供测试 DSN 的 Java 集成测试切换到 Testcontainers 管理的 MySQL。最初不设置 DSN 运行 `IdentitySocketIT`，复现为缺少预置 MySQL 配置而失败；修改后同一真实 HTTP/Vue 旅程通过。命令行帮助与 CI 容器入口也分别经过失败、修复、通过验证。
+
+本轮仅在本机 Docker 创建合成数据：业务测试容器带 `lyw.purpose=identity-integration-test`、独立 `lyw.test-batch` 标签和 `lyw-identity-test-` 名称前缀；运行时检查确认回环端口、tmpfs、内存与 CPU 限制，没有宿主机数据挂载。每个测试结束删除精确隔离数据库并回查，再停止自有容器；Testcontainers 的会话标签用于其辅助清理器，不复用已有项目容器、网络或数据卷。
+
+- 显式 BOM 将 Testcontainers 测试依赖统一至 1.21.4，避免间接 BOM 拉回早期 Docker 客户端；版本选择依据[官方兼容性发布说明](https://github.com/testcontainers/testcontainers-java/releases/tag/1.21.4)。依赖树核对相关模块均为同一版本、全部为 test scope。
+- 最终版本下，以无效的预置 DSN 运行 `--containers`，28 项 Java 集成测试和其中执行的 1 项 Vue/真实 HTTP 全流程均通过，证明没有回退连接预置数据库。未改动身份业务代码或断言以迎合容器环境。
+- 同轮 Python 回归 50 项、用户端 70 项测试通过。全 Maven reactor 的 deployment clean package 通过，业务模块 64 项、生成器模块 1 项普通测试通过；生产 Jar 检查确认不存在本机 Spring 配置或 Testcontainers/docker-java 测试依赖。
+- 结束后按业务标签及最新 Testcontainers 会话 `73ad475d-b4e6-4849-8347-dfdf928b0aaf` 回查，业务/辅助容器与 Tomcat 临时目录均为 0。本轮无新增持久化测试卷；首次下载的 Ryuk 辅助镜像作为框架依赖缓存保留，不含本轮业务数据。
+- 上一轮部署栈的 6 个测试卷、2 个测试镜像和临时目录仍受原清理拦截影响，继续以[隔离栈记录](../runbooks/2026-08-31-isolated-stack-verification.md)为准；本轮没有通过 Testcontainers 绕过那项限制。
+- 本次只补齐 MySQL 的 Testcontainers 路径；Redis 当前仍验证不可用降级，尚未补齐 Testcontainers Redis、提交后事件或幂等消费者验收。真实浏览器 HTTPS、邮件投递、完整目标拓扑和远端 CI 仍未通过，不据此宣布第 0 阶段完成。

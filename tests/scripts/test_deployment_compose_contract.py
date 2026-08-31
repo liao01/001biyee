@@ -83,7 +83,7 @@ class DeploymentComposeContractTests(unittest.TestCase):
         workflow = CI_WORKFLOW.read_text(encoding="utf-8")
         self.assertIn("migration-tests:", workflow)
         self.assertIn("LYW_MIGRATION_TEST_DSN", workflow)
-        self.assertIn("python3 -m scripts.run_backend_integration", workflow)
+        self.assertIn("python3 -m scripts.run_backend_integration --containers", workflow)
         # The isolated service account must create/drop the per-test databases.
         self.assertIn("mysql://root:change-me@127.0.0.1:3306/lyw", workflow)
         self.assertIn('MYSQL_ROOT_HOST: "%"', workflow)

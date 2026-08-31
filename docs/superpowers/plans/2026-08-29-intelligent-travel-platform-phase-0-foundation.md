@@ -600,6 +600,8 @@ git commit -m "chore: add observable single-server deployment"
 
 **追加验证（2026-08-31）：** 独立 MySQL 容器已完成 CI 同镜像的迁移与真实身份联调，资源已精确清理，证据见[迁移复验记录](../../data/identity-migration.md#2026-08-31-docker-恢复后的隔离复验)。该记录不代替远端 CI 或完整部署栈验收。
 
+**后续本地证据（2026-08-31）：** 当前 Compose 拓扑的容器内健康、指标及只读入口已复验，宿主机入口与部分测试存储清理尚未完成，详见[隔离栈记录](../../runbooks/2026-08-31-isolated-stack-verification.md)。Java 身份测试新增 Testcontainers MySQL 模式并接入 CI 定义；同一 HTTP/Vue 契约已在自动管理的数据库中通过，运行命令、清理证据及未覆盖范围见[身份测试说明](../../data/identity-http.md#本地与-ci-验证)。这些局部证据不改变本阶段完成门槛。
+
 **仍未通过的门禁：** 远端 CI、完整部署栈复验、加密异地备份及恢复演练、真实浏览器与生产 HTTPS/邮件验收。不会以本地单元测试、文档存在或脚本语法检查代替运行证据；本 Task 和第 0 阶段仍未全部完成。
 
 **Files:**

@@ -81,7 +81,7 @@ npm run dev
 
 从仓库根运行 `python -m unittest discover -s tests -t . -v`。真实 MySQL 迁移测试会创建并精确清理带批次标识的隔离库；不要向运行器提供生产凭据。
 
-在 `business` 目录运行 `./mvnw test`；在 `web` 目录运行 `npm test` 和 `npm run build`。真实邮箱 HTTP/Vue 联调从仓库根运行 `python -m scripts.run_backend_integration`，前置条件和清理策略见[身份测试说明](docs/data/identity-http.md#本地与-ci-验证)。
+在 `business` 目录运行 `./mvnw test`；在 `web` 目录运行 `npm test` 和 `npm run build`。Docker 可用时，真实邮箱 HTTP/Vue 联调从仓库根运行 `python -m scripts.run_backend_integration --containers`，自动管理隔离测试库。预置 MySQL 模式、前置条件和清理策略见[身份测试说明](docs/data/identity-http.md#本地与-ci-验证)。
 
 - [资源受限部署设计](docs/superpowers/specs/2026-08-30-tencent-lighthouse-constrained-deployment-design.md)：实际拓扑、构建、Nginx 入口和回滚边界。
 - [备份与恢复](docs/runbooks/backup-and-restore.md)：加密冷备、隔离恢复、数据校验与演练记录。
