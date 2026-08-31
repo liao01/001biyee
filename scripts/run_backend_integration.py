@@ -13,13 +13,15 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Run isolated identity HTTP integration tests")
     parser.add_argument(
         "--containers", action="store_true",
-        help="Use Testcontainers MySQL; ignore the test DSN and local database configuration",
+        help="Use the complete Testcontainers suite; ignore the test DSN and local database configuration",
     )
     args = parser.parse_args()
     env = os.environ.copy()
     if args.containers:
         env.pop("LYW_MIGRATION_TEST_DSN", None)
+        env["LYW_INTEGRATION_CONTAINERS"] = "true"
     else:
+        env.pop("LYW_INTEGRATION_CONTAINERS", None)
         try:
             config = load_local_mysql_config()
         except (OSError, KeyError, ValueError, RuntimeError):

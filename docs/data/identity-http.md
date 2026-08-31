@@ -64,9 +64,9 @@
 python -m scripts.run_backend_integration --containers
 ```
 
-容器模式忽略 `LYW_MIGRATION_TEST_DSN` 和本机数据库配置，为每个测试类启动独立 MySQL；不迁移业务数据库，不连接 Dify。数据使用 tmpfs，端口仅绑定回环地址，不复用已有容器或持久卷。生命周期与正式 schema 初始化以 [MySqlIntegrationDatabase.java](../../business/src/test/java/com/jiawa/lyw/support/MySqlIntegrationDatabase.java) 为准。需要可用 Docker 引擎，以及首次获取测试镜像和辅助镜像的网络或预置缓存；不会静默跳过集成测试。
+容器模式忽略 `LYW_MIGRATION_TEST_DSN` 和本机数据库配置，为每个测试类启动独立 MySQL，并启用 [IdentityRedisIT.java](../../business/src/test/java/com/jiawa/lyw/identity/api/IdentityRedisIT.java) 的完整应用测试，额外启动本批 Redis、MongoDB；不迁移业务数据库，不连接 Dify。数据使用 tmpfs，端口仅绑定回环地址，不复用已有容器或持久卷。数据库生命周期与正式 schema 初始化以 [MySqlIntegrationDatabase.java](../../business/src/test/java/com/jiawa/lyw/support/MySqlIntegrationDatabase.java) 为准。需要可用 Docker 引擎，以及首次获取测试镜像和辅助镜像的网络或预置缓存；容器模式不会静默跳过集成测试。
 
-无 Docker 时，仍可显式选择原有预置 MySQL 模式：运行 `python -m scripts.run_backend_integration`。该模式优先使用 `LYW_MIGRATION_TEST_DSN`，否则读取既有 Git 忽略的本地 MySQL 配置，拒绝非回环目标。凭据只通过子进程环境传递，不放在命令参数或输出中。两种模式运行相同的 HTTP 契约，不能把预置模式结果当作容器环境证据。
+无 Docker 时，仍可显式选择原有预置 MySQL 模式：运行 `python -m scripts.run_backend_integration`。该模式优先使用 `LYW_MIGRATION_TEST_DSN`，否则读取既有 Git 忽略的本地 MySQL 配置，拒绝非回环目标。凭据只通过子进程环境传递，不放在命令参数或输出中。两种模式共用原有 HTTP 与 Vue 联调契约，但预置模式会明确跳过仅容器模式运行的完整应用 Redis 测试，不能把它的结果当作完整容器套件证据。
 
 运行器现包含 `IdentitySocketIT`，因此还要求 Node.js 和已安装的 `web` 锁定依赖（在 `web` 目录执行 `npm ci`）。测试直接运行本地 Vitest 入口，不通过临时下载执行器寻找或安装软件。独立的 `vitest.identity-runtime.config.js` 只由隔离运行器调用，普通 `npm test` 不会静默跳过一项伪装成通过的真实环境用例。
 
@@ -126,3 +126,35 @@ Docker 恢复后，已改用独立 MySQL 容器运行完整迁移与身份集成
 - 结束后按业务标签及最新 Testcontainers 会话 `73ad475d-b4e6-4849-8347-dfdf928b0aaf` 回查，业务/辅助容器与 Tomcat 临时目录均为 0。本轮无新增持久化测试卷；首次下载的 Ryuk 辅助镜像作为框架依赖缓存保留，不含本轮业务数据。
 - 上一轮部署栈的 6 个测试卷、2 个测试镜像和临时目录仍受原清理拦截影响，继续以[隔离栈记录](../runbooks/2026-08-31-isolated-stack-verification.md)为准；本轮没有通过 Testcontainers 绕过那项限制。
 - 本次只补齐 MySQL 的 Testcontainers 路径；Redis 当前仍验证不可用降级，尚未补齐 Testcontainers Redis、提交后事件或幂等消费者验收。真实浏览器 HTTPS、邮件投递、完整目标拓扑和远端 CI 仍未通过，不据此宣布第 0 阶段完成。
+
+### 2026-08-31 完整应用与 Redis 验证
+
+新增 `IdentityRedisIT` 使用正式生产配置与完整 Spring Boot 应用，通过既有 HTTP 入口验证活跃统计去重，以及 Redis 已连接但暂时不响应时仍可读取身份。测试只替换邮件供应商；MySQL、Redis、MongoDB 都使用独立容器，外部 AI/地图/邮件使用合成配置且不调用，不读取本机业务配置。
+
+最初暂停 Redis 时，身份读取超过测试的 3 秒上限；正式 [application-prod.properties](../../business/src/main/resources/application-prod.properties) 新增明确的 Redis 读超时与连接超时后，同一场景返回正常身份，恢复 Redis 后日活计数仍不重复。本次只修改生产模式配置，不改 Git 忽略的本机运行配置，也不声称统计查询、所有外部依赖或完整性能门禁已通过。
+
+宿主机配置隔离先用不可用的 `SPRING_DATA_REDIS_URL` 复现为活跃统计读取失败，再让测试应用使用去掉系统环境变量和 JVM 属性来源的 Spring 环境。CI 的集成步骤固定提供不可用的宿主 Redis/MySQL 地址，测试必须只连接本批数据组件。测试同时限定并恢复 Tomcat 直接使用的 JVM 目录属性，避免后续 HTTP 测试重建已清理的目录；控制台专用测试日志配置不进入生产包。
+
+本轮中断恢复范围：`lyw.purpose=identity-redis-test` 标签下的 Redis/MongoDB、`lyw.purpose=identity-integration-test` 标签下本轮 MySQL，以及对应 Testcontainers 会话辅助容器。Redis/MongoDB 名称采用 `lyw-identity-redis-test-<批次>-<组件>`，MySQL 沿用上节标识；数据均为 tmpfs。临时目录采用 `lyw-identity-redis-test-` 前缀，位于系统临时目录，仅保存测试 Tomcat 和上传目录。故障注入只暂停本批 Redis，finally 会恢复，然后由测试生命周期关闭应用并清理本批容器和临时目录。
+
+最终完整套件在无效预置 DSN、不可用的宿主 Redis/MySQL 环境变量下通过：29 项 Java 集成测试、其中执行的 1 项真实 Vue/HTTP 用例均成功，无跳过。单独复验还提供了不可用的 MongoDB JVM 配置，实际应用仍使用测试容器地址。Python 51 项、前端 70 项回归及前端生产构建通过；既有大包体积警告仍未解决，不据此声称性能验收通过。
+
+最后一次 deployment profile 全 reactor clean package 通过，后端 64 项和生成器 1 项测试均成功。实际发布 Jar 未包含本机 Spring 配置、测试日志配置、完整应用测试类或 Testcontainers/Docker Java 测试依赖。Git 可达历史的秘密扫描命中数为 0；这项检查不替代正式代码审查或完整供应链安全验收。
+
+清理回查曾发现后续 Tomcat 重建前一测试的空目录；已从当前 Tomcat 实现确认其直接写入进程级目录属性，并在测试中显式限定、恢复。修复后重新运行整个集成套件，临时目录、两类业务测试容器、最新 Ryuk 辅助容器及本机隔离测试数据库残留均为 0。测试专用控制台日志不再生成本机业务日志文件；最初试运行产生的两个测试日志文件已经按精确路径删除。
+
+本次补齐实际 Redis 日活去重及故障降级验证，不包含提交后事件、幂等消费者、真实浏览器 HTTPS、邮件投递、完整目标拓扑或远端 CI 验收，第 0 阶段仍未全部完成。此前部署栈的待清理资源继续以[隔离栈记录](../runbooks/2026-08-31-isolated-stack-verification.md)为准，其中 6 个测试卷仍实际存在；未通过本轮操作绕过原清理拦截。
+
+如果后续执行中断，先按上述标签、会话及名称核对容器状态；暂停中的 Redis 只能按精确 ID 恢复，本轮及上一轮的资源不得混合清理。
+
+#### 19:41 复验中断待核对项
+
+本机 Docker 短暂恢复后再次因 WSL bootstrap 退出码 13 而不可用。本轮用于检查宿主机环境变量隔离的复验尚未进入业务断言，不能计为业务失败或通过。19:48 线程栈确认测试 JVM 卡在 Docker 命名管道重连；决定终止该轮测试，待引擎稳定后先核对资源再重跑。
+
+- 环境：本机 Docker 的独立 Testcontainers 测试，不涉及 Dify 或共享业务数据库。
+- 已创建 MySQL 容器 ID：`8dc9a45a91f1d767eab37f65eccd1c1395bb2377b3ed4bc04fec175c2b8fa270`；Ryuk ID：`5d7afc65310c9ce1c104f83b92843c1fd2e340ffa839ec8e845a92cc3bb8a477`。Redis、MongoDB 尚未到达启动步骤。
+- 临时目录：`C:\Users\31173\AppData\Local\Temp\lyw-identity-redis-test-952493869081608585`。
+- 未清理原因与风险：引擎不可用，无法确认测试生命周期的容器清理结果；可能残留合成数据容器及空临时目录，不能报告无残留或复用为正式数据。
+- 恢复后先检查上述 ID 与测试标签、名称及挂载类型，确认仅属本轮后清理；临时目录须按解析后的精确路径检查并删除，随后回查。不得与此前部署栈被拦截的清理批次混用。
+- 清理结果：干净启动恢复引擎后，核对 MySQL 容器名称、批次 `00d96e56ae314e7ba7b91e64de170ffe`、测试标签、退出状态、tmpfs 及无宿主机挂载后精确删除；Ryuk 已不存在。会话 `6ac6303e-cd71-42b8-923a-2a0f4a387f51` 的容器残留为 0。上述空临时目录及此前遗漏的空目录 `lyw-identity-redis-test-3754671008319410724` 均经检查后删除，回查不存在。本轮清理已完成，不影响此前部署栈的待清理记录。
+- 本机 Docker 恢复过程另记录于 `D:\DockerDesktopRecovery\20260831-restore-original-data\recovery-record.md`，该目录包含敏感数据盘副本，不得上传或提交仓库。
