@@ -107,3 +107,7 @@ python -m scripts.run_backend_integration
 - 后端集成套件共 28 项通过，并执行 1 项真实 Vue/HTTP 全流程用例；后端普通回归 64 项通过。跨域来源修复的证据与部署约束见 [Cookie 跨域记录](../security/2026-08-31-identity-cors.md)。
 - 同轮前端 70 项测试、生产构建和 Python 49 项回归通过；工作树及可达 Git 历史秘密扫描均为 0 项发现。
 - CI 已加入该运行器所需的锁定前端依赖安装，但没有执行远端 CI。本地 HTTP 的非 Secure Cookie 仅用于隔离测试，生产强制 Secure 的契约另有测试；本记录不将 jsdom 联调等同于 Chromium 的完整 SameSite/HTTPS 策略验证。真实邮件投递、生产部署及浏览器引擎最终验收仍未执行。
+
+### 2026-08-31 CI 同镜像本地复验
+
+Docker 恢复后，已改用独立 MySQL 容器运行完整迁移与身份集成套件。测试全部通过且隔离资源已清理；镜像摘要、批次、测试数量和清理证据见[迁移复验记录](identity-migration.md#2026-08-31-docker-恢复后的隔离复验)。这补充了本地运行环境证据，未改变上述远端及真实浏览器验收边界。

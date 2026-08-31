@@ -596,6 +596,12 @@ git commit -m "chore: add observable single-server deployment"
 
 ### Task 8: 建立持续集成与第 0 阶段验收门禁
 
+**执行记录（2026-08-31）：** CI 定义已落地；README 已切换为实际邮箱身份与当前配置入口。[备份恢复手册](../../runbooks/backup-and-restore.md)和[身份事件响应手册](../../runbooks/identity-incident-response.md)已补齐当前拓扑的操作步骤和验证记录，具体能力与未完成范围以这两份手册为准。当前物理备份覆盖上传目录，目标对象存储落地后仍须补齐其恢复方案；未将这一差异标记为完整交付。本文下方最初计划中的示意路径和流程须以当前部署配置及手册为执行依据，不能对现有环境盲目套用。
+
+**追加验证（2026-08-31）：** 独立 MySQL 容器已完成 CI 同镜像的迁移与真实身份联调，资源已精确清理，证据见[迁移复验记录](../../data/identity-migration.md#2026-08-31-docker-恢复后的隔离复验)。该记录不代替远端 CI 或完整部署栈验收。
+
+**仍未通过的门禁：** 远端 CI、完整部署栈复验、加密异地备份及恢复演练、真实浏览器与生产 HTTPS/邮件验收。不会以本地单元测试、文档存在或脚本语法检查代替运行证据；本 Task 和第 0 阶段仍未全部完成。
+
 **Files:**
 - Create: `.github/workflows/ci.yml`
 - Modify: `README.md`
