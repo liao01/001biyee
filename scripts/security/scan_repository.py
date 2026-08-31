@@ -94,6 +94,15 @@ PINNED_GITHUB_ACTION_PATTERN = re.compile(
 )
 
 KNOWN_NON_SECRET_FIXTURES = {
+    # #16 前端隔离测试的合成输入；只允许精确文件和值，不豁免整个测试目录。
+    ("web/src/store/identityStore.test.js", "TEST-obsolete"),
+    ("web/src/modules/identity/identityForms.test.js", "TEST-password-123"),
+    ("web/src/modules/identity/identityHttp.test.js", "TEST-password-123"),
+    ("web/src/modules/identity/identityHttp.test.js", "TEST-verification"),
+    ("web/src/modules/identity/identityHttp.test.js", "TEST-reset"),
+    ("web/src/modules/identity/identityLinks.test.js", "TEST-verification"),
+    ("web/src/modules/identity/identityLinks.test.js", "TEST-reset"),
+    ("web/src/modules/identity/identitySession.test.js", "TEST-password-123"),
     (
         "business/src/test/java/com/jiawa/lyw/security/SensitiveLoggingTests.java",
         "sensitive-member-session-token",

@@ -11,9 +11,10 @@ import FavoriteList from "../view/page/FavoriteList.vue";
 import UserDetail from "../view/page/UserDetail.vue";
 import UserProfile from "../view/page/UserProfile.vue";
 import AuthorDetail from "../view/page/AuthorDetail.vue"
+import { identityRoutes } from '../modules/identity/identityRoutes.js'
 
 
-const routes = [{
+const routes = [...identityRoutes, {
   path:"/",
   component:Home,
   redirect: "/CardList",

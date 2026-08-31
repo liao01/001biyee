@@ -10,6 +10,13 @@ from scripts.security.scan_repository import scan_git_refs, scan_paths, scan_tex
 
 
 class ScanTextTests(unittest.TestCase):
+    def test_identity_fixture_exception_requires_exact_path_and_value(self):
+        path = Path("web/src/modules/identity/identitySession.test.js")
+        value = "TEST-password-123"
+        self.assertEqual([], scan_text(path, f"password: '{value}'"))
+        self.assertTrue(scan_text(Path("web/src/view/login.vue"), f"password: '{value}'"))
+        self.assertTrue(scan_text(path, "password: 'unapproved-fixture-value'"))
+
     def test_detects_secret_assignment_without_exposing_value(self):
         candidate_value = "sk-" + "example-secret-value-123456"
 

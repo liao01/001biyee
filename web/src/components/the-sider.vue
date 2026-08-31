@@ -58,7 +58,7 @@ const visibleItems = computed(() => props.mobile
   : navigationItems)
 
 const handleMenuClick = (path, needLogin = false) => {
-  if (needLogin && !store.state.member.token) {
+  if (needLogin && !store.state.member.id) {
     if (window.showLogin) window.showLogin()
     return
   }

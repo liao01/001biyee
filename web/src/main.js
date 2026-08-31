@@ -10,6 +10,8 @@ import store from "./store/index.js";
 import { createPinia } from 'pinia'
 import { createPostDetailNavigation, postDetailNavigationKey } from './modules/post-detail/postDetailNavigation.js'
 import { configureGlobalAxios } from './utils/baseUrl.js'
+import request from './utils/request.js'
+import { identitySession } from './modules/identity/identityClient.js'
 
 const app = createApp(App);
 const pinia = createPinia()
@@ -22,26 +24,8 @@ for (const i in icons) {
     app.component(i, icons[i]);
 }
 
-app.mount('#app');
-
-//axios拦截器
-axios.interceptors.request.use(function (config) {
-    console.log('请求参数：', config);
-    let _token = store.state.member.token;
-    if (_token){
-        config.headers.token = _token;
-        console.log("请求headers增加token:",_token);
-    }
-    return config;
-}, error => {
-    return Promise.reject(error);
-});
-axios.interceptors.response.use(function (response) {
-    console.log('返回结果：', response);
-    return response;
-}, error => {
-        console.log("未登录");
-    return Promise.reject(error);
-});
-
-configureGlobalAxios(axios);
+configureGlobalAxios(axios)
+identitySession.install(axios)
+identitySession.install(request)
+// 先恢复身份再挂载业务页面，避免首屏受保护请求与 Cookie 刷新竞争。
+identitySession.restore().finally(() => app.mount('#app'))
