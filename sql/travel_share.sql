@@ -54,14 +54,52 @@ DROP TABLE IF EXISTS `member`;
 
 CREATE TABLE `member`  (
   `id` bigint NOT NULL COMMENT 'id',
-  `mobile` varchar(50) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL COMMENT '手机号',
-  `password` char(32) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL COMMENT '密码',
+  `mobile` varchar(50) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL COMMENT '历史登录标识，仅兼容迁移使用',
+  `password` char(32) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL COMMENT '历史凭据，仅兼容迁移使用',
   `name` varchar(50) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL COMMENT '昵称',
   `created_at` datetime(3) NULL DEFAULT NULL COMMENT '创建时间',
   `updated_at` datetime(3) NULL DEFAULT NULL COMMENT '修改时间',
+  `email` varchar(254) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL COMMENT '规范化邮箱',
+  `email_verified_at` datetime(3) NULL DEFAULT NULL COMMENT '邮箱验证时间',
+  `password_hash` varchar(100) CHARACTER SET ascii COLLATE ascii_bin NULL DEFAULT NULL COMMENT '身份凭据摘要',
+  `password_algorithm` varchar(32) CHARACTER SET ascii COLLATE ascii_bin NULL DEFAULT NULL COMMENT '凭据验证算法',
+  `account_status` varchar(32) CHARACTER SET ascii COLLATE ascii_bin NOT NULL DEFAULT 'PENDING_VERIFICATION' COMMENT '账户状态',
   PRIMARY KEY (`id`) USING BTREE,
-  UNIQUE INDEX `mobile_unique`(`mobile` ASC) USING BTREE
+  UNIQUE INDEX `mobile_unique`(`mobile` ASC) USING BTREE,
+  UNIQUE INDEX `uk_member_email`(`email` ASC) USING BTREE
 ) ENGINE = InnoDB CHARACTER SET = utf8 COLLATE = utf8_general_ci COMMENT = '会员表' ROW_FORMAT = Dynamic;
+
+DROP TABLE IF EXISTS `identity_one_time_token`;
+
+CREATE TABLE `identity_one_time_token` (
+  `id` bigint NOT NULL,
+  `token_hash` char(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  `purpose` varchar(32) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  `member_id` bigint NOT NULL,
+  `email` varchar(254) NOT NULL,
+  `expires_at` datetime(3) NOT NULL,
+  `used_at` datetime(3) NULL DEFAULT NULL,
+  `created_at` datetime(3) NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_identity_one_time_token_hash` (`token_hash`),
+  KEY `idx_identity_one_time_member` (`member_id`, `purpose`),
+  CONSTRAINT `fk_identity_one_time_member` FOREIGN KEY (`member_id`) REFERENCES `member` (`id`)
+) ENGINE = InnoDB DEFAULT CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
+
+DROP TABLE IF EXISTS `identity_refresh_session`;
+
+CREATE TABLE `identity_refresh_session` (
+  `id` bigint NOT NULL,
+  `token_hash` char(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  `member_id` bigint NOT NULL,
+  `expires_at` datetime(3) NOT NULL,
+  `revoked_at` datetime(3) NULL DEFAULT NULL,
+  `created_at` datetime(3) NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_identity_refresh_token_hash` (`token_hash`),
+  KEY `idx_identity_refresh_member` (`member_id`),
+  CONSTRAINT `fk_identity_refresh_member` FOREIGN KEY (`member_id`) REFERENCES `member` (`id`)
+) ENGINE = InnoDB DEFAULT CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
 
 DROP TABLE IF EXISTS `member_login_log`;
 

@@ -83,6 +83,9 @@ class DeploymentComposeContractTests(unittest.TestCase):
         workflow = CI_WORKFLOW.read_text(encoding="utf-8")
         self.assertIn("migration-tests:", workflow)
         self.assertIn("LYW_MIGRATION_TEST_DSN", workflow)
+        # The isolated service account must create/drop the per-test databases.
+        self.assertIn("mysql://root:change-me@127.0.0.1:3306/lyw", workflow)
+        self.assertIn('MYSQL_ROOT_HOST: "%"', workflow)
         self.assertIn("compose-contract:", workflow)
         self.assertIn("docker compose -f deploy/compose.yaml config --quiet", workflow)
         self.assertIn("scripts/security/scan_repository.py", workflow)

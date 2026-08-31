@@ -142,11 +142,11 @@ jobs:
         image: mysql:8.4.6
         env:
           MYSQL_DATABASE: lyw
-          MYSQL_USER: migration
-          MYSQL_PASSWORD: change-me
+          # This disposable service must allow creating/dropping isolated test databases.
           MYSQL_ROOT_PASSWORD: change-me
+          MYSQL_ROOT_HOST: "%"
         ports:
-          - 3306:3306
+          - 127.0.0.1:3306:3306
         options: >-
           --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -pchange-me --silent"
           --health-interval=10s
@@ -162,7 +162,7 @@ jobs:
 
       - name: Run migration and Python regression tests
         env:
-          LYW_MIGRATION_TEST_DSN: mysql://migration:change-me@127.0.0.1:3306/lyw
+          LYW_MIGRATION_TEST_DSN: mysql://root:change-me@127.0.0.1:3306/lyw
         run: python3 -m unittest discover -s tests -t . -v
 
   compose-contract:

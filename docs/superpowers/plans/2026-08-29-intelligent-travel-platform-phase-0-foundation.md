@@ -62,119 +62,25 @@
 
 ### Task 1: 建立可收敛的邮箱身份迁移
 
-**Files:**
-- Create: `sql/migrations/20260829_member_email_identity.sql`
-- Create: `tests/scripts/test_member_email_identity_migration.py`
-- Modify: `tests/scripts/mysql_migration_harness.py`
-- Modify: `sql/travel_share.sql`
+**执行状态：** 数据库纵切片已实现；#15 的应用身份链路继续在 Task 2–4 实施。
 
-**Interfaces:**
-- Consumes: 当前 `member(id, mobile, password, name, created_at, updated_at)` 和本地回环 MySQL 测试约束。
-- Produces: `member.email`、`member.email_verified_at`、`member.password_hash`、`member.password_algorithm`、`member.account_status`，以及 `identity_one_time_token`、`identity_refresh_session` 表。
+**正式事实源：**
+- 空库结构：`sql/travel_share.sql`。
+- 升级规则：`sql/migrations/20260829_member_email_identity.sql`。
+- 执行、差异报告、兼容边界和恢复策略：`docs/data/identity-migration.md`。
+- 测试参数注册：`tests/scripts/migration_specs.py`，复用 #13 的 `MigrationSpec`。
+- 可执行行为契约：`tests/scripts/test_member_email_identity_migration.py`。
 
-- [ ] **Step 1: 先把迁移测试设施泛化为显式脚本变量**
+**验证：**
+- [x] dry-run 不修改正式表结构和业务数据。
+- [x] 邮箱规范化、冲突归属保护与无法自动迁移账户报告。
+- [x] 重复执行、部分 DDL 恢复、已升级凭据及停用状态保护。
+- [x] 空库结构与迁移结构一致；新账户不依赖历史字段。
+- [x] 一次性令牌与刷新会话只保存摘要。
 
-将 `temporary_schema()` 改为接收安全前缀，将 `run_sql_script()` 改为接收变量名：
+Run: `python -m unittest tests.scripts.test_member_email_identity_migration tests.scripts.test_post_category_migration tests.scripts.test_post_location_compatibility_migration -v`
 
-```python
-@contextlib.contextmanager
-def temporary_schema(prefix: str):
-    if not re.fullmatch(r"[a-z][a-z0-9_]{2,40}", prefix):
-        raise RuntimeError("Unsafe schema prefix")
-    schema = f"{prefix}_{secrets.token_hex(5)}"
-    with MySqlMigrationHarness(load_local_mysql_config()) as harness:
-        harness.execute(f"CREATE DATABASE `{schema}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;")
-        try:
-            yield harness, schema
-        finally:
-            harness.execute(f"DROP DATABASE IF EXISTS `{schema}`;")
-
-def run_sql_script(harness, schema, path, apply_variable, apply):
-    sql = path.read_text(encoding="utf-8")
-    return harness.execute(
-        f"SET @{apply_variable} = {1 if apply else 0};\n{sql}",
-        database=schema,
-        include_headers=True,
-    )
-```
-
-同步更新现有帖子分类迁移测试的调用参数，确保其行为不变。
-
-- [ ] **Step 2: 写邮箱身份迁移的失败测试**
-
-```python
-class MemberEmailIdentityMigrationTests(unittest.TestCase):
-    def test_dry_run_does_not_change_schema(self):
-        with temporary_schema("lyw_identity_migration_test") as (db, schema):
-            seed_legacy_member_table(db, schema)
-            output = run_sql_script(db, schema, MIGRATION, "apply_member_email_identity", False)
-            self.assertIn("eligible_email_rows", output)
-            self.assertIsNone(db.scalar(schema, "SHOW COLUMNS FROM member LIKE 'email';"))
-
-    def test_apply_backfills_only_email_shaped_mobile_values_and_is_repeatable(self):
-        with temporary_schema("lyw_identity_migration_test") as (db, schema):
-            seed_legacy_member_table(db, schema)
-            run_sql_script(db, schema, MIGRATION, "apply_member_email_identity", True)
-            run_sql_script(db, schema, MIGRATION, "apply_member_email_identity", True)
-            self.assertEqual("alice@example.com", db.scalar(schema, "SELECT email FROM member WHERE id=1"))
-            self.assertIsNone(db.scalar(schema, "SELECT email FROM member WHERE id=2"))
-            self.assertEqual("LEGACY_DOUBLE_MD5", db.scalar(schema, "SELECT password_algorithm FROM member WHERE id=1"))
-            self.assertEqual("ACTIVE", db.scalar(schema, "SELECT account_status FROM member WHERE id=1"))
-            self.assertEqual("EMAIL_BINDING_REQUIRED", db.scalar(schema, "SELECT account_status FROM member WHERE id=2"))
-```
-
-- [ ] **Step 3: 运行迁移测试并确认红灯**
-
-Run: `python -m unittest tests.scripts.test_member_email_identity_migration -v`
-
-Expected: FAIL，因为迁移脚本与新列尚不存在；如果本机没有回环 MySQL，测试必须明确报告环境缺失而不是伪造通过。
-
-- [ ] **Step 4: 实现幂等迁移**
-
-迁移必须执行以下确定规则：
-
-```sql
--- dry-run 始终输出可迁移邮箱数和无法自动迁移的旧账号数
-SELECT
-  SUM(mobile LIKE '%@%') AS eligible_email_rows,
-  SUM(mobile NOT LIKE '%@%') AS manual_email_binding_rows
-FROM member;
-
--- apply 分支内：先通过 information_schema 判断列、索引和表是否存在
--- email 只回填形似邮箱的旧 mobile；不为手机号生成虚假邮箱
-UPDATE member
-SET email = LOWER(TRIM(mobile)),
-    password_hash = password,
-    password_algorithm = 'LEGACY_DOUBLE_MD5',
-    email_verified_at = COALESCE(created_at, CURRENT_TIMESTAMP),
-    account_status = 'ACTIVE'
-WHERE email IS NULL AND mobile LIKE '%@%';
-
-UPDATE member
-SET password_hash = password,
-    password_algorithm = 'LEGACY_DOUBLE_MD5',
-    account_status = 'EMAIL_BINDING_REQUIRED'
-WHERE email IS NULL AND mobile NOT LIKE '%@%';
-```
-
-新注册账户使用 `PENDING_VERIFICATION`，验证后切换为 `ACTIVE`；管理员停用账户使用 `DISABLED`。只有 `ACTIVE` 可以登录。`identity_one_time_token` 保存 `token_hash`、`purpose`、`member_id`、`email`、`expires_at`、`used_at`；`identity_refresh_session` 保存 `token_hash`、`member_id`、`expires_at`、`revoked_at`、`created_at`。任何表中都不得保存原始令牌。
-
-- [ ] **Step 5: 同步基础 schema 并运行迁移验证**
-
-Run: `python -m unittest tests.scripts.test_member_email_identity_migration tests.scripts.test_post_category_migration -v`
-
-Expected: 两组迁移测试 PASS；重复 apply 后列、索引和数据数量不变化。
-
-- [ ] **Step 6: 检查差异并按授权提交**
-
-Run: `git diff --check -- sql/travel_share.sql sql/migrations/20260829_member_email_identity.sql tests/scripts/mysql_migration_harness.py tests/scripts/test_member_email_identity_migration.py`
-
-若已获得提交授权：
-
-```bash
-git add sql/travel_share.sql sql/migrations/20260829_member_email_identity.sql tests/scripts/mysql_migration_harness.py tests/scripts/test_member_email_identity_migration.py tests/scripts/test_post_category_migration.py
-git commit -m "feat: add convergent email identity migration"
-```
+仅在已获授权的目标环境执行迁移；本地隔离测试结果不代表已迁移生产数据。
 
 ---
 

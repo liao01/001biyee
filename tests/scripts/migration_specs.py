@@ -12,3 +12,9 @@ POST_LOCATION_COMPATIBILITY_MIGRATION = MigrationSpec(
     apply_variable="apply_post_location_compatibility_migration",
     schema_prefix="lyw_post_location_migration_test",
 )
+
+MEMBER_EMAIL_IDENTITY_MIGRATION = MigrationSpec(
+    name="member_email_identity",
+    apply_variable="apply_member_email_identity_migration",
+    schema_prefix="lyw_member_identity_migration_test",
+)
