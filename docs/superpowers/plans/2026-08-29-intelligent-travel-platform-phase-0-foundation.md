@@ -86,6 +86,8 @@ Run: `python -m unittest tests.scripts.test_member_email_identity_migration test
 
 ### Task 2: 建立身份模块接口与架构边界
 
+**执行状态：** 已实现并由架构测试验证。身份接口和领域类型位于 `business/src/main/java/com/jiawa/lyw/identity/`；领域类型不依赖 Spring 或 MyBatis。
+
 **Files:**
 - Modify: `business/pom.xml`
 - Create: `business/src/main/java/com/jiawa/lyw/identity/application/IdentityApplicationService.java`
@@ -100,7 +102,7 @@ Run: `python -m unittest tests.scripts.test_member_email_identity_migration test
 - Consumes: Task 1 的新身份 schema。
 - Produces: `IdentityApplicationService` 用例入口与 `CurrentMemberProvider.memberId()` 当前用户接口。
 
-- [ ] **Step 1: 添加最小依赖并写边界失败测试**
+- [x] **Step 1: 添加最小依赖并写边界失败测试**
 
 在 `business/pom.xml` 添加 `spring-security-crypto`、`archunit-junit5`（test）、`spring-boot-starter-actuator` 和 `micrometer-registry-prometheus`。测试要求模块外不得直接访问身份基础设施：
 
@@ -114,13 +116,13 @@ class IdentityModuleBoundaryTests {
 }
 ```
 
-- [ ] **Step 2: 运行边界测试确认红灯或缺类型**
+- [x] **Step 2: 运行边界测试确认红灯或缺类型**
 
 Run from `business`: `.\mvnw.cmd -Dtest=IdentityModuleBoundaryTests test`
 
 Expected: FAIL，直到依赖和身份包骨架存在。
 
-- [ ] **Step 3: 定义稳定接口和值对象**
+- [x] **Step 3: 定义稳定接口和值对象**
 
 ```java
 public interface CurrentMemberProvider {
@@ -146,7 +148,7 @@ public interface PasswordHasher {
 
 `MemberAccount` 仅表达 `id`、`email`、`emailVerifiedAt`、`passwordHash`、`passwordAlgorithm`、`name` 和账户状态，不包含 Controller 或 MyBatis 注解。
 
-- [ ] **Step 4: 定义应用服务签名**
+- [x] **Step 4: 定义应用服务签名**
 
 ```java
 public interface IdentityApplicationService {
@@ -160,13 +162,13 @@ public interface IdentityApplicationService {
 }
 ```
 
-- [ ] **Step 5: 运行编译与架构测试**
+- [x] **Step 5: 运行编译与架构测试**
 
 Run from `business`: `.\mvnw.cmd -Dtest=IdentityModuleBoundaryTests test`
 
 Expected: PASS。
 
-- [ ] **Step 6: 按授权提交**
+- [x] **Step 6: 按授权提交**
 
 ```bash
 git add business/pom.xml business/src/main/java/com/jiawa/lyw/identity business/src/test/java/com/jiawa/lyw/architecture/IdentityModuleBoundaryTests.java
@@ -176,6 +178,8 @@ git commit -m "refactor: establish identity module boundary"
 ---
 
 ### Task 3: 实现密码升级、访问令牌和刷新会话
+
+**当前进度：** BCrypt 与历史密码兼容验证器已通过独立测试；新密码规则以 `identity/domain/PasswordPolicy.java` 为正式事实源，并受 BCrypt 的 UTF-8 字节上限约束。访问令牌、持久化刷新会话及登录事务中的升级写回仍待实施，不能把验证器完成视作首登升级链路完成。
 
 **Files:**
 - Create: `business/src/main/java/com/jiawa/lyw/identity/infrastructure/BCryptPasswordHasher.java`
@@ -195,7 +199,7 @@ git commit -m "refactor: establish identity module boundary"
 ```java
 @Test
 void legacyDoubleMd5MatchRequiresUpgrade() {
-    var hasher = new BCryptPasswordHasher(new BCryptPasswordEncoder(12));
+    var hasher = new BCryptPasswordHasher();
     var legacy = DigestUtil.md5Hex(DigestUtil.md5Hex("Secret123"));
     var result = hasher.verify("Secret123", legacy, "LEGACY_DOUBLE_MD5");
     assertTrue(result.matches());
@@ -204,7 +208,7 @@ void legacyDoubleMd5MatchRequiresUpgrade() {
 
 @Test
 void newHashesUseBcrypt() {
-    var hasher = new BCryptPasswordHasher(new BCryptPasswordEncoder(12));
+    var hasher = new BCryptPasswordHasher();
     var hash = hasher.hash("Secret123");
     assertTrue(hasher.verify("Secret123", hash, "BCRYPT").matches());
 }
