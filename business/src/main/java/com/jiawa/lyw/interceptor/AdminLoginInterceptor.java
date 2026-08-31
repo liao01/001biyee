@@ -17,6 +17,7 @@ import org.springframework.web.servlet.HandlerInterceptor;
 public class AdminLoginInterceptor implements HandlerInterceptor {
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
+        LoginUserContext.removeUser();
     //OPTIONS请求不做校验
         //前后端分离架构，前端会发一个OPTIONS请求先做预检，对预检不做校验
         if (request.getMethod().toUpperCase().equals("OPTIONS")) {
@@ -42,6 +43,12 @@ public class AdminLoginInterceptor implements HandlerInterceptor {
                 }
                 JSONObject loginUser = JwtUtil.getJSONObject(token);//通过JwtUtil看看解不解析的出来
                 UserLoginResp user = JSONUtil.toBean(loginUser, UserLoginResp.class);//这个是刚刚解析的时JSON格式，这个将JSON格式转化为实体类
+                // 管理端只接受既有管理员凭据；会员访问令牌不能跨身份域使用。
+                if (loginUser.containsKey("sub") || user.getId() == null || user.getId() <= 0
+                        || user.getLoginName() == null || user.getLoginName().isBlank()) {
+                    response.setStatus(HttpStatus.UNAUTHORIZED.value());
+                    return false;
+                }
                 LoginUserContext.setUser(user);//最后获得了实体类我们就去在线程的本地变量去放
                 log.info("用户登录验证通过，用户id：{}", user.getId());
                 return true;

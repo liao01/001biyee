@@ -7,6 +7,10 @@ import com.jiawa.lyw.interceptor.WebLoginInterceptor;
 import com.jiawa.lyw.interceptor.AdminLoginInterceptor;
 import com.jiawa.lyw.interceptor.LogInterceptor;
 import com.jiawa.lyw.aspect.LogAspect;
+import com.jiawa.lyw.controller.web.MemberController;
+import com.jiawa.lyw.controller.ControllerExceptionHandler;
+import com.jiawa.lyw.service.MemberLoginLogService;
+import com.jiawa.lyw.mapper.MemberLoginLogMapper;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jiawa.lyw.support.MySqlIntegrationDatabase;
 import org.junit.jupiter.api.AfterAll;
@@ -58,6 +62,7 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.cookie;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -92,6 +97,7 @@ class IdentityHttpIT {
         jdbc = new JdbcTemplate(dataSource);
         jdbc.update("DELETE FROM identity_one_time_token");
         jdbc.update("DELETE FROM identity_refresh_session");
+        jdbc.update("DELETE FROM member_login_log");
         jdbc.update("DELETE FROM member");
         String legacyHash = "b406cd63d1530b73" + "464838f07947ccca";
         jdbc.update("INSERT INTO member (id, email, email_verified_at, password_hash, password_algorithm, account_status, password, name) "
@@ -359,6 +365,8 @@ class IdentityHttpIT {
             var response = loginLegacy();
             String access = new ObjectMapper().readTree(response.getContentAsString()).path("content").path("accessToken").asText();
             String refresh = response.getCookie("refresh_token").getValue();
+            mvc.perform(get("/web/identity/me").header("Authorization", "Bearer " + access))
+                    .andExpect(status().isOk());
             mvc.perform(post("/web/identity/request-password-reset").contentType("application/json")
                     .content("{\"email\":\"legacy@example.com\"}")).andExpect(status().isOk());
             String linkToken = mail.resetLink.getQuery().substring("token=".length());
@@ -374,6 +382,69 @@ class IdentityHttpIT {
         }
     }
 
+    @Test
+    void bearerAccessTokenRestoresOnlyTheAuthenticatedMemberWithoutLeakingCredentials() throws Exception {
+        var login = loginLegacy();
+        String access = new ObjectMapper().readTree(login.getContentAsString()).path("content").path("accessToken").asText();
+        mvc.perform(get("/web/identity/me").header("Authorization", "Bearer " + access))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.content.id").value("42"))
+                .andExpect(jsonPath("$.content.name").value("TEST legacy account"))
+                .andExpect(jsonPath("$.content.passwordHash").doesNotExist())
+                .andExpect(jsonPath("$.content.token").doesNotExist());
+        mvc.perform(get("/web/identity/me")).andExpect(status().isUnauthorized());
+        mvc.perform(get("/web/identity/me").header("token", access)).andExpect(status().isUnauthorized());
+        mvc.perform(get("/web/identity/me").header("Authorization", "Bearer " + access, "Bearer " + access))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"expired", "disabled", "tampered", "missing-claim", "extra-claim", "future", "wrong-algorithm"})
+    void protectedIdentityReadRejectsInvalidOrNoLongerAuthorizedAccess(String scenario) throws Exception {
+        var login = loginLegacy();
+        String access = new ObjectMapper().readTree(login.getContentAsString()).path("content").path("accessToken").asText();
+        if (scenario.equals("expired")) {
+            clock.now = clock.now.plusSeconds(900);
+        } else if (scenario.equals("disabled")) {
+            jdbc.update("UPDATE member SET account_status = 'DISABLED' WHERE id = 42");
+        } else if (scenario.equals("tampered")) {
+            int signatureStart = access.lastIndexOf('.') + 1;
+            access = access.substring(0, signatureStart) + (access.charAt(signatureStart) == 'a' ? 'b' : 'a') + access.substring(signatureStart + 1);
+        } else {
+            var claims = new java.util.HashMap<String, Object>();
+            claims.put("sub", "42");
+            claims.put("iat", clock.now.getEpochSecond());
+            claims.put("nbf", clock.now.getEpochSecond());
+            claims.put("exp", clock.now.plusSeconds(900).getEpochSecond());
+            claims.put("jti", java.util.UUID.randomUUID().toString());
+            if (scenario.equals("missing-claim")) { claims.remove("exp"); }
+            if (scenario.equals("extra-claim")) { claims.put("LoginName", "TEST administrator"); }
+            if (scenario.equals("future")) { claims.put("nbf", clock.now.plusSeconds(1).getEpochSecond()); }
+            byte[] key = "integration-test-signing-key-at-least-32-bytes".getBytes(java.nio.charset.StandardCharsets.UTF_8);
+            access = scenario.equals("wrong-algorithm")
+                    ? cn.hutool.jwt.JWT.create().addPayloads(claims).setSigner(cn.hutool.jwt.signers.JWTSignerUtil.hs512(key)).sign()
+                    : cn.hutool.jwt.JWTUtil.createToken(claims, key);
+        }
+        mvc.perform(get("/web/identity/me").header("Authorization", "Bearer " + access)).andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void heartbeatUsesTheAuthenticatedMemberWithoutPersistingAnAccessToken() throws Exception {
+        String access = new ObjectMapper().readTree(loginLegacy().getContentAsString()).path("content").path("accessToken").asText();
+        for (int attempt = 0; attempt < 2; attempt++) {
+            mvc.perform(get("/web/member/heart").header("Authorization", "Bearer " + access))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.success").value(true));
+        }
+        // 登录日志仅兼容历史活跃度统计，不得重新持久化原始访问令牌。
+        assertNull(jdbc.queryForObject("SELECT token FROM member_login_log WHERE member_id = 42 ORDER BY id DESC LIMIT 1", String.class));
+    }
+
+    @Test
+    void memberAccessTokenCannotAuthenticateAsAnAdministrator() throws Exception {
+        clock.now = Instant.now();
+        String access = new ObjectMapper().readTree(loginLegacy().getContentAsString()).path("content").path("accessToken").asText();
+        mvc.perform(get("/admin/identity-probe").header("token", access)).andExpect(status().isUnauthorized());
+    }
+
     private org.springframework.mock.web.MockHttpServletResponse loginLegacy() throws Exception {
         return mvc.perform(post("/web/identity/login").contentType("application/json")
                         .content("{\"email\":\"legacy@example.com\",\"password\":\"Test-password-123\"}"))
@@ -385,9 +456,11 @@ class IdentityHttpIT {
     @EnableTransactionManagement
     @EnableAspectJAutoProxy
     @Import({IdentityConfiguration.class, IdentityController.class, IdentityExceptionHandler.class,
-            SpringMvcConfig.class, WebLoginInterceptor.class, AdminLoginInterceptor.class, LogInterceptor.class, LogAspect.class})
+            SpringMvcConfig.class, WebLoginInterceptor.class, AdminLoginInterceptor.class, LogInterceptor.class, LogAspect.class,
+            MemberController.class, MemberLoginLogService.class, ControllerExceptionHandler.class,
+            com.jiawa.lyw.Util.JwtUtil.class, AdminProbeController.class})
     static class Config {
-        // 公开身份端点不得调用旧 DAU Redis 链路；工厂不建立连接，也不产生测试数据。
+        // 公开身份端点不调用 DAU；受保护请求验证 Redis 不可用仍可鉴权，不写入任何缓存数据。
         @Bean
         LettuceConnectionFactory redisConnectionFactory() { return new LettuceConnectionFactory("127.0.0.1", 1); }
 
@@ -411,8 +484,17 @@ class IdentityHttpIT {
         SqlSessionFactoryBean sqlSessionFactory(DataSource dataSource) throws Exception {
             SqlSessionFactoryBean factory = new SqlSessionFactoryBean();
             factory.setDataSource(dataSource);
-            factory.setMapperLocations(new PathMatchingResourcePatternResolver().getResources("classpath:mapper/identity/*.xml"));
+            var resolver = new PathMatchingResourcePatternResolver();
+            factory.setMapperLocations(java.util.stream.Stream.concat(
+                    java.util.Arrays.stream(resolver.getResources("classpath:mapper/identity/*.xml")),
+                    java.util.Arrays.stream(resolver.getResources("classpath:mapper/MemberLoginLogMapper.xml")))
+                    .toArray(org.springframework.core.io.Resource[]::new));
             return factory;
+        }
+
+        @Bean
+        MemberLoginLogMapper memberLoginLogMapper(org.apache.ibatis.session.SqlSessionFactory factory) {
+            return new org.mybatis.spring.SqlSessionTemplate(factory).getMapper(MemberLoginLogMapper.class);
         }
 
         @Bean
@@ -437,6 +519,12 @@ class IdentityHttpIT {
             recipient = email;
             resetLink = link;
         }
+    }
+
+    @org.springframework.web.bind.annotation.RestController
+    static class AdminProbeController {
+        @org.springframework.web.bind.annotation.GetMapping("/admin/identity-probe")
+        java.util.Map<String, Boolean> probe() { return java.util.Map.of("reached", true); }
     }
 
     static class TestClock extends Clock {

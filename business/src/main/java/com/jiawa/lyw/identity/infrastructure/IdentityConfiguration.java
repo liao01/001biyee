@@ -52,9 +52,16 @@ public class IdentityConfiguration {
     }
 
     @Bean
+    HttpCurrentMemberProvider currentMemberProvider(IdentityMapper mapper, JwtAccessTokenService tokens,
+                                                    IdentityProperties properties, Clock clock) {
+        return new HttpCurrentMemberProvider(mapper, tokens, properties, clock);
+    }
+
+    @Bean
     IdentityApplicationService identityApplicationService(IdentityMapper mapper, PasswordHasher passwords,
                                                           RefreshSessionService sessions, Clock clock,
-                                                          OneTimeTokenService oneTimeTokens, IdentityMailGateway mail) {
-        return new DefaultIdentityApplicationService(mapper, passwords, sessions, clock, oneTimeTokens, mail);
+                                                          OneTimeTokenService oneTimeTokens, IdentityMailGateway mail,
+                                                          HttpCurrentMemberProvider currentMember) {
+        return new DefaultIdentityApplicationService(mapper, passwords, sessions, clock, oneTimeTokens, mail, currentMember);
     }
 }

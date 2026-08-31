@@ -1,6 +1,7 @@
 package com.jiawa.lyw.identity.infrastructure;
 
 import com.jiawa.lyw.identity.domain.MemberAccount;
+import com.jiawa.lyw.identity.domain.MemberProfile;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
@@ -8,6 +9,8 @@ import java.time.Instant;
 
 @Mapper
 public interface IdentityMapper {
+    MemberProfile findActiveProfile(@Param("memberId") long memberId);
+
     MemberAccount findAccountByEmailForUpdate(@Param("email") String email);
 
     void insertPendingAccountIfAbsent(@Param("id") long id, @Param("email") String email, @Param("hash") String hash, @Param("now") Instant now);

@@ -2,6 +2,8 @@ package com.jiawa.lyw.identity.application;
 
 import com.jiawa.lyw.identity.domain.IdentityException;
 import com.jiawa.lyw.identity.domain.MemberAccount;
+import com.jiawa.lyw.identity.domain.MemberProfile;
+import com.jiawa.lyw.identity.infrastructure.HttpCurrentMemberProvider;
 import com.jiawa.lyw.identity.domain.PasswordHasher;
 import com.jiawa.lyw.identity.domain.PasswordPolicy;
 import com.jiawa.lyw.identity.domain.SessionTokens;
@@ -23,17 +25,23 @@ public class DefaultIdentityApplicationService implements IdentityApplicationSer
     private final Clock clock;
     private final OneTimeTokenService oneTimeTokens;
     private final IdentityMailGateway mail;
+    private final HttpCurrentMemberProvider currentMember;
 
     public DefaultIdentityApplicationService(IdentityMapper mapper, PasswordHasher passwords,
                                              RefreshSessionService sessions, Clock clock,
-                                             OneTimeTokenService oneTimeTokens, IdentityMailGateway mail) {
+                                             OneTimeTokenService oneTimeTokens, IdentityMailGateway mail,
+                                             HttpCurrentMemberProvider currentMember) {
         this.mapper = mapper;
         this.passwords = passwords;
         this.sessions = sessions;
         this.clock = clock;
         this.oneTimeTokens = oneTimeTokens;
         this.mail = mail;
+        this.currentMember = currentMember;
     }
+
+    @Override
+    public MemberProfile currentMember() { return currentMember.profile(); }
 
     @Override
     @Transactional

@@ -2,16 +2,10 @@ package com.jiawa.lyw;
 
 import com.jiawa.lyw.controller.ControllerExceptionHandler;
 import com.jiawa.lyw.controller.TestController;
-import com.jiawa.lyw.controller.web.MemberController;
 import com.jiawa.lyw.exception.BusinessException;
 import com.jiawa.lyw.exception.BusinessExceptionEnum;
 import com.jiawa.lyw.resp.DemoQueryResp;
-import com.jiawa.lyw.resp.MemberLoginResp;
-import com.jiawa.lyw.service.KaptchaService;
-import com.jiawa.lyw.service.MemberLoginLogService;
 import com.jiawa.lyw.service.DemoService;
-import com.jiawa.lyw.service.MemberService;
-import com.jiawa.lyw.service.SmsCodeService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
@@ -27,7 +21,6 @@ import java.util.List;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -40,33 +33,15 @@ class BusinessApplicationTests {
     @Mock
     private DemoService demoService;
 
-    @Mock
-    private MemberService memberService;
-
-    @Mock
-    private SmsCodeService smsCodeService;
-
-    @Mock
-    private KaptchaService kaptchaService;
-
-    @Mock
-    private MemberLoginLogService memberLoginLogService;
-
     @BeforeEach
     void setUp() {
         TestController testController = new TestController();
         ReflectionTestUtils.setField(testController, "demoService", demoService);
 
-        MemberController memberController = new MemberController();
-        ReflectionTestUtils.setField(memberController, "memberService", memberService);
-        ReflectionTestUtils.setField(memberController, "smsCodeService", smsCodeService);
-        ReflectionTestUtils.setField(memberController, "kaptchaService", kaptchaService);
-        ReflectionTestUtils.setField(memberController, "memberLoginLogService", memberLoginLogService);
-
         LocalValidatorFactoryBean validator = new LocalValidatorFactoryBean();
         validator.afterPropertiesSet();
 
-        mockMvc = MockMvcBuilders.standaloneSetup(testController, memberController)
+        mockMvc = MockMvcBuilders.standaloneSetup(testController)
                 .setControllerAdvice(new ControllerExceptionHandler())
                 .setValidator(validator)
                 .build();
@@ -122,87 +97,4 @@ class BusinessApplicationTests {
                 .andExpect(jsonPath("$.message").isNotEmpty());
     }
 
-    @Test
-    void memberRegisterShouldReturnSuccessWhenRequestIsValid() throws Exception {
-        String body = """
-                {
-                  "mobile": "demo@example.com",
-                  "password": "a111111",
-                  "code": "123456"
-                }
-                """;
-
-        mockMvc.perform(post("/web/member/register")
-                        .contentType("application/json")
-                        .content(body))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true));
-    }
-
-    @Test
-    void memberRegisterShouldReturnStableResponseWhenRequiredFieldMissing() throws Exception {
-        String body = """
-                {
-                  "mobile": "demo@example.com",
-                  "password": "",
-                  "code": "123456"
-                }
-                """;
-
-        mockMvc.perform(post("/web/member/register")
-                        .contentType("application/json")
-                        .content(body))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(false))
-                .andExpect(jsonPath("$.message").isNotEmpty());
-    }
-
-    @Test
-    void memberLoginShouldReturnTokenWhenRequestIsValid() throws Exception {
-        MemberLoginResp loginResp = new MemberLoginResp();
-        loginResp.setId(1L);
-        loginResp.setName("demo");
-        loginResp.setToken("test-token");
-        when(memberService.login(any())).thenReturn(loginResp);
-
-        String body = """
-                {
-                  "mobile": "demo@example.com",
-                  "password": "a111111",
-                  "imageCode": "abcd",
-                  "imageCodeToken": "token-123"
-                }
-                """;
-
-        mockMvc.perform(post("/web/member/login")
-                        .contentType("application/json")
-                        .content(body))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.content.id").value(1))
-                .andExpect(jsonPath("$.content.name").value("demo"))
-                .andExpect(jsonPath("$.content.token").value("test-token"));
-    }
-
-    @Test
-    void memberLoginShouldReturnBusinessErrorWhenCaptchaIsInvalid() throws Exception {
-        org.mockito.Mockito.doThrow(new BusinessException(BusinessExceptionEnum.IMAGE_CODE_ERROR))
-                .when(kaptchaService).validCode(any(), any());
-
-        String body = """
-                {
-                  "mobile": "demo@example.com",
-                  "password": "a111111",
-                  "imageCode": "wrong",
-                  "imageCodeToken": "token-123"
-                }
-                """;
-
-        mockMvc.perform(post("/web/member/login")
-                        .contentType("application/json")
-                        .content(body))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(false))
-                .andExpect(jsonPath("$.message").value(BusinessExceptionEnum.IMAGE_CODE_ERROR.getDesc()));
-    }
 }

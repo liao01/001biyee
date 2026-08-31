@@ -14,6 +14,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -31,6 +32,13 @@ public class IdentityController {
     public IdentityController(IdentityApplicationService identity, IdentityProperties properties) {
         this.identity = identity;
         this.properties = properties;
+    }
+
+    @GetMapping("/me")
+    public ResponseEntity<CommonResp<MemberResponse>> me() {
+        var profile = identity.currentMember();
+        return ResponseEntity.ok().header(HttpHeaders.CACHE_CONTROL, "no-store")
+                .body(new CommonResp<>(new MemberResponse(Long.toString(profile.id()), profile.name())));
     }
 
     @PostMapping("/register")
@@ -113,4 +121,6 @@ public class IdentityController {
     public record TokenResponse(String accessToken, Instant accessExpiresAt) {
         @Override public String toString() { return "TokenResponse[redacted]"; }
     }
+
+    public record MemberResponse(String id, String name) { }
 }

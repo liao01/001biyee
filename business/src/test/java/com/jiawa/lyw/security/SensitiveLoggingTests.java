@@ -15,15 +15,16 @@ import com.jiawa.lyw.resp.UserLoginResp;
 import com.jiawa.lyw.service.MemberLoginLogService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.slf4j.LoggerFactory;
-import org.springframework.data.redis.core.SetOperations;
-import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -78,27 +79,38 @@ class SensitiveLoggingTests {
         assertNull(LoginUserContext.getUser());
     }
 
+    @ParameterizedTest
+    @MethodSource("invalidAdministratorClaims")
+    void administratorRequiresItsOwnIdentityAndClearsStaleContext(Map<String, Object> claims) throws Exception {
+        new JwtUtil(SIGNING_SECRET);
+        UserLoginResp previous = new UserLoginResp();
+        previous.setId(7L);
+        LoginUserContext.setUser(previous);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        assertFalse(new AdminLoginInterceptor().preHandle(
+                requestWithToken(JwtUtil.createLoginToken(claims)), response, new Object()));
+        assertEquals(401, response.getStatus());
+        assertNull(LoginUserContext.getUser());
+    }
+
+    private static Stream<Map<String, Object>> invalidAdministratorClaims() {
+        return Stream.of(
+                Map.of("id", 42L, "name", "TEST legacy member"),
+                Map.of("LoginName", "administrator"),
+                Map.of("id", 0L, "LoginName", "administrator"),
+                Map.of("id", 42L, "LoginName", " "),
+                Map.of("id", 42L, "LoginName", "administrator", "sub", "42"));
+    }
+
     @Test
-    void webAndAdminAuthenticationLogsNeverContainTheRawToken() throws Exception {
+    void adminAuthenticationLogsNeverContainTheRawToken() throws Exception {
         new JwtUtil(SIGNING_SECRET);
         String token = JwtUtil.createLoginToken(Map.of(
                 "id", 42L,
                 "name", "traveler",
                 "LoginName", "administrator"
         ));
-
-        ListAppender<ILoggingEvent> webLogs = capture(WebLoginInterceptor.class);
-        WebLoginInterceptor webInterceptor = new WebLoginInterceptor();
-        StringRedisTemplate redis = mock(StringRedisTemplate.class);
-        @SuppressWarnings("unchecked")
-        SetOperations<String, String> sets = mock(SetOperations.class);
-        when(redis.opsForSet()).thenReturn(sets);
-        when(sets.add(any(), any())).thenReturn(1L);
-        ReflectionTestUtils.setField(webInterceptor, "stringRedisTemplate", redis);
-
-        MockHttpServletRequest webRequest = requestWithToken(token);
-        assertTrue(webInterceptor.preHandle(webRequest, new MockHttpServletResponse(), new Object()));
-        assertTokenAbsent(webLogs, token);
 
         ListAppender<ILoggingEvent> adminLogs = capture(AdminLoginInterceptor.class);
         AdminLoginInterceptor adminInterceptor = new AdminLoginInterceptor();
