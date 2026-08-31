@@ -24,6 +24,13 @@ public class SpringMvcConfig implements WebMvcConfigurer {
         registry.addInterceptor(webLoginInterceptor)
                 .addPathPatterns("/web/**")
                 .excludePathPatterns(
+                        "/web/identity/register",
+                        "/web/identity/verify-email",
+                        "/web/identity/login",
+                        "/web/identity/refresh",
+                        "/web/identity/logout",
+                        "/web/identity/request-password-reset",
+                        "/web/identity/reset-password",
                         "/web/kaptcha/image-code/*",
                         "/web/member/login",
                         "/web/member/register",

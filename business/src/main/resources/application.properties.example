@@ -32,6 +32,9 @@ spring.data.mongodb.uri=${MONGODB_URI:mongodb://localhost:27017/db_chat_memory}
 mail.username=${MAIL_USERNAME}
 mail.auth-code=${MAIL_AUTH_CODE}
 jwt.secret=${JWT_SECRET}
+app.public-url=${APP_PUBLIC_URL:http://localhost:5173}
+identity.secure-cookie=${IDENTITY_COOKIE_SECURE:true}
+logging.level.com.jiawa.lyw.identity=info
 
 spring.servlet.multipart.max-file-size=10MB
 spring.servlet.multipart.max-request-size=20MB

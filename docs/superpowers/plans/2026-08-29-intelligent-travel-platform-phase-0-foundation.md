@@ -179,7 +179,7 @@ git commit -m "refactor: establish identity module boundary"
 
 ### Task 3: 实现密码升级、访问令牌和刷新会话
 
-**当前进度：** BCrypt 与历史密码兼容验证器已通过独立测试；新密码规则以 `identity/domain/PasswordPolicy.java` 为正式事实源，并受 BCrypt 的 UTF-8 字节上限约束。访问令牌、持久化刷新会话及登录事务中的升级写回仍待实施，不能把验证器完成视作首登升级链路完成。
+**当前进度：** 已实现 BCrypt、登录事务内的首登升级和旧密码清除、访问令牌签发、刷新轮换与撤销。实际行为测试使用已确认的公开 HTTP + 真实 MySQL 接缝：`IdentityHttpIT`，不再采用下方计划示意中的内部服务测试类。执行命令为 `python -m scripts.run_backend_integration`；数据与配置链路见 `docs/data/identity-http.md`。访问令牌的请求验证和前端切换继续在 Task 5–6 实施。
 
 **Files:**
 - Create: `business/src/main/java/com/jiawa/lyw/identity/infrastructure/BCryptPasswordHasher.java`
@@ -257,6 +257,8 @@ git commit -m "feat: add secure identity credentials and sessions"
 ---
 
 ### Task 4: 实现注册验证与密码重置邮件链路
+
+**当前进度：** 新增链路已接入实际 MVC 拦截器及 MySQL 事务，使用 `IdentityHttpIT` 验证注册、一次性验证、密码重置和邮件失败回滚。邮件与时间在外部边界替换；未向真实用户投递邮件。实际运行命令与事实源见 `docs/data/identity-http.md`，下方代码及类名保留为原始设计示意。
 
 **Files:**
 - Create: `business/src/main/java/com/jiawa/lyw/identity/infrastructure/VerificationLinkMailer.java`
@@ -393,7 +395,7 @@ public record LoginRequest(@Email @NotBlank String email, @NotBlank String passw
 public record TokenResponse(String accessToken, Instant accessExpiresAt) {}
 ```
 
-注册请求包含 `email` 和 `password`；验证请求包含 `token`；重置申请包含 `email`；重置确认包含 `token` 和 `newPassword`。密码规则为 10–72 个字符，至少包含字母和数字。登录与刷新在响应中写入 `HttpOnly; Secure; SameSite=Lax; Path=/` 的 refresh Cookie，响应体只返回 access token；退出同时撤销服务端会话并清除 Cookie。生产环境 `Secure` 固定为 true，本地纯 HTTP 开发可通过 `IDENTITY_COOKIE_SECURE=false` 显式覆盖。
+请求字段以 `IdentityController` 的记录类型为正式契约；新密码规则以 `PasswordPolicy` 为正式事实源，长度按其 Unicode 字符及 UTF-8 字节规则校验。登录与刷新在响应中写入 `HttpOnly; Secure; SameSite=Lax; Path=/` 的 refresh Cookie，响应体只返回 access token；退出同时撤销服务端会话并清除 Cookie。生产环境 `Secure` 固定为 true，本地纯 HTTP 开发可通过 `IDENTITY_COOKIE_SECURE=false` 显式覆盖。
 
 - [ ] **Step 4: 切换拦截器到标准 Authorization 头**
 
