@@ -152,7 +152,7 @@ public final class ItineraryRules {
 ### Step 2：确认测试红灯
 
 ```powershell
-.\business\mvnw.cmd -pl business -Dtest=ItineraryRulesTests,ItineraryModuleBoundaryTests test
+.\business\mvnw.cmd -pl business "-Dtest=ItineraryRulesTests,ItineraryModuleBoundaryTests" test
 ```
 
 Expected: FAIL，原因是领域类型尚不存在。
@@ -172,7 +172,7 @@ IDEMPOTENCY_CONFLICT, INVALID_STATUS_TRANSITION
 ### Step 4：运行聚焦测试
 
 ```powershell
-.\business\mvnw.cmd -pl business -Dtest=ItineraryRulesTests,ItineraryModuleBoundaryTests test
+.\business\mvnw.cmd -pl business "-Dtest=ItineraryRulesTests,ItineraryModuleBoundaryTests" test
 ```
 
 Expected: PASS。
@@ -248,7 +248,7 @@ public record CommandResult(long itineraryId, Long itemId,
 ### Step 4：验证
 
 ```powershell
-.\business\mvnw.cmd -pl business -Dtest=ItineraryCommandContractTests,ItineraryModuleBoundaryTests test
+.\business\mvnw.cmd -pl business "-Dtest=ItineraryCommandContractTests,ItineraryModuleBoundaryTests" test
 ```
 
 ### Step 5：提交
@@ -300,7 +300,7 @@ git commit -m "feat: define itinerary application contracts (#17)"
 
 ```powershell
 .\business\mvnw.cmd -pl business -Pintegration -Dit.test=ItineraryRepositoryIT verify
-.\business\mvnw.cmd -pl business -Dtest=ItineraryRulesTests,ItineraryCommandContractTests,ItineraryModuleBoundaryTests test
+.\business\mvnw.cmd -pl business "-Dtest=ItineraryRulesTests,ItineraryCommandContractTests,ItineraryModuleBoundaryTests" test
 ```
 
 ### Step 5：提交
@@ -345,7 +345,7 @@ git commit -m "feat: persist and query itineraries (#17)"
 ### Step 4：验证并提交
 
 ```powershell
-.\business\mvnw.cmd -pl business -Pintegration -Dit.test=ItineraryOverviewIT,ItineraryRepositoryIT verify
+.\business\mvnw.cmd -pl business -Pintegration "-Dit.test=ItineraryOverviewIT,ItineraryRepositoryIT" verify
 git add business/src/main/java/com/jiawa/lyw/itinerary business/src/main/resources/mapper/itinerary business/src/test/java/com/jiawa/lyw/itinerary/application/ItineraryOverviewIT.java
 git commit -m "feat: edit itinerary overview and destinations (#17)"
 ```
@@ -386,7 +386,7 @@ git commit -m "feat: edit itinerary overview and destinations (#17)"
 ### Step 4：验证并提交
 
 ```powershell
-.\business\mvnw.cmd -pl business -Pintegration -Dit.test=ItineraryItemIT,ItineraryOverviewIT verify
+.\business\mvnw.cmd -pl business -Pintegration "-Dit.test=ItineraryItemIT,ItineraryOverviewIT" verify
 git add business/src/main/java/com/jiawa/lyw/itinerary business/src/main/resources/mapper/itinerary business/src/test/java/com/jiawa/lyw/itinerary/application/ItineraryItemIT.java
 git commit -m "feat: manage ordered itinerary items (#17)"
 ```
@@ -456,7 +456,7 @@ git commit -m "feat: manage ordered itinerary items (#17)"
 ### Step 4：验证并提交
 
 ```powershell
-.\business\mvnw.cmd -pl business -Pintegration -Dit.test=ItineraryHttpIT,IdentityHttpIT verify
+.\business\mvnw.cmd -pl business -Pintegration "-Dit.test=ItineraryHttpIT,IdentityHttpIT" verify
 .\business\mvnw.cmd -pl business test
 git add business/src/main/java/com/jiawa/lyw/itinerary business/src/test/java/com/jiawa/lyw/itinerary/api
 git commit -m "feat: expose itinerary command API (#17)"
