@@ -18,3 +18,9 @@ MEMBER_EMAIL_IDENTITY_MIGRATION = MigrationSpec(
     apply_variable="apply_member_email_identity_migration",
     schema_prefix="lyw_member_identity_migration_test",
 )
+
+ITINERARY_CORE_MIGRATION = MigrationSpec(
+    name="itinerary_core",
+    apply_variable="apply_itinerary_core_migration",
+    schema_prefix="lyw_itinerary_core_migration_test",
+)
