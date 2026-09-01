@@ -1,6 +1,7 @@
 package com.jiawa.lyw.support;
 
 import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.support.EncodedResource;
 import org.springframework.jdbc.datasource.init.ScriptUtils;
 import org.testcontainers.containers.MySQLContainer;
 import org.testcontainers.utility.MountableFile;
@@ -9,6 +10,7 @@ import com.github.dockerjava.api.model.PortBinding;
 import com.github.dockerjava.api.model.Ports;
 
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -80,7 +82,8 @@ public final class MySqlIntegrationDatabase implements AutoCloseable {
             throw new IllegalStateException("Cannot create isolated MySQL integration database");
         }
         try (Connection connection = open(schema)) {
-            ScriptUtils.executeSqlScript(connection, new FileSystemResource(Path.of("..", "sql", "travel_share.sql")));
+            ScriptUtils.executeSqlScript(connection, new EncodedResource(
+                    new FileSystemResource(Path.of("..", "sql", "travel_share.sql")), StandardCharsets.UTF_8));
         } catch (Exception ignored) {
             close();
             throw new IllegalStateException("Cannot initialize isolated MySQL integration schema");

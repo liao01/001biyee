@@ -75,6 +75,12 @@ class IdentityRedisIT {
                 int port = ((org.springframework.boot.web.servlet.context.ServletWebServerApplicationContext) app).getWebServer().getPort();
                 URI base = URI.create("http://127.0.0.1:" + port + "/lyw/");
                 var client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(3)).build();
+                var categories = client.send(HttpRequest.newBuilder(base.resolve("web/post/categories"))
+                        .timeout(Duration.ofSeconds(5)).GET().build(), HttpResponse.BodyHandlers.ofString());
+                assertEquals(200, categories.statusCode());
+                assertEquals(java.util.List.of("城市漫游", "自然风光", "美食"),
+                        json.readTree(categories.body()).path("content").findValuesAsText("name"),
+                        "正式种子的分类文字不能被宿主机默认编码改写");
                 assertDau(client, base, 0);
                 String credentials = "{\"email\":\"redis-test@example.com\",\"password\":\"Test-password-123\"}";
                 assertEquals(200, post(client, base.resolve("web/identity/register"), credentials).statusCode());
