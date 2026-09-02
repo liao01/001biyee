@@ -17,6 +17,7 @@
 **Files:**
 
 - Delete: `business/src/main/java/com/jiawa/lyw/controller/ai/CustomerServiceController.java`
+- Delete: `web/src/view/page/ai.vue`
 - Modify: `business/src/main/resources/application-prod.properties`
 - Modify: `business/src/main/resources/application.properties.example`
 - Modify: `business/src/main/resources/application.yml.example`
@@ -63,7 +64,7 @@ Expected: PASS，源码及配置没有旧硬编码凭据和 RAG 正式变量。
 ### Step 4：提交
 
 ```powershell
-git add -- .env.example business/src/main/resources/application-prod.properties business/src/main/resources/application.properties.example business/src/main/resources/application.yml.example business/src/main/java/com/jiawa/lyw/controller/ai/CustomerServiceController.java business/src/main/java/com/jiawa/lyw/itineraryplanning/infrastructure/DifyItineraryPlanningProperties.java business/src/test/java/com/jiawa/lyw/itineraryplanning/infrastructure/DifyItineraryPlanningPropertiesTests.java business/src/test/java/com/jiawa/lyw/security/ProductionRuntimeSecretsTests.java
+git add -- .env.example business/src/main/resources/application-prod.properties business/src/main/resources/application.properties.example business/src/main/resources/application.yml.example business/src/main/java/com/jiawa/lyw/controller/ai/CustomerServiceController.java web/src/view/page/ai.vue business/src/main/java/com/jiawa/lyw/itineraryplanning/infrastructure/DifyItineraryPlanningProperties.java business/src/test/java/com/jiawa/lyw/itineraryplanning/infrastructure/DifyItineraryPlanningPropertiesTests.java business/src/test/java/com/jiawa/lyw/security/ProductionRuntimeSecretsTests.java
 git commit -m "security: replace legacy rag credential path (#18)"
 ```
 

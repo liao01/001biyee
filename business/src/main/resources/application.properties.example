@@ -36,5 +36,14 @@ app.public-url=${APP_PUBLIC_URL:http://localhost:5173}
 identity.secure-cookie=${IDENTITY_COOKIE_SECURE:true}
 logging.level.com.jiawa.lyw.identity=info
 
+app.ai.itinerary.dify.base-url=${DIFY_ITINERARY_BASE_URL}
+app.ai.itinerary.dify.api-key=${DIFY_ITINERARY_API_KEY}
+app.ai.itinerary.dify.user-hash-key=${DIFY_ITINERARY_USER_HASH_KEY}
+app.ai.itinerary.dify.contract-version=${DIFY_ITINERARY_CONTRACT_VERSION:itinerary-revision/v1}
+app.ai.itinerary.dify.connect-timeout=${DIFY_ITINERARY_CONNECT_TIMEOUT:2s}
+app.ai.itinerary.dify.read-timeout=${DIFY_ITINERARY_READ_TIMEOUT:45s}
+app.ai.itinerary.dify.max-response-bytes=${DIFY_ITINERARY_MAX_RESPONSE_BYTES:262144}
+app.ai.itinerary.dify.max-operations=${DIFY_ITINERARY_MAX_OPERATIONS:80}
+
 spring.servlet.multipart.max-file-size=10MB
 spring.servlet.multipart.max-request-size=20MB
