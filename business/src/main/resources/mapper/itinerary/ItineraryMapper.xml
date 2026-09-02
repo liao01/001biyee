@@ -101,6 +101,12 @@
     WHERE id = #{itineraryId} AND version = #{expectedVersion}
   </update>
 
+  <update id="updateStatus">
+    UPDATE itinerary
+    SET status = #{status}, version = #{nextVersion}, updated_at = #{now}
+    WHERE id = #{itineraryId} AND version = #{expectedVersion}
+  </update>
+
   <delete id="deleteEmptyDaysOutside">
     DELETE day_row
     FROM itinerary_day day_row

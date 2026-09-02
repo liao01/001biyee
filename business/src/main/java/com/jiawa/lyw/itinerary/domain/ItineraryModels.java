@@ -84,4 +84,14 @@ public final class ItineraryModels {
             items = List.copyOf(items);
         }
     }
+
+    public record Detail(
+            Snapshot snapshot,
+            List<ItineraryStatus> allowedTransitions,
+            ItineraryStatus suggestedStatus
+    ) {
+        public Detail {
+            allowedTransitions = List.copyOf(allowedTransitions);
+        }
+    }
 }

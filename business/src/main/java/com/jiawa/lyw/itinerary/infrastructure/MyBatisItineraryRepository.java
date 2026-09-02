@@ -144,6 +144,17 @@ public final class MyBatisItineraryRepository implements ItineraryRepository {
     }
 
     @Override
+    public int updateStatus(
+            long itineraryId,
+            ItineraryStatus status,
+            long expectedVersion,
+            long nextVersion,
+            Instant now
+    ) {
+        return mapper.updateStatus(itineraryId, status, expectedVersion, nextVersion, now);
+    }
+
+    @Override
     public void deleteEmptyDaysOutside(
             long itineraryId,
             java.time.LocalDate startDate,

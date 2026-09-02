@@ -89,6 +89,14 @@ public interface ItineraryMapper {
             @Param("now") Instant now
     );
 
+    int updateStatus(
+            @Param("itineraryId") long itineraryId,
+            @Param("status") ItineraryStatus status,
+            @Param("expectedVersion") long expectedVersion,
+            @Param("nextVersion") long nextVersion,
+            @Param("now") Instant now
+    );
+
     void deleteEmptyDaysOutside(
             @Param("itineraryId") long itineraryId,
             @Param("startDate") java.time.LocalDate startDate,

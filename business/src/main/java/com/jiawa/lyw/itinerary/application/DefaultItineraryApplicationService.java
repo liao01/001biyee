@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Comparator;
@@ -27,6 +28,7 @@ public final class DefaultItineraryApplicationService implements ItineraryApplic
     private static final String UPDATE_ITEM_OPERATION = "UPDATE_ITEM";
     private static final String DELETE_ITEM_OPERATION = "DELETE_ITEM";
     private static final String REORDER_ITEMS_OPERATION = "REORDER_ITEMS";
+    private static final String TRANSITION_STATUS_OPERATION = "TRANSITION_STATUS";
     private static final long POSITION_GAP = 1024L;
     private static final int MAX_PAGE_SIZE = 100;
 
@@ -89,6 +91,21 @@ public final class DefaultItineraryApplicationService implements ItineraryApplic
         );
         accessPolicy.assertCanRead(actorMemberId, snapshot.ownerMemberId());
         return snapshot;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ItineraryModels.Detail detail(long actorMemberId, long itineraryId) {
+        ItineraryModels.Snapshot snapshot = get(actorMemberId, itineraryId);
+        List<ItineraryStatus> allowed = ItineraryRules.allowedTransitions(snapshot.status()).stream()
+                .sorted()
+                .toList();
+        LocalDate localToday = LocalDate.now(clock.withZone(snapshot.timeZone()));
+        return new ItineraryModels.Detail(
+                snapshot,
+                allowed,
+                ItineraryRules.suggestedStatus(snapshot, localToday).orElse(null)
+        );
     }
 
     @Override
@@ -389,12 +406,35 @@ public final class DefaultItineraryApplicationService implements ItineraryApplic
     }
 
     @Override
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public ItineraryCommands.CommandResult transition(
             long actorMemberId,
             long itineraryId,
             ItineraryCommands.CommandEnvelope<ItineraryCommands.TransitionStatus> command
     ) {
-        throw new UnsupportedOperationException("Task 7");
+        ItineraryCommands.assertExistingEnvelope(command);
+        String requestHash = hashForItinerary(TRANSITION_STATUS_OPERATION, itineraryId, command);
+        ItineraryModels.Snapshot current = lockForEdit(actorMemberId, itineraryId);
+        ItineraryCommands.CommandResult replay = replayIfPresent(
+                command.commandId(), actorMemberId, TRANSITION_STATUS_OPERATION, requestHash
+        );
+        if (replay != null) {
+            return replay;
+        }
+        assertVersion(current, command.expectedVersion());
+        ItineraryRules.assertTransition(current, command.payload().toStatus());
+        reserveExistingCommand(
+                command, actorMemberId, itineraryId, TRANSITION_STATUS_OPERATION, requestHash
+        );
+
+        Instant now = clock.instant();
+        long nextVersion = current.version() + 1;
+        if (repository.updateStatus(
+                itineraryId, command.payload().toStatus(), current.version(), nextVersion, now
+        ) != 1) {
+            throw versionConflict();
+        }
+        return complete(command.commandId(), itineraryId, null, nextVersion);
     }
 
     private ItineraryCommands.CommandResult replay(

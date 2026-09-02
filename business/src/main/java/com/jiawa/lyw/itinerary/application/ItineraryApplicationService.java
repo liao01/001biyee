@@ -15,6 +15,8 @@ public interface ItineraryApplicationService {
 
     ItineraryModels.Snapshot get(long actorMemberId, long itineraryId);
 
+    ItineraryModels.Detail detail(long actorMemberId, long itineraryId);
+
     ItineraryCommands.CommandResult create(
             long actorMemberId,
             ItineraryCommands.CommandEnvelope<ItineraryCommands.CreateItinerary> command

@@ -71,6 +71,14 @@ public interface ItineraryRepository {
 
     int bumpVersion(long itineraryId, long expectedVersion, long nextVersion, Instant now);
 
+    int updateStatus(
+            long itineraryId,
+            ItineraryStatus status,
+            long expectedVersion,
+            long nextVersion,
+            Instant now
+    );
+
     void deleteEmptyDaysOutside(long itineraryId, LocalDate startDate, LocalDate endDate);
 
     void deleteDestinations(long itineraryId);

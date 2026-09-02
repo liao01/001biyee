@@ -555,6 +555,73 @@ class ItineraryRepositoryIT {
         ));
     }
 
+    @Test
+    void lifecycleTransitionsFollowTheStateGraphAndReplayWithoutAnotherVersion() {
+        long itineraryId = itineraries.create(42, createCommand(
+                UUID.fromString("00000000-0000-0000-0000-000000000134"), "状态流转"
+        )).itineraryId();
+        long dayId = itineraries.get(42, itineraryId).days().get(0).id();
+        itineraries.addItem(42, itineraryId, envelope(
+                "00000000-0000-0000-0000-000000000135", 1,
+                new ItineraryCommands.AddItem(dayId, "有效安排", null, null, null, null, null)
+        ));
+
+        var plannedCommand = envelope(
+                "00000000-0000-0000-0000-000000000136", 2,
+                new ItineraryCommands.TransitionStatus(com.jiawa.lyw.itinerary.domain.ItineraryStatus.PLANNED)
+        );
+        var planned = itineraries.transition(42, itineraryId, plannedCommand);
+        var replay = itineraries.transition(42, itineraryId, plannedCommand);
+        assertEquals(3, planned.version());
+        assertTrue(replay.replayed());
+
+        itineraries.transition(42, itineraryId, envelope(
+                "00000000-0000-0000-0000-000000000137", 3,
+                new ItineraryCommands.TransitionStatus(
+                        com.jiawa.lyw.itinerary.domain.ItineraryStatus.IN_PROGRESS
+                )
+        ));
+        itineraries.transition(42, itineraryId, envelope(
+                "00000000-0000-0000-0000-000000000138", 4,
+                new ItineraryCommands.TransitionStatus(
+                        com.jiawa.lyw.itinerary.domain.ItineraryStatus.COMPLETED
+                )
+        ));
+        itineraries.transition(42, itineraryId, envelope(
+                "00000000-0000-0000-0000-000000000139", 5,
+                new ItineraryCommands.TransitionStatus(
+                        com.jiawa.lyw.itinerary.domain.ItineraryStatus.ARCHIVED
+                )
+        ));
+        assertEquals(com.jiawa.lyw.itinerary.domain.ItineraryStatus.ARCHIVED,
+                itineraries.get(42, itineraryId).status());
+        assertEquals(6, itineraries.get(42, itineraryId).version());
+    }
+
+    @Test
+    void lifecycleRejectsPlanningWithoutItemsAndRollsBackTheCommand() {
+        long itineraryId = itineraries.create(42, createCommand(
+                UUID.fromString("00000000-0000-0000-0000-000000000140"), "无安排草稿"
+        )).itineraryId();
+        var command = envelope(
+                "00000000-0000-0000-0000-000000000141", 1,
+                new ItineraryCommands.TransitionStatus(
+                        com.jiawa.lyw.itinerary.domain.ItineraryStatus.PLANNED
+                )
+        );
+        var invalid = assertThrows(
+                ItineraryException.class,
+                () -> itineraries.transition(42, itineraryId, command)
+        );
+        assertEquals(ItineraryError.INVALID_STATUS_TRANSITION, invalid.error());
+        assertEquals(1, itineraries.get(42, itineraryId).version());
+        assertEquals(0, jdbc.queryForObject(
+                "SELECT COUNT(*) FROM itinerary_command WHERE command_id = ?",
+                Integer.class,
+                command.commandId().toString()
+        ));
+    }
+
     private static ItineraryCommands.CommandEnvelope<ItineraryCommands.CreateItinerary> createCommand(
             UUID commandId,
             String title
