@@ -24,3 +24,9 @@ ITINERARY_CORE_MIGRATION = MigrationSpec(
     apply_variable="apply_itinerary_core_migration",
     schema_prefix="lyw_itinerary_core_migration_test",
 )
+
+ITINERARY_PLANNING_MIGRATION = MigrationSpec(
+    name="itinerary_planning",
+    apply_variable="apply_itinerary_planning_migration",
+    schema_prefix="lyw_itinerary_planning_migration_test",
+)

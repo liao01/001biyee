@@ -267,6 +267,11 @@ CREATE TABLE `user_profile`  (
   CONSTRAINT `user_profile_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `member` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
 ) ENGINE = InnoDB AUTO_INCREMENT = 1992588649795432449 CHARACTER SET = utf8 COLLATE = utf8_general_ci COMMENT = '用户资料表' ROW_FORMAT = Dynamic;
 
+DROP TABLE IF EXISTS `itinerary_revision_resolution`;
+DROP TABLE IF EXISTS `itinerary_revision_operation`;
+DROP TABLE IF EXISTS `itinerary_revision_proposal`;
+DROP TABLE IF EXISTS `itinerary_planning_destination`;
+DROP TABLE IF EXISTS `itinerary_planning_request`;
 DROP TABLE IF EXISTS `itinerary_command`;
 DROP TABLE IF EXISTS `itinerary_item`;
 DROP TABLE IF EXISTS `itinerary_day`;
@@ -370,5 +375,127 @@ CREATE TABLE `itinerary_command` (
   CONSTRAINT `chk_itinerary_command_result_version` CHECK (`result_version` IS NULL OR `result_version` >= 1),
   CONSTRAINT `chk_itinerary_command_hash` CHECK (`request_hash` REGEXP '^[0-9a-f]{64}$')
 ) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '行程命令幂等结果';
+
+CREATE TABLE `itinerary_planning_request` (
+  `id` bigint NOT NULL,
+  `itinerary_id` bigint NOT NULL,
+  `owner_member_id` bigint NOT NULL,
+  `schema_version` varchar(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  `start_date` date NOT NULL,
+  `end_date` date NOT NULL,
+  `budget_amount` decimal(14, 2) NOT NULL,
+  `budget_currency` char(3) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  `party_size` int NOT NULL,
+  `preferences_json` json NOT NULL,
+  `status` varchar(24) CHARACTER SET ascii COLLATE ascii_bin NOT NULL DEFAULT 'DRAFT',
+  `version` bigint NOT NULL DEFAULT 1,
+  `created_at` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `updated_at` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  PRIMARY KEY (`id`),
+  INDEX `idx_itinerary_planning_owner_updated` (`owner_member_id`, `updated_at`, `id`),
+  INDEX `idx_itinerary_planning_itinerary_updated` (`itinerary_id`, `updated_at`, `id`),
+  CONSTRAINT `fk_itinerary_planning_request_itinerary` FOREIGN KEY (`itinerary_id`) REFERENCES `itinerary` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `fk_itinerary_planning_request_owner` FOREIGN KEY (`owner_member_id`) REFERENCES `member` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `chk_itinerary_planning_request_dates` CHECK (`end_date` >= `start_date` AND DATEDIFF(`end_date`, `start_date`) <= 365),
+  CONSTRAINT `chk_itinerary_planning_request_budget` CHECK (`budget_amount` >= 0),
+  CONSTRAINT `chk_itinerary_planning_request_currency` CHECK (`budget_currency` REGEXP '^[A-Z]{3}$'),
+  CONSTRAINT `chk_itinerary_planning_request_party` CHECK (`party_size` BETWEEN 1 AND 100),
+  CONSTRAINT `chk_itinerary_planning_request_status` CHECK (`status` IN ('DRAFT', 'SUBMITTED', 'GENERATING', 'READY', 'FAILED', 'CANCELLED')),
+  CONSTRAINT `chk_itinerary_planning_request_version` CHECK (`version` >= 1)
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '结构化行程规划请求';
+
+CREATE TABLE `itinerary_planning_destination` (
+  `id` bigint NOT NULL,
+  `planning_request_id` bigint NOT NULL,
+  `name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `country_code` char(2) CHARACTER SET ascii COLLATE ascii_bin NULL,
+  `time_zone` varchar(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  `position` bigint NOT NULL,
+  `created_at` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  PRIMARY KEY (`id`),
+  UNIQUE INDEX `uk_itinerary_planning_destination_position` (`planning_request_id`, `position`),
+  CONSTRAINT `fk_itinerary_planning_destination_request` FOREIGN KEY (`planning_request_id`) REFERENCES `itinerary_planning_request` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT,
+  CONSTRAINT `chk_itinerary_planning_destination_country` CHECK (`country_code` IS NULL OR `country_code` REGEXP '^[A-Z]{2}$'),
+  CONSTRAINT `chk_itinerary_planning_destination_position` CHECK (`position` >= 1024)
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '规划请求有序目的地';
+
+CREATE TABLE `itinerary_revision_proposal` (
+  `id` bigint NOT NULL,
+  `planning_request_id` bigint NOT NULL,
+  `itinerary_id` bigint NOT NULL,
+  `owner_member_id` bigint NOT NULL,
+  `base_itinerary_version` bigint NOT NULL,
+  `contract_version` varchar(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  `status` varchar(24) CHARACTER SET ascii COLLATE ascii_bin NOT NULL DEFAULT 'VALIDATING',
+  `provider` varchar(32) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  `provider_run_id` varchar(128) CHARACTER SET ascii COLLATE ascii_bin NULL,
+  `model_name` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL,
+  `workflow_version` varchar(64) CHARACTER SET ascii COLLATE ascii_bin NULL,
+  `knowledge_reference_ids_json` json NULL,
+  `elapsed_millis` bigint NULL,
+  `total_tokens` bigint NULL,
+  `failure_code` varchar(64) CHARACTER SET ascii COLLATE ascii_bin NULL,
+  `created_at` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `resolved_at` datetime(3) NULL,
+  PRIMARY KEY (`id`),
+  INDEX `idx_itinerary_revision_request_created` (`planning_request_id`, `created_at`, `id`),
+  INDEX `idx_itinerary_revision_itinerary_status` (`itinerary_id`, `status`, `created_at`, `id`),
+  INDEX `idx_itinerary_revision_owner_created` (`owner_member_id`, `created_at`, `id`),
+  CONSTRAINT `fk_itinerary_revision_proposal_request` FOREIGN KEY (`planning_request_id`) REFERENCES `itinerary_planning_request` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT,
+  CONSTRAINT `fk_itinerary_revision_proposal_itinerary` FOREIGN KEY (`itinerary_id`) REFERENCES `itinerary` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `fk_itinerary_revision_proposal_owner` FOREIGN KEY (`owner_member_id`) REFERENCES `member` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `chk_itinerary_revision_base_version` CHECK (`base_itinerary_version` >= 1),
+  CONSTRAINT `chk_itinerary_revision_proposal_status` CHECK (`status` IN ('VALIDATING', 'READY', 'INVALID', 'FAILED', 'CONFIRMED', 'REJECTED', 'EXPIRED')),
+  CONSTRAINT `chk_itinerary_revision_elapsed` CHECK (`elapsed_millis` IS NULL OR `elapsed_millis` >= 0),
+  CONSTRAINT `chk_itinerary_revision_tokens` CHECK (`total_tokens` IS NULL OR `total_tokens` >= 0)
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '不可变 AI 行程修订建议';
+
+CREATE TABLE `itinerary_revision_operation` (
+  `id` bigint NOT NULL,
+  `proposal_id` bigint NOT NULL,
+  `operation_key` varchar(100) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  `operation_type` varchar(32) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  `target_date` date NULL,
+  `target_item_id` bigint NULL,
+  `summary` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `payload_json` json NOT NULL,
+  `estimated_cost_delta` decimal(14, 2) NULL,
+  `validation_status` varchar(16) CHARACTER SET ascii COLLATE ascii_bin NOT NULL DEFAULT 'VALID',
+  `position` bigint NOT NULL,
+  `created_at` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  PRIMARY KEY (`id`),
+  UNIQUE INDEX `uk_itinerary_revision_operation_key` (`proposal_id`, `operation_key`),
+  UNIQUE INDEX `uk_itinerary_revision_operation_position` (`proposal_id`, `position`),
+  INDEX `idx_itinerary_revision_operation_target` (`target_item_id`),
+  CONSTRAINT `fk_itinerary_revision_operation_proposal` FOREIGN KEY (`proposal_id`) REFERENCES `itinerary_revision_proposal` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT,
+  CONSTRAINT `fk_itinerary_revision_operation_item` FOREIGN KEY (`target_item_id`) REFERENCES `itinerary_item` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `chk_itinerary_revision_operation_type` CHECK (`operation_type` IN ('ADD_ITEM', 'UPDATE_ITEM', 'DELETE_ITEM', 'REORDER_DAY_ITEMS')),
+  CONSTRAINT `chk_itinerary_revision_validation_status` CHECK (`validation_status` IN ('VALID', 'INVALID')),
+  CONSTRAINT `chk_itinerary_revision_operation_position` CHECK (`position` >= 1024)
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '可选择的行程修订建议操作';
+
+CREATE TABLE `itinerary_revision_resolution` (
+  `id` bigint NOT NULL,
+  `proposal_id` bigint NOT NULL,
+  `member_id` bigint NOT NULL,
+  `decision_id` char(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  `decision_type` varchar(16) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  `selected_operations_hash` char(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  `expected_itinerary_version` bigint NULL,
+  `itinerary_command_id` char(36) CHARACTER SET ascii COLLATE ascii_bin NULL,
+  `result_version` bigint NULL,
+  `created_at` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  PRIMARY KEY (`id`),
+  UNIQUE INDEX `uk_itinerary_revision_resolution_proposal` (`proposal_id`),
+  UNIQUE INDEX `uk_itinerary_revision_decision_id` (`decision_id`),
+  INDEX `idx_itinerary_revision_resolution_member_created` (`member_id`, `created_at`, `id`),
+  CONSTRAINT `fk_itinerary_revision_resolution_proposal` FOREIGN KEY (`proposal_id`) REFERENCES `itinerary_revision_proposal` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT,
+  CONSTRAINT `fk_itinerary_revision_resolution_member` FOREIGN KEY (`member_id`) REFERENCES `member` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `chk_itinerary_revision_decision_type` CHECK (`decision_type` IN ('CONFIRM', 'REJECT')),
+  CONSTRAINT `chk_itinerary_revision_selection_hash` CHECK (`selected_operations_hash` REGEXP '^[0-9a-f]{64}$'),
+  CONSTRAINT `chk_itinerary_revision_expected_version` CHECK (`expected_itinerary_version` IS NULL OR `expected_itinerary_version` >= 1),
+  CONSTRAINT `chk_itinerary_revision_result_version` CHECK (`result_version` IS NULL OR `result_version` >= 1),
+  CONSTRAINT `chk_itinerary_revision_resolution_shape` CHECK ((`decision_type` = 'REJECT' AND `expected_itinerary_version` IS NULL AND `itinerary_command_id` IS NULL AND `result_version` IS NULL) OR (`decision_type` = 'CONFIRM' AND `expected_itinerary_version` IS NOT NULL AND `itinerary_command_id` IS NOT NULL AND `result_version` IS NOT NULL))
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '用户对修订建议的幂等决定';
 
 SET FOREIGN_KEY_CHECKS = 1;
