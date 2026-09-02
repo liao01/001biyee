@@ -22,6 +22,7 @@ describe('创建行程页', () => {
     await wrapper.get('#itinerary-title').setValue('杭州周末')
     await wrapper.get('#itinerary-start-date').setValue('2026-09-01')
     await wrapper.get('#itinerary-end-date').setValue('2026-09-02')
+    await wrapper.get('#itinerary-time-zone').setValue('Asia/Tokyo')
     await wrapper.get('#destination-name-0').setValue('杭州')
     await wrapper.get('form').trigger('submit')
     await flushPromises()
@@ -31,8 +32,8 @@ describe('创建行程页', () => {
     expect(command.expectedVersion).toBe(0)
     expect(command.commandId).toMatch(/^[0-9a-f-]{36}$/)
     expect(command.payload).toMatchObject({
-      title: '杭州周末', timeZone: 'Asia/Shanghai', baseCurrency: 'CNY',
-      destinations: [{ name: '杭州', countryCode: 'CN', timeZone: 'Asia/Shanghai' }],
+      title: '杭州周末', timeZone: 'Asia/Tokyo', baseCurrency: 'CNY',
+      destinations: [{ name: '杭州', countryCode: 'CN', timeZone: 'Asia/Tokyo' }],
     })
     expect(router.currentRoute.value.path).toBe('/itineraries/501')
   })

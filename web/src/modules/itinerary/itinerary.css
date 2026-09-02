@@ -266,6 +266,8 @@
 
 .travel-primary-button:disabled,
 .travel-secondary-button:disabled,
+.itinerary-text-button:disabled,
+.itinerary-section-heading button:disabled,
 .itinerary-item__actions button:disabled {
   cursor: not-allowed;
   opacity: .45;

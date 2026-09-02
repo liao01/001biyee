@@ -5,6 +5,12 @@ import { describe, expect, it, vi } from 'vitest'
 import ItineraryEditor from './ItineraryEditor.vue'
 import { itineraryHttpKey } from './itineraryHttp.js'
 
+const deferred = () => {
+  let resolve
+  const promise = new Promise((yes) => { resolve = yes })
+  return { promise, resolve }
+}
+
 const detail = () => ({
   id: '10', title: '杭州周末', startDate: '2026-09-01', endDate: '2026-09-02',
   timeZone: 'Asia/Shanghai', baseCurrency: 'CNY', status: 'DRAFT', version: 1,
@@ -87,5 +93,41 @@ describe('行程编辑器页面', () => {
     expect(wrapper.get('[role="alert"]').text()).toContain('重新加载')
     expect(wrapper.get('button[aria-label="重新加载行程"]')).toBeTruthy()
     expect(wrapper.get('[role="status"]').text()).not.toContain('已保存')
+  })
+
+  it('写命令在途和投影重读期间禁用其他写入口，避免取消已排队命令', async () => {
+    const pending = deferred()
+    const api = {
+      get: vi.fn().mockResolvedValue(detail()),
+      updateOverview: vi.fn().mockReturnValue(pending.promise),
+    }
+    const wrapper = await mountEditor(api)
+
+    await wrapper.get('form[aria-label="基本信息"]').trigger('submit')
+    expect(wrapper.get('form[aria-label="目的地"] button[type="submit"]').attributes('disabled')).toBeDefined()
+    expect(wrapper.get('button[aria-label="将状态改为 PLANNED"]').attributes('disabled')).toBeDefined()
+    expect(wrapper.get('.itinerary-day__header button').attributes('disabled')).toBeDefined()
+
+    pending.resolve({ version: 2 })
+    await flushPromises()
+    expect(api.get).toHaveBeenCalledTimes(2)
+    expect(wrapper.get('form[aria-label="目的地"] button[type="submit"]').attributes('disabled')).toBeUndefined()
+  })
+
+  it('命令成功但投影重读失败时明确提示已保存并提供重新加载', async () => {
+    const api = {
+      get: vi.fn()
+        .mockResolvedValueOnce(detail())
+        .mockRejectedValueOnce(new Error('网络暂不可用')),
+      updateOverview: vi.fn().mockResolvedValue({ version: 2 }),
+    }
+    const wrapper = await mountEditor(api)
+
+    await wrapper.get('form[aria-label="基本信息"]').trigger('submit')
+    await flushPromises()
+
+    expect(wrapper.get('[role="alert"]').text()).toContain('更改已保存，但最新内容未加载')
+    expect(wrapper.get('button[aria-label="重新加载行程"]')).toBeTruthy()
+    expect(wrapper.get('[role="status"]').text()).not.toContain('保存失败')
   })
 })

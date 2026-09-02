@@ -112,7 +112,10 @@ const submit = async () => {
   try {
     const result = await api.create({
       commandId: crypto.randomUUID(), expectedVersion: 0,
-      payload: { ...form, destinations: form.destinations.map((item) => ({ ...item })) },
+      payload: {
+        ...form,
+        destinations: form.destinations.map((item) => ({ ...item, timeZone: form.timeZone })),
+      },
     })
     await router.push(`/itineraries/${result.itineraryId}`)
   } catch (error) {
