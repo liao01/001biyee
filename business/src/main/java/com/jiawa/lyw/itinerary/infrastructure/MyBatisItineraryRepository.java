@@ -70,6 +70,56 @@ public final class MyBatisItineraryRepository implements ItineraryRepository {
     @Override
     public Optional<ItineraryModels.Snapshot> findSnapshot(long itineraryId) {
         ItineraryRows.ItineraryRow itinerary = mapper.findItinerary(itineraryId);
+        return assembleSnapshot(itineraryId, itinerary);
+    }
+
+    @Override
+    public Optional<ItineraryModels.Snapshot> findSnapshotForUpdate(long itineraryId) {
+        ItineraryRows.ItineraryRow itinerary = mapper.findItineraryForUpdate(itineraryId);
+        return assembleSnapshot(itineraryId, itinerary);
+    }
+
+    @Override
+    public int updateOverview(
+            long itineraryId,
+            String title,
+            java.time.LocalDate startDate,
+            java.time.LocalDate endDate,
+            String timeZone,
+            String baseCurrency,
+            long expectedVersion,
+            long nextVersion,
+            Instant now
+    ) {
+        return mapper.updateOverview(
+                itineraryId, title, startDate, endDate, timeZone, baseCurrency,
+                expectedVersion, nextVersion, now
+        );
+    }
+
+    @Override
+    public int bumpVersion(long itineraryId, long expectedVersion, long nextVersion, Instant now) {
+        return mapper.bumpVersion(itineraryId, expectedVersion, nextVersion, now);
+    }
+
+    @Override
+    public void deleteEmptyDaysOutside(
+            long itineraryId,
+            java.time.LocalDate startDate,
+            java.time.LocalDate endDate
+    ) {
+        mapper.deleteEmptyDaysOutside(itineraryId, startDate, endDate);
+    }
+
+    @Override
+    public void deleteDestinations(long itineraryId) {
+        mapper.deleteDestinations(itineraryId);
+    }
+
+    private Optional<ItineraryModels.Snapshot> assembleSnapshot(
+            long itineraryId,
+            ItineraryRows.ItineraryRow itinerary
+    ) {
         if (itinerary == null) {
             return Optional.empty();
         }

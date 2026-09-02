@@ -33,6 +33,26 @@ public interface ItineraryRepository {
 
     Optional<ItineraryModels.Snapshot> findSnapshot(long itineraryId);
 
+    Optional<ItineraryModels.Snapshot> findSnapshotForUpdate(long itineraryId);
+
+    int updateOverview(
+            long itineraryId,
+            String title,
+            LocalDate startDate,
+            LocalDate endDate,
+            String timeZone,
+            String baseCurrency,
+            long expectedVersion,
+            long nextVersion,
+            Instant now
+    );
+
+    int bumpVersion(long itineraryId, long expectedVersion, long nextVersion, Instant now);
+
+    void deleteEmptyDaysOutside(long itineraryId, LocalDate startDate, LocalDate endDate);
+
+    void deleteDestinations(long itineraryId);
+
     List<ItineraryModels.Summary> findSummaries(
             long ownerMemberId,
             List<ItineraryStatus> statuses,

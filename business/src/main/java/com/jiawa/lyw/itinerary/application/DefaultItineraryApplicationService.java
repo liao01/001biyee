@@ -6,6 +6,7 @@ import com.jiawa.lyw.itinerary.domain.ItineraryModels;
 import com.jiawa.lyw.itinerary.domain.ItineraryRules;
 import com.jiawa.lyw.itinerary.domain.ItineraryStatus;
 import org.springframework.dao.DuplicateKeyException;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.nio.charset.StandardCharsets;
@@ -20,6 +21,8 @@ import java.util.Set;
 
 public final class DefaultItineraryApplicationService implements ItineraryApplicationService {
     private static final String CREATE_OPERATION = "CREATE";
+    private static final String UPDATE_OVERVIEW_OPERATION = "UPDATE_OVERVIEW";
+    private static final String REPLACE_DESTINATIONS_OPERATION = "REPLACE_DESTINATIONS";
     private static final int MAX_PAGE_SIZE = 100;
 
     private final ItineraryRepository repository;
@@ -84,7 +87,7 @@ public final class DefaultItineraryApplicationService implements ItineraryApplic
     }
 
     @Override
-    @Transactional
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public ItineraryCommands.CommandResult create(
             long actorMemberId,
             ItineraryCommands.CommandEnvelope<ItineraryCommands.CreateItinerary> command
@@ -135,21 +138,105 @@ public final class DefaultItineraryApplicationService implements ItineraryApplic
     }
 
     @Override
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public ItineraryCommands.CommandResult updateOverview(
             long actorMemberId,
             long itineraryId,
             ItineraryCommands.CommandEnvelope<ItineraryCommands.UpdateOverview> command
     ) {
-        throw new UnsupportedOperationException("Task 5");
+        ItineraryCommands.assertExistingEnvelope(command);
+        String requestHash = hashForItinerary(UPDATE_OVERVIEW_OPERATION, itineraryId, command);
+        ItineraryModels.Snapshot current = lockForEdit(actorMemberId, itineraryId);
+        ItineraryCommands.CommandResult replay = replayIfPresent(
+                command.commandId(), actorMemberId, UPDATE_OVERVIEW_OPERATION, requestHash
+        );
+        if (replay != null) {
+            return replay;
+        }
+        assertVersion(current, command.expectedVersion());
+        reserveExistingCommand(
+                command, actorMemberId, itineraryId, UPDATE_OVERVIEW_OPERATION, requestHash
+        );
+
+        ItineraryCommands.UpdateOverview payload = command.payload();
+        String title = payload.title() == null ? current.title() : payload.title();
+        var startDate = payload.startDate() == null ? current.startDate() : payload.startDate();
+        var endDate = payload.endDate() == null ? current.endDate() : payload.endDate();
+        String timeZone = payload.timeZone() == null ? current.timeZone().getId() : payload.timeZone();
+        String baseCurrency = payload.baseCurrency() == null
+                ? current.baseCurrency().getCurrencyCode() : payload.baseCurrency();
+        ItineraryRules.assertShrinkIsSafe(startDate, endDate, current.days());
+
+        repository.deleteEmptyDaysOutside(itineraryId, startDate, endDate);
+        Set<java.time.LocalDate> existingDates = current.days().stream()
+                .map(ItineraryModels.Day::date)
+                .collect(java.util.stream.Collectors.toSet());
+        Instant now = clock.instant();
+        for (var date : ItineraryRules.dates(startDate, endDate)) {
+            if (!existingDates.contains(date)) {
+                repository.insertDay(new ItineraryRepository.NewDay(ids.nextId(), itineraryId, date, now));
+            }
+        }
+        long nextVersion = current.version() + 1;
+        if (repository.updateOverview(
+                itineraryId, title, startDate, endDate, timeZone, baseCurrency,
+                current.version(), nextVersion, now
+        ) != 1) {
+            throw versionConflict();
+        }
+        return complete(command.commandId(), itineraryId, null, nextVersion);
     }
 
     @Override
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public ItineraryCommands.CommandResult replaceDestinations(
             long actorMemberId,
             long itineraryId,
             ItineraryCommands.CommandEnvelope<ItineraryCommands.ReplaceDestinations> command
     ) {
-        throw new UnsupportedOperationException("Task 5");
+        ItineraryCommands.assertExistingEnvelope(command);
+        String requestHash = hashForItinerary(REPLACE_DESTINATIONS_OPERATION, itineraryId, command);
+        ItineraryModels.Snapshot current = lockForEdit(actorMemberId, itineraryId);
+        ItineraryCommands.CommandResult replay = replayIfPresent(
+                command.commandId(), actorMemberId, REPLACE_DESTINATIONS_OPERATION, requestHash
+        );
+        if (replay != null) {
+            return replay;
+        }
+        assertVersion(current, command.expectedVersion());
+        Set<Long> currentIds = current.destinations().stream()
+                .map(ItineraryModels.Destination::id)
+                .collect(java.util.stream.Collectors.toSet());
+        boolean containsForeignId = command.payload().destinations().stream()
+                .map(ItineraryCommands.DestinationInput::id)
+                .filter(java.util.Objects::nonNull)
+                .anyMatch(id -> !currentIds.contains(id));
+        if (containsForeignId) {
+            throw new ItineraryException(ItineraryError.INVALID_DESTINATION, "目的地信息无效");
+        }
+        reserveExistingCommand(
+                command, actorMemberId, itineraryId, REPLACE_DESTINATIONS_OPERATION, requestHash
+        );
+
+        repository.deleteDestinations(itineraryId);
+        Instant now = clock.instant();
+        for (int index = 0; index < command.payload().destinations().size(); index++) {
+            ItineraryCommands.DestinationInput destination = command.payload().destinations().get(index);
+            repository.insertDestination(new ItineraryRepository.NewDestination(
+                    destination.id() == null ? ids.nextId() : destination.id(),
+                    itineraryId,
+                    destination.name(),
+                    destination.countryCode(),
+                    destination.timeZone(),
+                    (long) (index + 1) * 1024,
+                    now
+            ));
+        }
+        long nextVersion = current.version() + 1;
+        if (repository.bumpVersion(itineraryId, current.version(), nextVersion, now) != 1) {
+            throw versionConflict();
+        }
+        return complete(command.commandId(), itineraryId, null, nextVersion);
     }
 
     @Override
@@ -220,6 +307,71 @@ public final class DefaultItineraryApplicationService implements ItineraryApplic
         );
     }
 
+    private ItineraryModels.Snapshot lockForEdit(long actorMemberId, long itineraryId) {
+        if (actorMemberId <= 0 || itineraryId <= 0) {
+            throw notFound();
+        }
+        ItineraryModels.Snapshot snapshot = repository.findSnapshotForUpdate(itineraryId)
+                .orElseThrow(DefaultItineraryApplicationService::notFound);
+        accessPolicy.assertCanEdit(actorMemberId, snapshot.ownerMemberId());
+        return snapshot;
+    }
+
+    private ItineraryCommands.CommandResult replayIfPresent(
+            java.util.UUID commandId,
+            long memberId,
+            String operation,
+            String requestHash
+    ) {
+        return repository.findCommand(commandId)
+                .map(ignored -> replay(commandId, memberId, operation, requestHash))
+                .orElse(null);
+    }
+
+    private void reserveExistingCommand(
+            ItineraryCommands.CommandEnvelope<?> command,
+            long actorMemberId,
+            long itineraryId,
+            String operation,
+            String requestHash
+    ) {
+        try {
+            repository.reserveCommand(
+                    ids.nextId(), command.commandId(), actorMemberId, operation, itineraryId,
+                    command.expectedVersion(), requestHash, clock.instant()
+            );
+        } catch (DuplicateKeyException conflict) {
+            replay(command.commandId(), actorMemberId, operation, requestHash);
+            throw new IllegalStateException("Unexpected duplicate itinerary command");
+        }
+    }
+
+    private String hashForItinerary(
+            String operation,
+            long itineraryId,
+            ItineraryCommands.CommandEnvelope<?> command
+    ) {
+        return hasher.hash(operation + "@" + itineraryId, command);
+    }
+
+    private static void assertVersion(ItineraryModels.Snapshot snapshot, long expectedVersion) {
+        if (snapshot.version() != expectedVersion) {
+            throw versionConflict();
+        }
+    }
+
+    private ItineraryCommands.CommandResult complete(
+            java.util.UUID commandId,
+            long itineraryId,
+            Long itemId,
+            long version
+    ) {
+        if (repository.completeCommand(commandId, itineraryId, itemId, version) != 1) {
+            throw new IllegalStateException("Itinerary command completion failed");
+        }
+        return new ItineraryCommands.CommandResult(itineraryId, itemId, version, false);
+    }
+
     private static List<ItineraryStatus> normalizeStatuses(Set<ItineraryStatus> statuses) {
         Set<ItineraryStatus> selected = statuses == null || statuses.isEmpty()
                 ? EnumSet.complementOf(EnumSet.of(ItineraryStatus.ARCHIVED))
@@ -259,6 +411,10 @@ public final class DefaultItineraryApplicationService implements ItineraryApplic
 
     private static ItineraryException notFound() {
         return new ItineraryException(ItineraryError.ITINERARY_NOT_FOUND, "行程不存在");
+    }
+
+    private static ItineraryException versionConflict() {
+        return new ItineraryException(ItineraryError.VERSION_CONFLICT, "行程已被更新，请重新加载");
     }
 
     private record Cursor(Instant updatedAt, long id) {

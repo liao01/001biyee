@@ -213,6 +213,159 @@ class ItineraryRepositoryIT {
         assertEquals(2, snapshot.destinations().size());
     }
 
+    @Test
+    void overviewUpdateExtendsAndSafelyShrinksDaysWithOneVersionPerCommand() {
+        long itineraryId = itineraries.create(42, createCommand(
+                UUID.fromString("00000000-0000-0000-0000-000000000108"), "日期调整"
+        )).itineraryId();
+        List<Long> originalDayIds = itineraries.get(42, itineraryId).days().stream()
+                .map(day -> day.id()).toList();
+
+        var extended = itineraries.updateOverview(
+                42,
+                itineraryId,
+                envelope(
+                        "00000000-0000-0000-0000-000000000109",
+                        1,
+                        new ItineraryCommands.UpdateOverview(
+                                " IT-TEST-#17-延长后 ",
+                                LocalDate.of(2026, 9, 1),
+                                LocalDate.of(2026, 9, 5),
+                                "Asia/Tokyo",
+                                "JPY"
+                        )
+                )
+        );
+        assertEquals(2, extended.version());
+        var extendedSnapshot = itineraries.get(42, itineraryId);
+        assertEquals(TEST_PREFIX + "延长后", extendedSnapshot.title());
+        assertEquals("Asia/Tokyo", extendedSnapshot.timeZone().getId());
+        assertEquals("JPY", extendedSnapshot.baseCurrency().getCurrencyCode());
+        assertEquals(5, extendedSnapshot.days().size());
+        assertEquals(originalDayIds, extendedSnapshot.days().subList(0, 3).stream()
+                .map(day -> day.id()).toList());
+
+        var shrunk = itineraries.updateOverview(
+                42,
+                itineraryId,
+                envelope(
+                        "00000000-0000-0000-0000-000000000110",
+                        2,
+                        new ItineraryCommands.UpdateOverview(
+                                null,
+                                LocalDate.of(2026, 9, 1),
+                                LocalDate.of(2026, 9, 2),
+                                null,
+                                null
+                        )
+                )
+        );
+        assertEquals(3, shrunk.version());
+        assertEquals(originalDayIds.subList(0, 2), itineraries.get(42, itineraryId).days().stream()
+                .map(day -> day.id()).toList());
+    }
+
+    @Test
+    void shrinkingAcrossLiveItemsAndStaleVersionsRollsBackEverything() {
+        long itineraryId = itineraries.create(42, createCommand(
+                UUID.fromString("00000000-0000-0000-0000-000000000111"), "回滚验证"
+        )).itineraryId();
+        Long lastDayId = jdbc.queryForObject(
+                "SELECT id FROM itinerary_day WHERE itinerary_id = ? ORDER BY day_date DESC LIMIT 1",
+                Long.class,
+                itineraryId
+        );
+        jdbc.update(
+                "INSERT INTO itinerary_item "
+                        + "(id, itinerary_id, itinerary_day_id, title, position) "
+                        + "VALUES (7101, ?, ?, 'IT-TEST-#17-protected', 1024)",
+                itineraryId,
+                lastDayId
+        );
+
+        var protectedRange = assertThrows(
+                ItineraryException.class,
+                () -> itineraries.updateOverview(
+                        42,
+                        itineraryId,
+                        envelope(
+                                "00000000-0000-0000-0000-000000000112",
+                                1,
+                                new ItineraryCommands.UpdateOverview(
+                                        "不应保存",
+                                        LocalDate.of(2026, 9, 1),
+                                        LocalDate.of(2026, 9, 2),
+                                        null,
+                                        null
+                                )
+                        )
+                )
+        );
+        assertEquals(ItineraryError.DATE_RANGE_CONTAINS_ITEMS, protectedRange.error());
+        assertEquals(1, itineraries.get(42, itineraryId).version());
+        assertEquals(3, itineraries.get(42, itineraryId).days().size());
+
+        itineraries.updateOverview(
+                42,
+                itineraryId,
+                envelope(
+                        "00000000-0000-0000-0000-000000000113",
+                        1,
+                        new ItineraryCommands.UpdateOverview("正式标题", null, null, null, null)
+                )
+        );
+        var stale = assertThrows(
+                ItineraryException.class,
+                () -> itineraries.updateOverview(
+                        42,
+                        itineraryId,
+                        envelope(
+                                "00000000-0000-0000-0000-000000000114",
+                                1,
+                                new ItineraryCommands.UpdateOverview("过期标题", null, null, null, null)
+                        )
+                )
+        );
+        assertEquals(ItineraryError.VERSION_CONFLICT, stale.error());
+        assertEquals("正式标题", itineraries.get(42, itineraryId).title());
+        assertEquals(2, jdbc.queryForObject("SELECT COUNT(*) FROM itinerary_command", Integer.class));
+    }
+
+    @Test
+    void destinationReplacementIsAtomicOrderedAndIdempotent() {
+        long itineraryId = itineraries.create(42, createCommand(
+                UUID.fromString("00000000-0000-0000-0000-000000000115"), "目的地调整"
+        )).itineraryId();
+        long retainedId = itineraries.get(42, itineraryId).destinations().get(1).id();
+        var command = envelope(
+                "00000000-0000-0000-0000-000000000116",
+                1,
+                new ItineraryCommands.ReplaceDestinations(List.of(
+                        new ItineraryCommands.DestinationInput(
+                                retainedId, "苏州", "CN", "Asia/Shanghai"
+                        ),
+                        new ItineraryCommands.DestinationInput(
+                                null, "杭州", "CN", "Asia/Shanghai"
+                        )
+                ))
+        );
+
+        var first = itineraries.replaceDestinations(42, itineraryId, command);
+        var replay = itineraries.replaceDestinations(42, itineraryId, command);
+
+        assertEquals(2, first.version());
+        assertTrue(replay.replayed());
+        var destinations = itineraries.get(42, itineraryId).destinations();
+        assertEquals(List.of("苏州", "杭州"), destinations.stream().map(destination -> destination.name()).toList());
+        assertEquals(List.of(1024L, 2048L), destinations.stream().map(destination -> destination.position()).toList());
+        assertEquals(retainedId, destinations.get(0).id());
+        assertEquals(2, jdbc.queryForObject(
+                "SELECT COUNT(*) FROM itinerary_destination WHERE itinerary_id = ?",
+                Integer.class,
+                itineraryId
+        ));
+    }
+
     private static ItineraryCommands.CommandEnvelope<ItineraryCommands.CreateItinerary> createCommand(
             UUID commandId,
             String title
@@ -231,6 +384,16 @@ class ItineraryRepositoryIT {
                                 new ItineraryCommands.DestinationInput(null, "苏州", "CN", "Asia/Shanghai")
                         )
                 )
+        );
+    }
+
+    private static <T> ItineraryCommands.CommandEnvelope<T> envelope(
+            String commandId,
+            long expectedVersion,
+            T payload
+    ) {
+        return new ItineraryCommands.CommandEnvelope<>(
+                UUID.fromString(commandId), expectedVersion, payload
         );
     }
 

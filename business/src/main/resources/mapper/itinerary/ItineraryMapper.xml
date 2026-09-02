@@ -49,6 +49,42 @@
     WHERE id = #{itineraryId}
   </select>
 
+  <select id="findItineraryForUpdate" resultType="com.jiawa.lyw.itinerary.infrastructure.ItineraryRows$ItineraryRow">
+    SELECT id, owner_member_id, title, start_date, end_date, time_zone,
+           base_currency, status, version
+    FROM itinerary
+    WHERE id = #{itineraryId}
+    FOR UPDATE
+  </select>
+
+  <update id="updateOverview">
+    UPDATE itinerary
+    SET title = #{title}, start_date = #{startDate}, end_date = #{endDate},
+        time_zone = #{timeZone}, base_currency = #{baseCurrency},
+        version = #{nextVersion}, updated_at = #{now}
+    WHERE id = #{itineraryId} AND version = #{expectedVersion}
+  </update>
+
+  <update id="bumpVersion">
+    UPDATE itinerary
+    SET version = #{nextVersion}, updated_at = #{now}
+    WHERE id = #{itineraryId} AND version = #{expectedVersion}
+  </update>
+
+  <delete id="deleteEmptyDaysOutside">
+    DELETE day_row
+    FROM itinerary_day day_row
+    WHERE day_row.itinerary_id = #{itineraryId}
+      AND (day_row.day_date &lt; #{startDate} OR day_row.day_date &gt; #{endDate})
+      AND NOT EXISTS (
+        SELECT 1 FROM itinerary_item item WHERE item.itinerary_day_id = day_row.id
+      )
+  </delete>
+
+  <delete id="deleteDestinations">
+    DELETE FROM itinerary_destination WHERE itinerary_id = #{itineraryId}
+  </delete>
+
   <select id="findDestinations" resultType="com.jiawa.lyw.itinerary.infrastructure.ItineraryRows$DestinationRow">
     SELECT id, name, country_code, time_zone, position
     FROM itinerary_destination
@@ -57,10 +93,12 @@
   </select>
 
   <select id="findDays" resultType="com.jiawa.lyw.itinerary.infrastructure.ItineraryRows$DayRow">
-    SELECT id, day_date
-    FROM itinerary_day
-    WHERE itinerary_id = #{itineraryId}
-    ORDER BY day_date, id
+    SELECT day_row.id, day_row.day_date
+    FROM itinerary_day day_row
+    JOIN itinerary i ON i.id = day_row.itinerary_id
+    WHERE day_row.itinerary_id = #{itineraryId}
+      AND day_row.day_date BETWEEN i.start_date AND i.end_date
+    ORDER BY day_row.day_date, day_row.id
   </select>
 
   <select id="findItems" resultType="com.jiawa.lyw.itinerary.infrastructure.ItineraryRows$ItemRow">
