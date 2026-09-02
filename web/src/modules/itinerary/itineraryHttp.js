@@ -11,6 +11,8 @@ export class ItineraryHttpError extends Error {
   }
 }
 
+export const itineraryHttpKey = Symbol('itineraryHttp')
+
 const normalizeIds = (value, key = '') => {
   if (value == null) return value
   if (Array.isArray(value)) {
