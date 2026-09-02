@@ -1,6 +1,7 @@
 package com.jiawa.lyw.architecture;
 
 import com.tngtech.archunit.core.importer.ImportOption;
+import com.tngtech.archunit.core.domain.JavaModifier;
 import com.tngtech.archunit.junit.AnalyzeClasses;
 import com.tngtech.archunit.junit.ArchTest;
 import com.tngtech.archunit.lang.ArchRule;
@@ -39,4 +40,11 @@ class ItineraryModuleBoundaryTests {
                     "com.jiawa.lyw.itinerary.application.ItineraryAccessPolicy"
             )
             .should().beInterfaces();
+
+    @ArchTest
+    static final ArchRule transactionalItineraryServiceSupportsSpringProxying = classes()
+            .that().haveFullyQualifiedName(
+                    "com.jiawa.lyw.itinerary.application.DefaultItineraryApplicationService"
+            )
+            .should().notHaveModifier(JavaModifier.FINAL);
 }

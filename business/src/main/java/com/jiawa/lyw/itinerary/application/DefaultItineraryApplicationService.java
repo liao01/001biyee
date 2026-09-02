@@ -20,7 +20,7 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
 
-public final class DefaultItineraryApplicationService implements ItineraryApplicationService {
+public class DefaultItineraryApplicationService implements ItineraryApplicationService {
     private static final String CREATE_OPERATION = "CREATE";
     private static final String UPDATE_OVERVIEW_OPERATION = "UPDATE_OVERVIEW";
     private static final String REPLACE_DESTINATIONS_OPERATION = "REPLACE_DESTINATIONS";
