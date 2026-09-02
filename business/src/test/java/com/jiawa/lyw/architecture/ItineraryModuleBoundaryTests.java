@@ -24,7 +24,7 @@ class ItineraryModuleBoundaryTests {
     @ArchTest
     static final ArchRule itineraryDoesNotUseLegacyGlobalMappers = noClasses()
             .that().resideInAPackage("..itinerary..")
-            .should().dependOnClassesThat().resideInAPackage("..mapper..");
+            .should().dependOnClassesThat().resideInAPackage("com.jiawa.lyw.mapper..");
 
     @ArchTest
     static final ArchRule itineraryUseCasesHaveAnInterface = classes()

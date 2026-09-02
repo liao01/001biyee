@@ -117,9 +117,9 @@ BEGIN
             itinerary_id BIGINT NULL,
             expected_version BIGINT NOT NULL,
             request_hash CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
-            result_itinerary_id BIGINT NOT NULL,
+            result_itinerary_id BIGINT NULL,
             result_item_id BIGINT NULL,
-            result_version BIGINT NOT NULL,
+            result_version BIGINT NULL,
             created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
             PRIMARY KEY (id),
             UNIQUE INDEX uk_itinerary_command_id (command_id),
@@ -134,7 +134,9 @@ BEGIN
             CONSTRAINT fk_itinerary_command_result_item FOREIGN KEY (result_item_id)
                 REFERENCES itinerary_item (id) ON DELETE RESTRICT ON UPDATE RESTRICT,
             CONSTRAINT chk_itinerary_command_expected_version CHECK (expected_version >= 0),
-            CONSTRAINT chk_itinerary_command_result_version CHECK (result_version >= 1),
+            CONSTRAINT chk_itinerary_command_result_version CHECK (
+                result_version IS NULL OR result_version >= 1
+            ),
             CONSTRAINT chk_itinerary_command_hash CHECK (request_hash REGEXP '^[0-9a-f]{64}$')
         ) ENGINE = InnoDB
           DEFAULT CHARACTER SET = utf8mb4

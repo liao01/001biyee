@@ -104,6 +104,16 @@ class ItineraryCoreMigrationTests(unittest.TestCase):
                     "AND index_name = 'uk_itinerary_command_id';",
                 ),
             )
+            self.assertEqual(
+                "YES\tYES\tYES",
+                mysql.execute(
+                    "SELECT is_nullable FROM information_schema.columns "
+                    "WHERE table_schema = DATABASE() AND table_name = 'itinerary_command' "
+                    "AND column_name IN ('result_itinerary_id', 'result_item_id', 'result_version') "
+                    "ORDER BY FIELD(column_name, 'result_itinerary_id', 'result_item_id', 'result_version');",
+                    database=schema,
+                ).replace("\n", "\t"),
+            )
 
     def test_apply_recovers_when_an_earlier_run_stopped_between_tables(self):
         with temporary_schema(MIGRATION) as (mysql, schema):
