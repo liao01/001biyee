@@ -23,6 +23,11 @@ public final class DefaultItineraryApplicationService implements ItineraryApplic
     private static final String CREATE_OPERATION = "CREATE";
     private static final String UPDATE_OVERVIEW_OPERATION = "UPDATE_OVERVIEW";
     private static final String REPLACE_DESTINATIONS_OPERATION = "REPLACE_DESTINATIONS";
+    private static final String ADD_ITEM_OPERATION = "ADD_ITEM";
+    private static final String UPDATE_ITEM_OPERATION = "UPDATE_ITEM";
+    private static final String DELETE_ITEM_OPERATION = "DELETE_ITEM";
+    private static final String REORDER_ITEMS_OPERATION = "REORDER_ITEMS";
+    private static final long POSITION_GAP = 1024L;
     private static final int MAX_PAGE_SIZE = 100;
 
     private final ItineraryRepository repository;
@@ -240,41 +245,147 @@ public final class DefaultItineraryApplicationService implements ItineraryApplic
     }
 
     @Override
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public ItineraryCommands.CommandResult addItem(
             long actorMemberId,
             long itineraryId,
             ItineraryCommands.CommandEnvelope<ItineraryCommands.AddItem> command
     ) {
-        throw new UnsupportedOperationException("Task 6");
+        ItineraryCommands.assertExistingEnvelope(command);
+        String requestHash = hashForItinerary(ADD_ITEM_OPERATION, itineraryId, command);
+        ItineraryModels.Snapshot current = lockForEdit(actorMemberId, itineraryId);
+        ItineraryCommands.CommandResult replay = replayIfPresent(
+                command.commandId(), actorMemberId, ADD_ITEM_OPERATION, requestHash
+        );
+        if (replay != null) {
+            return replay;
+        }
+        assertVersion(current, command.expectedVersion());
+        ItineraryModels.Day day = requireDay(current, command.payload().dayId());
+        ItineraryRules.assertNoOverlap(
+                null, command.payload().startTime(), command.payload().endTime(), day.items()
+        );
+        reserveExistingCommand(command, actorMemberId, itineraryId, ADD_ITEM_OPERATION, requestHash);
+
+        Instant now = clock.instant();
+        long position = appendPosition(itineraryId, day, now);
+        long itemId = ids.nextId();
+        ItineraryCommands.AddItem payload = command.payload();
+        repository.insertItem(new ItineraryRepository.NewItem(
+                itemId, itineraryId, day.id(), payload.title(), payload.placeName(),
+                payload.startTime(), payload.endTime(), payload.notes(), payload.estimatedCost(),
+                position, now
+        ));
+        long nextVersion = bumpVersion(current, now);
+        return complete(command.commandId(), itineraryId, itemId, nextVersion);
     }
 
     @Override
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public ItineraryCommands.CommandResult updateItem(
             long actorMemberId,
             long itineraryId,
             long itemId,
             ItineraryCommands.CommandEnvelope<ItineraryCommands.UpdateItem> command
     ) {
-        throw new UnsupportedOperationException("Task 6");
+        ItineraryCommands.assertExistingEnvelope(command);
+        String requestHash = hashForItem(UPDATE_ITEM_OPERATION, itineraryId, itemId, command);
+        ItineraryModels.Snapshot current = lockForEdit(actorMemberId, itineraryId);
+        ItineraryCommands.CommandResult replay = replayIfPresent(
+                command.commandId(), actorMemberId, UPDATE_ITEM_OPERATION, requestHash
+        );
+        if (replay != null) {
+            return replay;
+        }
+        assertVersion(current, command.expectedVersion());
+        ItineraryModels.Item existing = requireItem(current, itemId);
+        ItineraryModels.Day targetDay = requireDay(current, command.payload().dayId());
+        ItineraryRules.assertNoOverlap(
+                itemId, command.payload().startTime(), command.payload().endTime(), targetDay.items()
+        );
+        reserveExistingCommand(command, actorMemberId, itineraryId, UPDATE_ITEM_OPERATION, requestHash);
+
+        Instant now = clock.instant();
+        long position = existing.dayId() == targetDay.id()
+                ? existing.position() : appendPosition(itineraryId, targetDay, now);
+        ItineraryCommands.UpdateItem payload = command.payload();
+        if (repository.updateItem(
+                itineraryId, itemId, targetDay.id(), payload.title(), payload.placeName(),
+                payload.startTime(), payload.endTime(), payload.notes(), payload.estimatedCost(),
+                position, now
+        ) != 1) {
+            throw invalidItem();
+        }
+        long nextVersion = bumpVersion(current, now);
+        return complete(command.commandId(), itineraryId, null, nextVersion);
     }
 
     @Override
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public ItineraryCommands.CommandResult deleteItem(
             long actorMemberId,
             long itineraryId,
             long itemId,
             ItineraryCommands.CommandEnvelope<ItineraryCommands.DeleteItem> command
     ) {
-        throw new UnsupportedOperationException("Task 6");
+        ItineraryCommands.assertExistingEnvelope(command);
+        String requestHash = hashForItem(DELETE_ITEM_OPERATION, itineraryId, itemId, command);
+        ItineraryModels.Snapshot current = lockForEdit(actorMemberId, itineraryId);
+        ItineraryCommands.CommandResult replay = replayIfPresent(
+                command.commandId(), actorMemberId, DELETE_ITEM_OPERATION, requestHash
+        );
+        if (replay != null) {
+            return replay;
+        }
+        assertVersion(current, command.expectedVersion());
+        requireItem(current, itemId);
+        reserveExistingCommand(command, actorMemberId, itineraryId, DELETE_ITEM_OPERATION, requestHash);
+
+        Instant now = clock.instant();
+        if (repository.softDeleteItem(itineraryId, itemId, now) != 1) {
+            throw invalidItem();
+        }
+        long nextVersion = bumpVersion(current, now);
+        return complete(command.commandId(), itineraryId, null, nextVersion);
     }
 
     @Override
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public ItineraryCommands.CommandResult reorderItems(
             long actorMemberId,
             long itineraryId,
             ItineraryCommands.CommandEnvelope<ItineraryCommands.ReorderItems> command
     ) {
-        throw new UnsupportedOperationException("Task 6");
+        ItineraryCommands.assertExistingEnvelope(command);
+        String requestHash = hashForItinerary(REORDER_ITEMS_OPERATION, itineraryId, command);
+        ItineraryModels.Snapshot current = lockForEdit(actorMemberId, itineraryId);
+        ItineraryCommands.CommandResult replay = replayIfPresent(
+                command.commandId(), actorMemberId, REORDER_ITEMS_OPERATION, requestHash
+        );
+        if (replay != null) {
+            return replay;
+        }
+        assertVersion(current, command.expectedVersion());
+        ItineraryModels.Day day = requireDay(current, command.payload().dayId());
+        ItineraryRules.assertPermutation(
+                day.items().stream().map(ItineraryModels.Item::id).toList(),
+                command.payload().itemIds()
+        );
+        reserveExistingCommand(
+                command, actorMemberId, itineraryId, REORDER_ITEMS_OPERATION, requestHash
+        );
+
+        Instant now = clock.instant();
+        for (int index = 0; index < command.payload().itemIds().size(); index++) {
+            long position = Math.multiplyExact((long) index + 1, POSITION_GAP);
+            if (repository.updateItemPosition(
+                    itineraryId, command.payload().itemIds().get(index), day.id(), position, now
+            ) != 1) {
+                throw invalidItem();
+            }
+        }
+        long nextVersion = bumpVersion(current, now);
+        return complete(command.commandId(), itineraryId, null, nextVersion);
     }
 
     @Override
@@ -354,6 +465,67 @@ public final class DefaultItineraryApplicationService implements ItineraryApplic
         return hasher.hash(operation + "@" + itineraryId, command);
     }
 
+    private String hashForItem(
+            String operation,
+            long itineraryId,
+            long itemId,
+            ItineraryCommands.CommandEnvelope<?> command
+    ) {
+        return hasher.hash(operation + "@" + itineraryId + "/" + itemId, command);
+    }
+
+    private long appendPosition(
+            long itineraryId,
+            ItineraryModels.Day day,
+            Instant now
+    ) {
+        long maximum = day.items().stream()
+                .mapToLong(ItineraryModels.Item::position)
+                .max()
+                .orElse(0L);
+        if (maximum <= Long.MAX_VALUE - POSITION_GAP) {
+            return maximum + POSITION_GAP;
+        }
+        for (int index = 0; index < day.items().size(); index++) {
+            long position = Math.multiplyExact((long) index + 1, POSITION_GAP);
+            if (repository.updateItemPosition(
+                    itineraryId, day.items().get(index).id(), day.id(), position, now
+            ) != 1) {
+                throw invalidItem();
+            }
+        }
+        return Math.multiplyExact((long) day.items().size() + 1, POSITION_GAP);
+    }
+
+    private long bumpVersion(ItineraryModels.Snapshot current, Instant now) {
+        long nextVersion = current.version() + 1;
+        if (repository.bumpVersion(current.id(), current.version(), nextVersion, now) != 1) {
+            throw versionConflict();
+        }
+        return nextVersion;
+    }
+
+    private static ItineraryModels.Day requireDay(
+            ItineraryModels.Snapshot snapshot,
+            long dayId
+    ) {
+        return snapshot.days().stream()
+                .filter(day -> day.id() == dayId)
+                .findFirst()
+                .orElseThrow(DefaultItineraryApplicationService::invalidItem);
+    }
+
+    private static ItineraryModels.Item requireItem(
+            ItineraryModels.Snapshot snapshot,
+            long itemId
+    ) {
+        return snapshot.days().stream()
+                .flatMap(day -> day.items().stream())
+                .filter(item -> item.id() == itemId)
+                .findFirst()
+                .orElseThrow(DefaultItineraryApplicationService::invalidItem);
+    }
+
     private static void assertVersion(ItineraryModels.Snapshot snapshot, long expectedVersion) {
         if (snapshot.version() != expectedVersion) {
             throw versionConflict();
@@ -415,6 +587,10 @@ public final class DefaultItineraryApplicationService implements ItineraryApplic
 
     private static ItineraryException versionConflict() {
         return new ItineraryException(ItineraryError.VERSION_CONFLICT, "行程已被更新，请重新加载");
+    }
+
+    private static ItineraryException invalidItem() {
+        return new ItineraryException(ItineraryError.INVALID_ITEM, "安排信息无效");
     }
 
     private record Cursor(Instant updatedAt, long id) {

@@ -366,6 +366,195 @@ class ItineraryRepositoryIT {
         ));
     }
 
+    @Test
+    void itemCommandsAddUntimedAndAdjacentTimedItemsButRejectOverlap() {
+        long itineraryId = itineraries.create(42, createCommand(
+                UUID.fromString("00000000-0000-0000-0000-000000000117"), "安排新增"
+        )).itineraryId();
+        long dayId = itineraries.get(42, itineraryId).days().get(0).id();
+
+        var untimed = itineraries.addItem(
+                42,
+                itineraryId,
+                envelope(
+                        "00000000-0000-0000-0000-000000000118",
+                        1,
+                        new ItineraryCommands.AddItem(
+                                dayId, "自由活动", null, null, null, null, null
+                        )
+                )
+        );
+        assertNotNull(untimed.itemId());
+        assertEquals(2, untimed.version());
+        var morning = itineraries.addItem(
+                42,
+                itineraryId,
+                envelope(
+                        "00000000-0000-0000-0000-000000000119",
+                        2,
+                        new ItineraryCommands.AddItem(
+                                dayId, "早餐", "餐厅", java.time.LocalTime.of(9, 0),
+                                java.time.LocalTime.of(10, 0), null, new java.math.BigDecimal("28.00")
+                        )
+                )
+        );
+        var adjacent = itineraries.addItem(
+                42,
+                itineraryId,
+                envelope(
+                        "00000000-0000-0000-0000-000000000120",
+                        3,
+                        new ItineraryCommands.AddItem(
+                                dayId, "散步", "街区", java.time.LocalTime.of(10, 0),
+                                java.time.LocalTime.of(11, 0), null, null
+                        )
+                )
+        );
+        assertEquals(4, adjacent.version());
+
+        var overlap = assertThrows(
+                ItineraryException.class,
+                () -> itineraries.addItem(
+                        42,
+                        itineraryId,
+                        envelope(
+                                "00000000-0000-0000-0000-000000000121",
+                                4,
+                                new ItineraryCommands.AddItem(
+                                        dayId, "冲突安排", null, java.time.LocalTime.of(9, 30),
+                                        java.time.LocalTime.of(10, 30), null, null
+                                )
+                        )
+                )
+        );
+        assertEquals(ItineraryError.TIME_CONFLICT, overlap.error());
+        assertEquals(4, itineraries.get(42, itineraryId).version());
+        assertEquals(3, itineraries.get(42, itineraryId).days().get(0).items().size());
+        assertEquals(3, jdbc.queryForObject(
+                "SELECT COUNT(*) FROM itinerary_item WHERE itinerary_id = ?", Integer.class, itineraryId
+        ));
+        assertTrue(jdbc.queryForObject(
+                "SELECT position FROM itinerary_item WHERE id = ?", Long.class, morning.itemId()
+        ) > 0);
+    }
+
+    @Test
+    void itemUpdateCanMoveDaysIgnoresItselfAndRejectsForeignDay() {
+        long itineraryId = itineraries.create(42, createCommand(
+                UUID.fromString("00000000-0000-0000-0000-000000000122"), "安排移动"
+        )).itineraryId();
+        var days = itineraries.get(42, itineraryId).days();
+        long firstDay = days.get(0).id();
+        long secondDay = days.get(1).id();
+        var created = itineraries.addItem(
+                42,
+                itineraryId,
+                envelope(
+                        "00000000-0000-0000-0000-000000000123",
+                        1,
+                        new ItineraryCommands.AddItem(
+                                firstDay, "上午行程", null, java.time.LocalTime.of(9, 0),
+                                java.time.LocalTime.of(10, 0), null, null
+                        )
+                )
+        );
+
+        var updated = itineraries.updateItem(
+                42,
+                itineraryId,
+                created.itemId(),
+                envelope(
+                        "00000000-0000-0000-0000-000000000124",
+                        2,
+                        new ItineraryCommands.UpdateItem(
+                                secondDay, "移动后", "新地点", java.time.LocalTime.of(9, 0),
+                                java.time.LocalTime.of(10, 0), "新备注", null
+                        )
+                )
+        );
+        assertEquals(3, updated.version());
+        var snapshot = itineraries.get(42, itineraryId);
+        assertTrue(snapshot.days().get(0).items().isEmpty());
+        assertEquals("移动后", snapshot.days().get(1).items().get(0).title());
+
+        long otherItinerary = itineraries.create(42, createCommand(
+                UUID.fromString("00000000-0000-0000-0000-000000000125"), "其他行程"
+        )).itineraryId();
+        long foreignDay = itineraries.get(42, otherItinerary).days().get(0).id();
+        var foreign = assertThrows(
+                ItineraryException.class,
+                () -> itineraries.updateItem(
+                        42,
+                        itineraryId,
+                        created.itemId(),
+                        envelope(
+                                "00000000-0000-0000-0000-000000000126",
+                                3,
+                                new ItineraryCommands.UpdateItem(
+                                        foreignDay, "非法移动", null, null, null, null, null
+                                )
+                        )
+                )
+        );
+        assertEquals(ItineraryError.INVALID_ITEM, foreign.error());
+        assertEquals(3, itineraries.get(42, itineraryId).version());
+    }
+
+    @Test
+    void deleteIsSoftIdempotentAndReorderRequiresTheCompleteLivePermutation() {
+        long itineraryId = itineraries.create(42, createCommand(
+                UUID.fromString("00000000-0000-0000-0000-000000000127"), "删除排序"
+        )).itineraryId();
+        long dayId = itineraries.get(42, itineraryId).days().get(0).id();
+        var first = itineraries.addItem(42, itineraryId, envelope(
+                "00000000-0000-0000-0000-000000000128", 1,
+                new ItineraryCommands.AddItem(dayId, "第一项", null, null, null, null, null)
+        ));
+        var second = itineraries.addItem(42, itineraryId, envelope(
+                "00000000-0000-0000-0000-000000000129", 2,
+                new ItineraryCommands.AddItem(dayId, "第二项", null, null, null, null, null)
+        ));
+        var third = itineraries.addItem(42, itineraryId, envelope(
+                "00000000-0000-0000-0000-000000000130", 3,
+                new ItineraryCommands.AddItem(dayId, "第三项", null, null, null, null, null)
+        ));
+
+        var incomplete = assertThrows(
+                ItineraryException.class,
+                () -> itineraries.reorderItems(42, itineraryId, envelope(
+                        "00000000-0000-0000-0000-000000000131", 4,
+                        new ItineraryCommands.ReorderItems(dayId, List.of(first.itemId(), second.itemId()))
+                ))
+        );
+        assertEquals(ItineraryError.INVALID_ITEM, incomplete.error());
+        var reordered = itineraries.reorderItems(42, itineraryId, envelope(
+                "00000000-0000-0000-0000-000000000132", 4,
+                new ItineraryCommands.ReorderItems(
+                        dayId, List.of(third.itemId(), first.itemId(), second.itemId())
+                )
+        ));
+        assertEquals(5, reordered.version());
+        assertEquals(List.of("第三项", "第一项", "第二项"),
+                itineraries.get(42, itineraryId).days().get(0).items().stream()
+                        .map(item -> item.title()).toList());
+
+        var deleteCommand = envelope(
+                "00000000-0000-0000-0000-000000000133", 5, new ItineraryCommands.DeleteItem()
+        );
+        var deleted = itineraries.deleteItem(42, itineraryId, first.itemId(), deleteCommand);
+        var replay = itineraries.deleteItem(42, itineraryId, first.itemId(), deleteCommand);
+        assertEquals(6, deleted.version());
+        assertTrue(replay.replayed());
+        assertEquals(List.of("第三项", "第二项"),
+                itineraries.get(42, itineraryId).days().get(0).items().stream()
+                        .map(item -> item.title()).toList());
+        assertNotNull(jdbc.queryForObject(
+                "SELECT deleted_at FROM itinerary_item WHERE id = ?",
+                java.sql.Timestamp.class,
+                first.itemId()
+        ));
+    }
+
     private static ItineraryCommands.CommandEnvelope<ItineraryCommands.CreateItinerary> createCommand(
             UUID commandId,
             String title

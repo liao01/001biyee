@@ -42,6 +42,36 @@
     VALUES (#{id}, #{itineraryId}, #{date}, #{now}, #{now})
   </insert>
 
+  <insert id="insertItem">
+    INSERT INTO itinerary_item
+      (id, itinerary_id, itinerary_day_id, title, place_name, start_time, end_time,
+       notes, estimated_cost, position, created_at, updated_at)
+    VALUES
+      (#{id}, #{itineraryId}, #{dayId}, #{title}, #{placeName}, #{startTime}, #{endTime},
+       #{notes}, #{estimatedCost}, #{position}, #{now}, #{now})
+  </insert>
+
+  <update id="updateItem">
+    UPDATE itinerary_item
+    SET itinerary_day_id = #{dayId}, title = #{title}, place_name = #{placeName},
+        start_time = #{startTime}, end_time = #{endTime}, notes = #{notes},
+        estimated_cost = #{estimatedCost}, position = #{position}, updated_at = #{now}
+    WHERE id = #{itemId} AND itinerary_id = #{itineraryId} AND deleted_at IS NULL
+  </update>
+
+  <update id="softDeleteItem">
+    UPDATE itinerary_item
+    SET deleted_at = #{now}, updated_at = #{now}
+    WHERE id = #{itemId} AND itinerary_id = #{itineraryId} AND deleted_at IS NULL
+  </update>
+
+  <update id="updateItemPosition">
+    UPDATE itinerary_item
+    SET position = #{position}, updated_at = #{now}
+    WHERE id = #{itemId} AND itinerary_id = #{itineraryId}
+      AND itinerary_day_id = #{dayId} AND deleted_at IS NULL
+  </update>
+
   <select id="findItinerary" resultType="com.jiawa.lyw.itinerary.infrastructure.ItineraryRows$ItineraryRow">
     SELECT id, owner_member_id, title, start_date, end_date, time_zone,
            base_currency, status, version

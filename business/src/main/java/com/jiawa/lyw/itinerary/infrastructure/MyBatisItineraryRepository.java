@@ -68,6 +68,47 @@ public final class MyBatisItineraryRepository implements ItineraryRepository {
     }
 
     @Override
+    public void insertItem(NewItem item) {
+        mapper.insertItem(item);
+    }
+
+    @Override
+    public int updateItem(
+            long itineraryId,
+            long itemId,
+            long dayId,
+            String title,
+            String placeName,
+            java.time.LocalTime startTime,
+            java.time.LocalTime endTime,
+            String notes,
+            java.math.BigDecimal estimatedCost,
+            long position,
+            Instant now
+    ) {
+        return mapper.updateItem(
+                itineraryId, itemId, dayId, title, placeName, startTime, endTime,
+                notes, estimatedCost, position, now
+        );
+    }
+
+    @Override
+    public int softDeleteItem(long itineraryId, long itemId, Instant now) {
+        return mapper.softDeleteItem(itineraryId, itemId, now);
+    }
+
+    @Override
+    public int updateItemPosition(
+            long itineraryId,
+            long itemId,
+            long dayId,
+            long position,
+            Instant now
+    ) {
+        return mapper.updateItemPosition(itineraryId, itemId, dayId, position, now);
+    }
+
+    @Override
     public Optional<ItineraryModels.Snapshot> findSnapshot(long itineraryId) {
         ItineraryRows.ItineraryRow itinerary = mapper.findItinerary(itineraryId);
         return assembleSnapshot(itineraryId, itinerary);

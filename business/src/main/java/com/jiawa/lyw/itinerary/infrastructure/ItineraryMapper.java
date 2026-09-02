@@ -36,6 +36,36 @@ public interface ItineraryMapper {
 
     void insertDay(ItineraryRepository.NewDay day);
 
+    void insertItem(ItineraryRepository.NewItem item);
+
+    int updateItem(
+            @Param("itineraryId") long itineraryId,
+            @Param("itemId") long itemId,
+            @Param("dayId") long dayId,
+            @Param("title") String title,
+            @Param("placeName") String placeName,
+            @Param("startTime") java.time.LocalTime startTime,
+            @Param("endTime") java.time.LocalTime endTime,
+            @Param("notes") String notes,
+            @Param("estimatedCost") java.math.BigDecimal estimatedCost,
+            @Param("position") long position,
+            @Param("now") Instant now
+    );
+
+    int softDeleteItem(
+            @Param("itineraryId") long itineraryId,
+            @Param("itemId") long itemId,
+            @Param("now") Instant now
+    );
+
+    int updateItemPosition(
+            @Param("itineraryId") long itineraryId,
+            @Param("itemId") long itemId,
+            @Param("dayId") long dayId,
+            @Param("position") long position,
+            @Param("now") Instant now
+    );
+
     ItineraryRows.ItineraryRow findItinerary(@Param("itineraryId") long itineraryId);
 
     ItineraryRows.ItineraryRow findItineraryForUpdate(@Param("itineraryId") long itineraryId);

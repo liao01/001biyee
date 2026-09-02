@@ -5,6 +5,8 @@ import com.jiawa.lyw.itinerary.domain.ItineraryStatus;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalTime;
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -30,6 +32,26 @@ public interface ItineraryRepository {
     void insertDestination(NewDestination destination);
 
     void insertDay(NewDay day);
+
+    void insertItem(NewItem item);
+
+    int updateItem(
+            long itineraryId,
+            long itemId,
+            long dayId,
+            String title,
+            String placeName,
+            LocalTime startTime,
+            LocalTime endTime,
+            String notes,
+            BigDecimal estimatedCost,
+            long position,
+            Instant now
+    );
+
+    int softDeleteItem(long itineraryId, long itemId, Instant now);
+
+    int updateItemPosition(long itineraryId, long itemId, long dayId, long position, Instant now);
 
     Optional<ItineraryModels.Snapshot> findSnapshot(long itineraryId);
 
@@ -101,6 +123,21 @@ public interface ItineraryRepository {
             long id,
             long itineraryId,
             LocalDate date,
+            Instant now
+    ) {
+    }
+
+    record NewItem(
+            long id,
+            long itineraryId,
+            long dayId,
+            String title,
+            String placeName,
+            LocalTime startTime,
+            LocalTime endTime,
+            String notes,
+            BigDecimal estimatedCost,
+            long position,
             Instant now
     ) {
     }
