@@ -118,7 +118,8 @@ class ItineraryHttpIT {
         performJson(get("/web/itineraries").param("limit", "20"), access, null)
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content.items[0].id").value(itineraryId))
-                .andExpect(jsonPath("$.content.items[0].status").value("DRAFT"));
+                .andExpect(jsonPath("$.content.items[0].status").value("DRAFT"))
+                .andExpect(jsonPath("$.content.items[0].updatedAt").isString());
         performJson(get("/web/itineraries/{id}", itineraryId), access, null)
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content.id").value(itineraryId))

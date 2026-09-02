@@ -118,12 +118,13 @@ public final class ItineraryHttpModels {
             LocalDate endDate,
             String primaryDestination,
             ItineraryStatus status,
-            long version
+            long version,
+            String updatedAt
     ) {
         static SummaryResponse from(ItineraryModels.Summary summary) {
             return new SummaryResponse(
                     Long.toString(summary.id()), summary.title(), summary.startDate(), summary.endDate(),
-                    summary.primaryDestination(), summary.status(), summary.version()
+                    summary.primaryDestination(), summary.status(), summary.version(), summary.updatedAt().toString()
             );
         }
     }
