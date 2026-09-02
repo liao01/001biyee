@@ -18,6 +18,9 @@ import java.util.Base64;
 import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 public class DefaultItineraryApplicationService implements ItineraryApplicationService {
@@ -28,6 +31,7 @@ public class DefaultItineraryApplicationService implements ItineraryApplicationS
     private static final String UPDATE_ITEM_OPERATION = "UPDATE_ITEM";
     private static final String DELETE_ITEM_OPERATION = "DELETE_ITEM";
     private static final String REORDER_ITEMS_OPERATION = "REORDER_ITEMS";
+    private static final String APPLY_REVISION_OPERATION = "APPLY_REVISION";
     private static final String TRANSITION_STATUS_OPERATION = "TRANSITION_STATUS";
     private static final long POSITION_GAP = 1024L;
     private static final int MAX_PAGE_SIZE = 100;
@@ -407,6 +411,41 @@ public class DefaultItineraryApplicationService implements ItineraryApplicationS
 
     @Override
     @Transactional(isolation = Isolation.READ_COMMITTED)
+    public ItineraryCommands.CommandResult applyRevision(
+            long actorMemberId,
+            long itineraryId,
+            ItineraryCommands.CommandEnvelope<ItineraryCommands.ApplyRevision> command
+    ) {
+        ItineraryCommands.assertExistingEnvelope(command);
+        String requestHash = hashForItinerary(APPLY_REVISION_OPERATION, itineraryId, command);
+        ItineraryModels.Snapshot current = lockForEdit(actorMemberId, itineraryId);
+        ItineraryCommands.CommandResult replay = replayIfPresent(
+                command.commandId(), actorMemberId, APPLY_REVISION_OPERATION, requestHash
+        );
+        if (replay != null) {
+            return replay;
+        }
+        assertVersion(current, command.expectedVersion());
+        if (current.status() == ItineraryStatus.CANCELLED
+                || current.status() == ItineraryStatus.ARCHIVED) {
+            throw new ItineraryException(
+                    ItineraryError.INVALID_STATUS_TRANSITION,
+                    "当前行程状态不允许应用修订"
+            );
+        }
+
+        RevisionState revision = simulateRevision(current, command.payload());
+        reserveExistingCommand(
+                command, actorMemberId, itineraryId, APPLY_REVISION_OPERATION, requestHash
+        );
+        Instant now = clock.instant();
+        persistRevision(current, revision, now);
+        long nextVersion = bumpVersion(current, now);
+        return complete(command.commandId(), itineraryId, null, nextVersion);
+    }
+
+    @Override
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public ItineraryCommands.CommandResult transition(
             long actorMemberId,
             long itineraryId,
@@ -543,6 +582,210 @@ public class DefaultItineraryApplicationService implements ItineraryApplicationS
             throw versionConflict();
         }
         return nextVersion;
+    }
+
+    private RevisionState simulateRevision(
+            ItineraryModels.Snapshot current,
+            ItineraryCommands.ApplyRevision revision
+    ) {
+        Map<Long, ItineraryModels.Day> days = new LinkedHashMap<>();
+        current.days().forEach(day -> days.put(day.id(), day));
+        Map<Long, RevisionItem> items = new LinkedHashMap<>();
+        current.days().stream().flatMap(day -> day.items().stream())
+                .filter(item -> !item.deleted())
+                .forEach(item -> items.put(item.id(), RevisionItem.from(item)));
+        Map<String, Long> addedIds = new LinkedHashMap<>();
+        Set<Long> changedExisting = new java.util.HashSet<>();
+
+        for (ItineraryCommands.RevisionOperation operation : revision.operations()) {
+            if (operation instanceof ItineraryCommands.RevisionAddItem add) {
+                requireRevisionDay(days, add.dayId());
+                long itemId = ids.nextId();
+                addedIds.put(add.operationKey(), itemId);
+                items.put(itemId, new RevisionItem(
+                        itemId, add.dayId(), add.title(), add.placeName(), add.startTime(), add.endTime(),
+                        add.notes(), add.estimatedCost(), appendRevisionPosition(items, add.dayId()), true
+                ));
+            } else if (operation instanceof ItineraryCommands.RevisionUpdateItem update) {
+                requireRevisionDay(days, update.dayId());
+                RevisionItem existing = requireRevisionItem(items, update.targetItemId());
+                requireSingleRevisionChange(changedExisting, update.targetItemId());
+                long position = existing.dayId() == update.dayId()
+                        ? existing.position() : appendRevisionPosition(items, update.dayId());
+                items.put(update.targetItemId(), new RevisionItem(
+                        existing.id(), update.dayId(), update.title(), update.placeName(),
+                        update.startTime(), update.endTime(), update.notes(), update.estimatedCost(),
+                        position, false
+                ));
+            } else if (operation instanceof ItineraryCommands.RevisionDeleteItem delete) {
+                requireRevisionItem(items, delete.targetItemId());
+                requireSingleRevisionChange(changedExisting, delete.targetItemId());
+                items.remove(delete.targetItemId());
+            } else if (operation instanceof ItineraryCommands.RevisionReorderItems reorder) {
+                requireRevisionDay(days, reorder.dayId());
+                List<Long> orderedIds = reorder.itemReferences().stream()
+                        .map(reference -> resolveRevisionReference(reference, addedIds))
+                        .toList();
+                ItineraryRules.assertPermutation(
+                        items.values().stream()
+                                .filter(item -> item.dayId() == reorder.dayId())
+                                .map(RevisionItem::id)
+                                .toList(),
+                        orderedIds
+                );
+                for (int index = 0; index < orderedIds.size(); index++) {
+                    long itemId = orderedIds.get(index);
+                    RevisionItem item = requireRevisionItem(items, itemId);
+                    items.put(itemId, item.withPosition(
+                            Math.multiplyExact((long) index + 1, POSITION_GAP)
+                    ));
+                }
+            } else {
+                throw invalidItem();
+            }
+        }
+
+        for (ItineraryModels.Day day : current.days()) {
+            List<ItineraryModels.Item> simulated = items.values().stream()
+                    .filter(item -> item.dayId() == day.id())
+                    .map(RevisionItem::asDomainItem)
+                    .toList();
+            for (ItineraryModels.Item item : simulated) {
+                ItineraryRules.assertNoOverlap(
+                        item.id(), item.startTime(), item.endTime(), simulated
+                );
+            }
+        }
+        return new RevisionState(Map.copyOf(items));
+    }
+
+    private void persistRevision(
+            ItineraryModels.Snapshot current,
+            RevisionState revision,
+            Instant now
+    ) {
+        Map<Long, ItineraryModels.Item> originals = new LinkedHashMap<>();
+        current.days().stream().flatMap(day -> day.items().stream())
+                .filter(item -> !item.deleted())
+                .forEach(item -> originals.put(item.id(), item));
+
+        for (ItineraryModels.Item original : originals.values()) {
+            if (!revision.items().containsKey(original.id())
+                    && repository.softDeleteItem(current.id(), original.id(), now) != 1) {
+                throw invalidItem();
+            }
+        }
+        for (RevisionItem item : revision.items().values()) {
+            ItineraryModels.Item original = originals.get(item.id());
+            if (original == null) {
+                repository.insertItem(new ItineraryRepository.NewItem(
+                        item.id(), current.id(), item.dayId(), item.title(), item.placeName(),
+                        item.startTime(), item.endTime(), item.notes(), item.estimatedCost(),
+                        item.position(), now
+                ));
+            } else if (!item.matches(original) && repository.updateItem(
+                    current.id(), item.id(), item.dayId(), item.title(), item.placeName(),
+                    item.startTime(), item.endTime(), item.notes(), item.estimatedCost(),
+                    item.position(), now
+            ) != 1) {
+                throw invalidItem();
+            }
+        }
+    }
+
+    private static long resolveRevisionReference(
+            ItineraryCommands.RevisionItemReference reference,
+            Map<String, Long> addedIds
+    ) {
+        if (reference.existingItemId() != null) {
+            return reference.existingItemId();
+        }
+        Long itemId = addedIds.get(reference.addedByOperationKey());
+        if (itemId == null) {
+            throw invalidItem();
+        }
+        return itemId;
+    }
+
+    private static void requireRevisionDay(Map<Long, ItineraryModels.Day> days, long dayId) {
+        if (!days.containsKey(dayId)) {
+            throw invalidItem();
+        }
+    }
+
+    private static RevisionItem requireRevisionItem(Map<Long, RevisionItem> items, long itemId) {
+        RevisionItem item = items.get(itemId);
+        if (item == null) {
+            throw invalidItem();
+        }
+        return item;
+    }
+
+    private static void requireSingleRevisionChange(Set<Long> changed, long itemId) {
+        if (!changed.add(itemId)) {
+            throw invalidItem();
+        }
+    }
+
+    private static long appendRevisionPosition(Map<Long, RevisionItem> items, long dayId) {
+        long maximum = items.values().stream()
+                .filter(item -> item.dayId() == dayId)
+                .mapToLong(RevisionItem::position)
+                .max()
+                .orElse(0L);
+        try {
+            return Math.addExact(maximum, POSITION_GAP);
+        } catch (ArithmeticException overflow) {
+            throw invalidItem();
+        }
+    }
+
+    private record RevisionState(Map<Long, RevisionItem> items) {
+    }
+
+    private record RevisionItem(
+            long id,
+            long dayId,
+            String title,
+            String placeName,
+            java.time.LocalTime startTime,
+            java.time.LocalTime endTime,
+            String notes,
+            java.math.BigDecimal estimatedCost,
+            long position,
+            boolean added
+    ) {
+        static RevisionItem from(ItineraryModels.Item item) {
+            return new RevisionItem(
+                    item.id(), item.dayId(), item.title(), item.placeName(), item.startTime(),
+                    item.endTime(), item.notes(), item.estimatedCost(), item.position(), false
+            );
+        }
+
+        RevisionItem withPosition(long nextPosition) {
+            return new RevisionItem(
+                    id, dayId, title, placeName, startTime, endTime, notes,
+                    estimatedCost, nextPosition, added
+            );
+        }
+
+        ItineraryModels.Item asDomainItem() {
+            return new ItineraryModels.Item(
+                    id, dayId, title, placeName, startTime, endTime, notes,
+                    estimatedCost, position, null
+            );
+        }
+
+        boolean matches(ItineraryModels.Item item) {
+            return dayId == item.dayId()
+                    && position == item.position()
+                    && Objects.equals(title, item.title())
+                    && Objects.equals(placeName, item.placeName())
+                    && Objects.equals(startTime, item.startTime())
+                    && Objects.equals(endTime, item.endTime())
+                    && Objects.equals(notes, item.notes())
+                    && Objects.equals(estimatedCost, item.estimatedCost());
+        }
     }
 
     private static ItineraryModels.Day requireDay(

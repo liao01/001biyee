@@ -151,6 +151,48 @@ class ItineraryCommandContractTests {
         assertInvalidItinerary(() -> new ItineraryCommands.TransitionStatus(null));
     }
 
+    @Test
+    void revisionCommandSupportsTemporaryReferencesWithoutInventingDatabaseIds() {
+        var add = new ItineraryCommands.RevisionAddItem(
+                "add-lunch", 501L, "午餐", "餐厅",
+                LocalTime.of(11, 30), LocalTime.of(13, 0), null,
+                new BigDecimal("120.00")
+        );
+        var reorder = new ItineraryCommands.RevisionReorderItems(
+                "order-day-one",
+                501L,
+                List.of(
+                        ItineraryCommands.RevisionItemReference.existing(1001L),
+                        ItineraryCommands.RevisionItemReference.addedBy("add-lunch")
+                )
+        );
+
+        var revision = new ItineraryCommands.ApplyRevision(List.of(add, reorder));
+
+        assertEquals("add-lunch", revision.operations().get(0).operationKey());
+        assertEquals("add-lunch", reorder.itemReferences().get(1).addedByOperationKey());
+        assertThrows(UnsupportedOperationException.class, () -> revision.operations().clear());
+    }
+
+    @Test
+    void revisionCommandRejectsMissingDuplicateAndUnsafeOperationData() {
+        var delete = new ItineraryCommands.RevisionDeleteItem("delete-one", 1001L);
+
+        assertInvalidItinerary(() -> new ItineraryCommands.ApplyRevision(List.of()));
+        assertInvalidItinerary(() -> new ItineraryCommands.ApplyRevision(List.of(delete, delete)));
+        assertInvalidItem(() -> new ItineraryCommands.RevisionDeleteItem("bad key", 1001L));
+        assertInvalidItem(() -> new ItineraryCommands.RevisionDeleteItem("delete-one", 0L));
+        assertInvalidItem(() -> new ItineraryCommands.RevisionReorderItems(
+                "order", 501L,
+                List.of(
+                        ItineraryCommands.RevisionItemReference.existing(1001L),
+                        ItineraryCommands.RevisionItemReference.existing(1001L)
+                )
+        ));
+        assertInvalidItem(() -> new ItineraryCommands.RevisionItemReference(null, null));
+        assertInvalidItem(() -> new ItineraryCommands.RevisionItemReference(1001L, "add-one"));
+    }
+
     private static ItineraryCommands.CreateItinerary validCreate() {
         return new ItineraryCommands.CreateItinerary(
                 " 上海三日游 ", LocalDate.of(2026, 9, 1), LocalDate.of(2026, 9, 3),

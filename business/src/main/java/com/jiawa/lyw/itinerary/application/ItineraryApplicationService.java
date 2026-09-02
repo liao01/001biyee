@@ -60,6 +60,12 @@ public interface ItineraryApplicationService {
             ItineraryCommands.CommandEnvelope<ItineraryCommands.ReorderItems> command
     );
 
+    ItineraryCommands.CommandResult applyRevision(
+            long actorMemberId,
+            long itineraryId,
+            ItineraryCommands.CommandEnvelope<ItineraryCommands.ApplyRevision> command
+    );
+
     ItineraryCommands.CommandResult transition(
             long actorMemberId,
             long itineraryId,

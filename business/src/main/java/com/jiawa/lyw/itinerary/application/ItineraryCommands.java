@@ -12,8 +12,12 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.regex.Pattern;
 
 public final class ItineraryCommands {
+    private static final Pattern REVISION_OPERATION_KEY = Pattern.compile(
+            "[A-Za-z0-9][A-Za-z0-9._-]{0,99}"
+    );
     private ItineraryCommands() {
     }
 
@@ -163,6 +167,119 @@ public final class ItineraryCommands {
         }
     }
 
+    public sealed interface RevisionOperation permits RevisionAddItem, RevisionUpdateItem,
+            RevisionDeleteItem, RevisionReorderItems {
+        String operationKey();
+    }
+
+    public record RevisionAddItem(
+            String operationKey,
+            long dayId,
+            String title,
+            String placeName,
+            LocalTime startTime,
+            LocalTime endTime,
+            String notes,
+            BigDecimal estimatedCost
+    ) implements RevisionOperation {
+        public RevisionAddItem {
+            operationKey = revisionKey(operationKey);
+            if (dayId <= 0) {
+                throw invalidItem();
+            }
+            title = requiredText(title, 120, ItineraryError.INVALID_ITEM, "安排信息无效");
+            placeName = optionalText(placeName, 200, ItineraryError.INVALID_ITEM, "安排信息无效");
+            notes = optionalText(notes, 2000, ItineraryError.INVALID_ITEM, "安排信息无效");
+            validateItemValues(startTime, endTime, estimatedCost);
+        }
+    }
+
+    public record RevisionUpdateItem(
+            String operationKey,
+            long targetItemId,
+            long dayId,
+            String title,
+            String placeName,
+            LocalTime startTime,
+            LocalTime endTime,
+            String notes,
+            BigDecimal estimatedCost
+    ) implements RevisionOperation {
+        public RevisionUpdateItem {
+            operationKey = revisionKey(operationKey);
+            if (targetItemId <= 0 || dayId <= 0) {
+                throw invalidItem();
+            }
+            title = requiredText(title, 120, ItineraryError.INVALID_ITEM, "安排信息无效");
+            placeName = optionalText(placeName, 200, ItineraryError.INVALID_ITEM, "安排信息无效");
+            notes = optionalText(notes, 2000, ItineraryError.INVALID_ITEM, "安排信息无效");
+            validateItemValues(startTime, endTime, estimatedCost);
+        }
+    }
+
+    public record RevisionDeleteItem(String operationKey, long targetItemId)
+            implements RevisionOperation {
+        public RevisionDeleteItem {
+            operationKey = revisionKey(operationKey);
+            if (targetItemId <= 0) {
+                throw invalidItem();
+            }
+        }
+    }
+
+    public record RevisionReorderItems(
+            String operationKey,
+            long dayId,
+            List<RevisionItemReference> itemReferences
+    ) implements RevisionOperation {
+        public RevisionReorderItems {
+            operationKey = revisionKey(operationKey);
+            if (dayId <= 0 || itemReferences == null
+                    || itemReferences.stream().anyMatch(Objects::isNull)) {
+                throw invalidItem();
+            }
+            itemReferences = List.copyOf(itemReferences);
+            if (new HashSet<>(itemReferences).size() != itemReferences.size()) {
+                throw invalidItem();
+            }
+        }
+    }
+
+    public record RevisionItemReference(Long existingItemId, String addedByOperationKey) {
+        public RevisionItemReference {
+            if ((existingItemId == null) == (addedByOperationKey == null)
+                    || (existingItemId != null && existingItemId <= 0)) {
+                throw invalidItem();
+            }
+            if (addedByOperationKey != null) {
+                addedByOperationKey = revisionKey(addedByOperationKey);
+            }
+        }
+
+        public static RevisionItemReference existing(long itemId) {
+            return new RevisionItemReference(itemId, null);
+        }
+
+        public static RevisionItemReference addedBy(String operationKey) {
+            return new RevisionItemReference(null, operationKey);
+        }
+    }
+
+    public record ApplyRevision(List<RevisionOperation> operations) {
+        public ApplyRevision {
+            if (operations == null || operations.isEmpty()
+                    || operations.size() > 80
+                    || operations.stream().anyMatch(Objects::isNull)) {
+                throw invalidItinerary();
+            }
+            operations = List.copyOf(operations);
+            if (operations.stream().map(RevisionOperation::operationKey).distinct().count()
+                    != operations.size()) {
+                throw invalidItinerary();
+            }
+        }
+    }
+
     public record CommandResult(
             long itineraryId,
             Long itemId,
@@ -256,5 +373,12 @@ public final class ItineraryCommands {
 
     private static ItineraryException invalidItem() {
         return new ItineraryException(ItineraryError.INVALID_ITEM, "安排信息无效");
+    }
+
+    private static String revisionKey(String value) {
+        if (value == null || !REVISION_OPERATION_KEY.matcher(value).matches()) {
+            throw invalidItem();
+        }
+        return value;
     }
 }

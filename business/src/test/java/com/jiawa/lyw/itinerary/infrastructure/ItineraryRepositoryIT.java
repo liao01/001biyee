@@ -29,7 +29,9 @@ import javax.sql.DataSource;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.ZoneOffset;
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -552,6 +554,161 @@ class ItineraryRepositoryIT {
                 "SELECT deleted_at FROM itinerary_item WHERE id = ?",
                 java.sql.Timestamp.class,
                 first.itemId()
+        ));
+    }
+
+    @Test
+    void revisionAppliesAtomicallyOnceAndReplaysWithTemporaryItemReferences() {
+        long itineraryId = itineraries.create(42, createCommand(
+                UUID.fromString("00000000-0000-0000-0000-000000000142"),
+                "IT-TEST-#18-批量修订"
+        )).itineraryId();
+        var initial = itineraries.get(42, itineraryId);
+        long dayOne = initial.days().get(0).id();
+        long dayTwo = initial.days().get(1).id();
+        var existing = itineraries.addItem(42, itineraryId, envelope(
+                "00000000-0000-0000-0000-000000000143", 1,
+                new ItineraryCommands.AddItem(
+                        dayOne, "原安排", "西湖", LocalTime.of(9, 0), LocalTime.of(10, 0),
+                        null, new BigDecimal("100.00")
+                )
+        ));
+        var revision = envelope(
+                "00000000-0000-0000-0000-000000000144",
+                2,
+                new ItineraryCommands.ApplyRevision(List.of(
+                        new ItineraryCommands.RevisionUpdateItem(
+                                "move-existing", existing.itemId(), dayTwo, "移动后的安排", "西湖",
+                                LocalTime.of(8, 0), LocalTime.of(9, 0), null,
+                                new BigDecimal("80.00")
+                        ),
+                        new ItineraryCommands.RevisionAddItem(
+                                "add-replacement", dayOne, "新增安排", "博物馆",
+                                LocalTime.of(9, 0), LocalTime.of(10, 0), null,
+                                new BigDecimal("20.00")
+                        ),
+                        new ItineraryCommands.RevisionReorderItems(
+                                "order-day-one", dayOne,
+                                List.of(ItineraryCommands.RevisionItemReference.addedBy("add-replacement"))
+                        )
+                ))
+        );
+
+        var applied = itineraries.applyRevision(42, itineraryId, revision);
+        var replay = itineraries.applyRevision(42, itineraryId, revision);
+
+        assertEquals(3, applied.version());
+        assertTrue(replay.replayed());
+        var revised = itineraries.get(42, itineraryId);
+        assertEquals(List.of("新增安排"),
+                revised.days().get(0).items().stream().map(item -> item.title()).toList());
+        assertEquals(List.of("移动后的安排"),
+                revised.days().get(1).items().stream().map(item -> item.title()).toList());
+        assertEquals(3, revised.version());
+        assertEquals(3, jdbc.queryForObject("SELECT COUNT(*) FROM itinerary_command", Integer.class));
+
+        var conflict = assertThrows(
+                ItineraryException.class,
+                () -> itineraries.applyRevision(42, itineraryId, envelope(
+                        revision.commandId().toString(),
+                        3,
+                        new ItineraryCommands.ApplyRevision(List.of(
+                                new ItineraryCommands.RevisionDeleteItem("different", existing.itemId())
+                        ))
+                ))
+        );
+        assertEquals(ItineraryError.IDEMPOTENCY_CONFLICT, conflict.error());
+    }
+
+    @Test
+    void invalidRevisionRollsBackEveryMutationAndCommandReservation() {
+        long itineraryId = itineraries.create(42, createCommand(
+                UUID.fromString("00000000-0000-0000-0000-000000000145"),
+                "IT-TEST-#18-回滚"
+        )).itineraryId();
+        long dayId = itineraries.get(42, itineraryId).days().get(0).id();
+        itineraries.addItem(42, itineraryId, envelope(
+                "00000000-0000-0000-0000-000000000146", 1,
+                new ItineraryCommands.AddItem(
+                        dayId, "原安排", "外滩", LocalTime.of(9, 0), LocalTime.of(10, 0),
+                        null, BigDecimal.ZERO
+                )
+        ));
+        var command = envelope(
+                "00000000-0000-0000-0000-000000000147",
+                2,
+                new ItineraryCommands.ApplyRevision(List.of(
+                        new ItineraryCommands.RevisionAddItem(
+                                "add-conflict", dayId, "冲突安排", "外滩",
+                                LocalTime.of(9, 30), LocalTime.of(10, 30), null, BigDecimal.ZERO
+                        )
+                ))
+        );
+
+        var conflict = assertThrows(
+                ItineraryException.class,
+                () -> itineraries.applyRevision(42, itineraryId, command)
+        );
+
+        assertEquals(ItineraryError.TIME_CONFLICT, conflict.error());
+        var unchanged = itineraries.get(42, itineraryId);
+        assertEquals(2, unchanged.version());
+        assertEquals(List.of("原安排"),
+                unchanged.days().get(0).items().stream().map(item -> item.title()).toList());
+        assertEquals(0, jdbc.queryForObject(
+                "SELECT COUNT(*) FROM itinerary_command WHERE command_id = ?",
+                Integer.class,
+                command.commandId().toString()
+        ));
+    }
+
+    @Test
+    void revisionRequiresOwnerAndAnEditableLifecycleState() {
+        long itineraryId = itineraries.create(42, createCommand(
+                UUID.fromString("00000000-0000-0000-0000-000000000148"),
+                "IT-TEST-#18-权限状态"
+        )).itineraryId();
+        long dayId = itineraries.get(42, itineraryId).days().get(0).id();
+        var revision = envelope(
+                "00000000-0000-0000-0000-000000000149",
+                1,
+                new ItineraryCommands.ApplyRevision(List.of(
+                        new ItineraryCommands.RevisionAddItem(
+                                "owner-only", dayId, "安排", "地点",
+                                null, null, null, BigDecimal.ZERO
+                        )
+                ))
+        );
+
+        var foreign = assertThrows(
+                ItineraryException.class,
+                () -> itineraries.applyRevision(84, itineraryId, revision)
+        );
+        assertEquals(ItineraryError.ITINERARY_NOT_FOUND, foreign.error());
+
+        itineraries.transition(42, itineraryId, envelope(
+                "00000000-0000-0000-0000-000000000150",
+                1,
+                new ItineraryCommands.TransitionStatus(
+                        com.jiawa.lyw.itinerary.domain.ItineraryStatus.CANCELLED
+                )
+        ));
+        var cancelledRevision = envelope(
+                "00000000-0000-0000-0000-000000000151",
+                2,
+                revision.payload()
+        );
+        var cancelled = assertThrows(
+                ItineraryException.class,
+                () -> itineraries.applyRevision(42, itineraryId, cancelledRevision)
+        );
+        assertEquals(ItineraryError.INVALID_STATUS_TRANSITION, cancelled.error());
+        assertEquals(2, itineraries.get(42, itineraryId).version());
+        assertEquals(0, jdbc.queryForObject(
+                "SELECT COUNT(*) FROM itinerary_command WHERE command_id IN (?, ?)",
+                Integer.class,
+                revision.commandId().toString(),
+                cancelledRevision.commandId().toString()
         ));
     }
 
