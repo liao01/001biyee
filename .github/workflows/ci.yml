@@ -134,7 +134,7 @@ jobs:
         run: npm audit --audit-level=low --registry=https://registry.npmjs.org
 
   migration-tests:
-    name: MySQL migrations and identity integration
+    name: MySQL migrations and application integration
     runs-on: ubuntu-latest
     timeout-minutes: 20
     services:
@@ -183,7 +183,7 @@ jobs:
         working-directory: web
         run: npm ci --registry=https://registry.npmjs.org
 
-      - name: Run isolated identity HTTP integration tests
+      - name: Run isolated identity and itinerary HTTP integration tests
         env:
           # 故意给出不可用的宿主配置，测试必须只连接自己创建的数据组件。
           SPRING_DATA_REDIS_URL: redis://127.0.0.1:1
