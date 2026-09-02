@@ -1,0 +1,14 @@
+[
+  {"name":"valid-multi-day-knowledge-grounded","expected":"VALID"},
+  {"name":"date-outside-itinerary","expected":"DATE_OUT_OF_RANGE"},
+  {"name":"overlapping-times","expected":"TIME_CONFLICT"},
+  {"name":"missing-place","expected":"INVALID_PLACE"},
+  {"name":"budget-overflow","expected":"BUDGET_EXCEEDED"},
+  {"name":"duplicate-operation-key","expected":"DUPLICATE_OPERATION"},
+  {"name":"unknown-operation","expected":"INVALID_OPERATION"},
+  {"name":"markdown-wrapped-json","expected":"INVALID_CONTRACT"},
+  {"name":"unknown-contract-field","expected":"INVALID_CONTRACT"},
+  {"name":"knowledge-document-body","expected":"INVALID_KNOWLEDGE_REFERENCE"},
+  {"name":"privacy-member-email","expected":"INVALID_CONTRACT"},
+  {"name":"privacy-access-token","expected":"INVALID_CONTRACT"}
+]
