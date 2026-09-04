@@ -218,6 +218,13 @@ class ItineraryPlanningApplicationServiceTests {
 
         @Override
         public Optional<RequestRecord> findRequest(long id) { return Optional.ofNullable(requests.get(id)); }
+        @Override
+        public Optional<RequestRecord> findLatestRequest(long itineraryId, long owner) {
+            return requests.values().stream()
+                    .filter(request -> request.ownerMemberId() == owner
+                            && request.draft().itineraryId() == itineraryId)
+                    .reduce((first, second) -> second);
+        }
 
         @Override
         public Optional<RequestRecord> updateDraft(long id, long owner, long expected, PlanningModels.RequestDraft draft, Instant now) {

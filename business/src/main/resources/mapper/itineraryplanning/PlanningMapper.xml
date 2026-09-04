@@ -41,6 +41,14 @@
     FROM itinerary_planning_request WHERE id = #{requestId}
   </select>
 
+  <select id="findLatestRequest" resultType="com.jiawa.lyw.itineraryplanning.infrastructure.PlanningRows$RequestRow">
+    SELECT id, itinerary_id, owner_member_id, schema_version, start_date, end_date,
+           budget_amount, budget_currency, party_size, preferences_json, status, version
+    FROM itinerary_planning_request
+    WHERE itinerary_id = #{itineraryId} AND owner_member_id = #{ownerMemberId}
+    ORDER BY updated_at DESC, id DESC LIMIT 1
+  </select>
+
   <delete id="deleteDestinations">
     DELETE FROM itinerary_planning_destination WHERE planning_request_id = #{requestId}
   </delete>

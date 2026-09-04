@@ -11,6 +11,8 @@ public interface ItineraryPlanningApplicationService {
 
     PlanningRequestView getRequest(long actorMemberId, long requestId);
 
+    PlanningRequestView getRequestForItinerary(long actorMemberId, long itineraryId);
+
     ProposalView generate(long actorMemberId, long requestId, long expectedRequestVersion);
 
     List<ProposalView> listProposals(long actorMemberId, long requestId);

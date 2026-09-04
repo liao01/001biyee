@@ -73,6 +73,16 @@ public final class DefaultItineraryPlanningApplicationService implements Itinera
     }
 
     @Override
+    public PlanningRequestView getRequestForItinerary(long actorMemberId, long itineraryId) {
+        if (actorMemberId <= 0 || itineraryId <= 0) {
+            throw planningNotFound();
+        }
+        itineraries.get(actorMemberId, itineraryId);
+        return requestView(repository.findLatestRequest(itineraryId, actorMemberId)
+                .orElseThrow(DefaultItineraryPlanningApplicationService::planningNotFound));
+    }
+
+    @Override
     public ProposalView generate(long actorMemberId, long requestId, long expectedRequestVersion) {
         if (actorMemberId <= 0 || requestId <= 0 || expectedRequestVersion < 1) {
             throw invalidRequest();

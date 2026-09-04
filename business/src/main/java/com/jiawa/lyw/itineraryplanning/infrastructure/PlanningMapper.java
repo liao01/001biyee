@@ -28,6 +28,11 @@ public interface PlanningMapper {
 
     PlanningRows.RequestRow findRequest(@Param("requestId") long requestId);
 
+    PlanningRows.RequestRow findLatestRequest(
+            @Param("itineraryId") long itineraryId,
+            @Param("ownerMemberId") long ownerMemberId
+    );
+
     void deleteDestinations(@Param("requestId") long requestId);
 
     void insertDestination(PlanningRows.DestinationRow row);

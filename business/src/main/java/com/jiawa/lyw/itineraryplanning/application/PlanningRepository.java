@@ -14,6 +14,8 @@ public interface PlanningRepository {
 
     Optional<RequestRecord> findRequest(long requestId);
 
+    Optional<RequestRecord> findLatestRequest(long itineraryId, long ownerMemberId);
+
     Optional<RequestRecord> updateDraft(
             long requestId,
             long ownerMemberId,

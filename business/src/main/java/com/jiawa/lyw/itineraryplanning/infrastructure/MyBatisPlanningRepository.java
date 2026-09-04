@@ -64,6 +64,12 @@ public class MyBatisPlanningRepository implements PlanningRepository {
     }
 
     @Override
+    public Optional<RequestRecord> findLatestRequest(long itineraryId, long ownerMemberId) {
+        return Optional.ofNullable(mapper.findLatestRequest(itineraryId, ownerMemberId))
+                .map(this::requestRecord);
+    }
+
+    @Override
     @Transactional
     public Optional<RequestRecord> updateDraft(
             long requestId,
