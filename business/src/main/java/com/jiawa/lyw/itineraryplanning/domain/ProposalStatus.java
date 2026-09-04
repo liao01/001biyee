@@ -1,9 +1,11 @@
 package com.jiawa.lyw.itineraryplanning.domain;
 
 public enum ProposalStatus {
-    PENDING_REVIEW,
-    PARTIALLY_ACCEPTED,
-    ACCEPTED,
+    VALIDATING,
+    READY,
+    INVALID,
+    FAILED,
+    CONFIRMED,
     REJECTED,
     EXPIRED
 }

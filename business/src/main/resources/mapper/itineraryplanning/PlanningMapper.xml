@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.jiawa.lyw.itineraryplanning.infrastructure.PlanningMapper">
+  <insert id="insertRequest">
+    INSERT INTO itinerary_planning_request
+      (id, itinerary_id, owner_member_id, schema_version, start_date, end_date,
+       budget_amount, budget_currency, party_size, preferences_json, status, version)
+    VALUES
+      (#{id}, #{itineraryId}, #{ownerMemberId}, #{schemaVersion}, #{startDate}, #{endDate},
+       #{budgetAmount}, #{budgetCurrency}, #{partySize}, CAST(#{preferencesJson} AS JSON),
+       #{status}, #{version})
+  </insert>
+
+  <update id="updateRequestDraft">
+    UPDATE itinerary_planning_request
+    SET schema_version = #{schemaVersion}, start_date = #{startDate}, end_date = #{endDate},
+        budget_amount = #{budgetAmount}, budget_currency = #{budgetCurrency},
+        party_size = #{partySize}, preferences_json = CAST(#{preferencesJson} AS JSON),
+        status = 'DRAFT', version = #{version}, updated_at = CURRENT_TIMESTAMP(3)
+    WHERE id = #{id} AND owner_member_id = #{ownerMemberId}
+      AND itinerary_id = #{itineraryId} AND version = #{version} - 1
+      AND status IN ('DRAFT', 'READY', 'FAILED')
+  </update>
+
+  <update id="claimGeneration">
+    UPDATE itinerary_planning_request
+    SET status = 'GENERATING', version = version + 1, updated_at = #{now}
+    WHERE id = #{requestId} AND owner_member_id = #{ownerMemberId}
+      AND version = #{expectedVersion} AND status IN ('DRAFT', 'READY', 'FAILED')
+  </update>
+
+  <update id="finishGeneration">
+    UPDATE itinerary_planning_request
+    SET status = #{status}, version = version + 1, updated_at = #{now}
+    WHERE id = #{requestId} AND owner_member_id = #{ownerMemberId} AND status = 'GENERATING'
+  </update>
+
+  <select id="findRequest" resultType="com.jiawa.lyw.itineraryplanning.infrastructure.PlanningRows$RequestRow">
+    SELECT id, itinerary_id, owner_member_id, schema_version, start_date, end_date,
+           budget_amount, budget_currency, party_size, preferences_json, status, version
+    FROM itinerary_planning_request WHERE id = #{requestId}
+  </select>
+
+  <delete id="deleteDestinations">
+    DELETE FROM itinerary_planning_destination WHERE planning_request_id = #{requestId}
+  </delete>
+
+  <insert id="insertDestination">
+    INSERT INTO itinerary_planning_destination
+      (id, planning_request_id, name, country_code, time_zone, position)
+    VALUES (#{id}, #{planningRequestId}, #{name}, #{countryCode}, #{timeZone}, #{position})
+  </insert>
+
+  <select id="findDestinations" resultType="com.jiawa.lyw.itineraryplanning.infrastructure.PlanningRows$DestinationRow">
+    SELECT id, planning_request_id, name, country_code, time_zone, position
+    FROM itinerary_planning_destination WHERE planning_request_id = #{requestId}
+    ORDER BY position, id
+  </select>
+
+  <insert id="insertProposal">
+    INSERT INTO itinerary_revision_proposal
+      (id, planning_request_id, itinerary_id, owner_member_id, base_itinerary_version,
+       contract_version, status, provider, provider_run_id, model_name, workflow_version,
+       knowledge_reference_ids_json, elapsed_millis, total_tokens, failure_code)
+    VALUES
+      (#{id}, #{planningRequestId}, #{itineraryId}, #{ownerMemberId}, #{baseItineraryVersion},
+       #{contractVersion}, #{status}, #{provider}, #{providerRunId}, #{modelName}, #{workflowVersion},
+       CAST(#{knowledgeReferenceIdsJson} AS JSON), #{elapsedMillis}, #{totalTokens}, #{failureCode})
+  </insert>
+
+  <insert id="insertOperation">
+    INSERT INTO itinerary_revision_operation
+      (id, proposal_id, operation_key, operation_type, target_date, target_item_id,
+       summary, payload_json, estimated_cost_delta, validation_status, position)
+    VALUES
+      (#{id}, #{proposalId}, #{operationKey}, #{operationType}, #{targetDate}, #{targetItemId},
+       #{summary}, CAST(#{payloadJson} AS JSON), #{estimatedCostDelta}, #{validationStatus}, #{position})
+  </insert>
+
+  <update id="expireReadyProposals">
+    UPDATE itinerary_revision_proposal SET status = 'EXPIRED', resolved_at = #{now}
+    WHERE planning_request_id = #{requestId} AND status = 'READY'
+      <if test="exceptProposalId != null">AND id != #{exceptProposalId}</if>
+  </update>
+
+  <update id="expireProposal">
+    UPDATE itinerary_revision_proposal SET status = 'EXPIRED', resolved_at = #{now}
+    WHERE id = #{proposalId} AND status = 'READY'
+  </update>
+
+  <select id="findProposal" resultType="com.jiawa.lyw.itineraryplanning.infrastructure.PlanningRows$ProposalRow">
+    SELECT id, planning_request_id, itinerary_id, owner_member_id, base_itinerary_version,
+           contract_version, status, provider, provider_run_id, model_name, workflow_version,
+           knowledge_reference_ids_json, elapsed_millis, total_tokens, failure_code
+    FROM itinerary_revision_proposal WHERE id = #{proposalId}
+  </select>
+
+  <select id="findProposals" resultType="com.jiawa.lyw.itineraryplanning.infrastructure.PlanningRows$ProposalRow">
+    SELECT id, planning_request_id, itinerary_id, owner_member_id, base_itinerary_version,
+           contract_version, status, provider, provider_run_id, model_name, workflow_version,
+           knowledge_reference_ids_json, elapsed_millis, total_tokens, failure_code
+    FROM itinerary_revision_proposal
+    WHERE planning_request_id = #{requestId} AND owner_member_id = #{ownerMemberId}
+    ORDER BY created_at DESC, id DESC
+  </select>
+
+  <select id="findOperations" resultType="com.jiawa.lyw.itineraryplanning.infrastructure.PlanningRows$OperationRow">
+    SELECT id, proposal_id, operation_key, operation_type, target_date, target_item_id,
+           summary, payload_json, estimated_cost_delta, validation_status, position
+    FROM itinerary_revision_operation WHERE proposal_id = #{proposalId}
+    ORDER BY position, id
+  </select>
+
+  <select id="findResolutionByDecision" resultType="com.jiawa.lyw.itineraryplanning.infrastructure.PlanningRows$ResolutionRow">
+    SELECT id, proposal_id, member_id, decision_id, decision_type, selected_operations_hash,
+           expected_itinerary_version, itinerary_command_id, result_version
+    FROM itinerary_revision_resolution WHERE decision_id = #{decisionId}
+  </select>
+
+  <select id="findResolutionByProposal" resultType="com.jiawa.lyw.itineraryplanning.infrastructure.PlanningRows$ResolutionRow">
+    SELECT id, proposal_id, member_id, decision_id, decision_type, selected_operations_hash,
+           expected_itinerary_version, itinerary_command_id, result_version
+    FROM itinerary_revision_resolution WHERE proposal_id = #{proposalId}
+  </select>
+
+  <insert id="insertResolution">
+    INSERT INTO itinerary_revision_resolution
+      (id, proposal_id, member_id, decision_id, decision_type, selected_operations_hash,
+       expected_itinerary_version, itinerary_command_id, result_version)
+    VALUES
+      (#{id}, #{proposalId}, #{memberId}, #{decisionId}, #{decisionType},
+       #{selectedOperationsHash}, #{expectedItineraryVersion}, #{itineraryCommandId}, #{resultVersion})
+  </insert>
+
+  <update id="resolveProposal">
+    UPDATE itinerary_revision_proposal SET status = #{status}, resolved_at = #{now}
+    WHERE id = #{proposalId} AND status = 'READY'
+  </update>
+</mapper>

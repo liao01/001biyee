@@ -1,9 +1,10 @@
 package com.jiawa.lyw.itineraryplanning.domain;
 
 public enum PlanningStatus {
-    PENDING,
-    RUNNING,
-    SUCCEEDED,
+    DRAFT,
+    SUBMITTED,
+    GENERATING,
+    READY,
     FAILED,
     CANCELLED
 }
