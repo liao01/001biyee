@@ -160,6 +160,46 @@ class ItineraryPlanningHttpIT {
                 .andExpect(jsonPath("$.content.days[0].items.length()").value(1));
     }
 
+    @Test
+    void rollsBackItineraryWhenSavingTheConfirmationFails() throws Exception {
+        String access = login();
+        String itineraryId = createItinerary(access);
+        perform(put("/web/itineraries/{id}/planning/request", itineraryId), access, """
+                {"requestId":null,"expectedVersion":0,"draft":{
+                  "startDate":"2026-10-02","endDate":"2026-10-03","budgetAmount":3000.00,
+                  "budgetCurrency":"CNY","partySize":2,
+                  "preferences":{"pace":"BALANCED","tags":["CULTURE"],"notes":null},
+                  "destinations":[{"name":"杭州","countryCode":"CN","timeZone":"Asia/Shanghai"}]
+                }}
+                """).andExpect(status().isOk());
+        String proposalId = perform(post("/web/itineraries/{id}/planning/generate", itineraryId),
+                access, "{\"expectedVersion\":1}").andExpect(status().isOk())
+                .json().path("content").path("id").asText();
+        // The trigger belongs exclusively to this class's disposable MySQL schema.
+        jdbc.execute("CREATE TRIGGER it_test_18_reject_resolution BEFORE INSERT ON "
+                + "itinerary_revision_resolution FOR EACH ROW SIGNAL SQLSTATE '45000' "
+                + "SET MESSAGE_TEXT = 'IT-TEST-#18 forced resolution failure'");
+        try {
+            perform(post(
+                            "/web/itineraries/{id}/planning/proposals/{proposal}/confirm",
+                            itineraryId, proposalId), access, """
+                    {"decisionId":"00000000-0000-0000-0000-000000000501",
+                     "commandId":"00000000-0000-0000-0000-000000000502",
+                     "expectedItineraryVersion":1,"selectedOperationKeys":["add-museum"]}
+                    """).andExpect(status().isInternalServerError());
+            perform(get("/web/itineraries/{id}", itineraryId), access, null)
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.content.version").value(1))
+                    .andExpect(jsonPath("$.content.days[0].items.length()").value(0));
+            assertEquals(0, jdbc.queryForObject(
+                    "SELECT COUNT(*) FROM itinerary_revision_resolution", Integer.class));
+            assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM itinerary_command "
+                    + "WHERE command_id = '00000000-0000-0000-0000-000000000502'", Integer.class));
+        } finally {
+            jdbc.execute("DROP TRIGGER IF EXISTS it_test_18_reject_resolution");
+        }
+    }
+
     private String login() throws Exception {
         return json.readTree(mvc.perform(post("/web/identity/login")
                         .contentType("application/json")

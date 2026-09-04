@@ -19,12 +19,17 @@ import javax.crypto.spec.SecretKeySpec;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.ConnectException;
+import java.net.NoRouteToHostException;
+import java.net.SocketTimeoutException;
+import java.net.UnknownHostException;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 public final class DifyItineraryPlannerGateway implements ItineraryPlannerGateway {
@@ -79,19 +84,32 @@ public final class DifyItineraryPlannerGateway implements ItineraryPlannerGatewa
     }
 
     private DifyWorkflowModels.RawResponse execute(DifyWorkflowModels.RunRequest request) {
-        try {
-            return restClient.post()
-                    .uri("/v1/workflows/run")
-                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + properties.apiKey())
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .body(request)
-                    .exchange((ignoredRequest, response) -> new DifyWorkflowModels.RawResponse(
-                            response.getStatusCode().value(),
-                            readBounded(response.getBody(), properties.maxResponseBytes())
-                    ));
-        } catch (RestClientException exception) {
-            throw providerUnavailable();
+        for (int attempt = 0; attempt < 2; attempt++) {
+            try {
+                return executeOnce(request);
+            } catch (RestClientException exception) {
+                if (attempt == 0 && isConnectionEstablishmentFailure(exception)) {
+                    continue;
+                }
+                if (isTimeout(exception)) {
+                    throw providerTimeout();
+                }
+                throw providerUnavailable();
+            }
         }
+        throw providerUnavailable();
+    }
+
+    private DifyWorkflowModels.RawResponse executeOnce(DifyWorkflowModels.RunRequest request) {
+        return restClient.post()
+                .uri("/v1/workflows/run")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + properties.apiKey())
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(request)
+                .exchange((ignoredRequest, response) -> new DifyWorkflowModels.RawResponse(
+                        response.getStatusCode().value(),
+                        readBounded(response.getBody(), properties.maxResponseBytes())
+                ));
     }
 
     private Generation parseResponse(byte[] bytes) {
@@ -268,8 +286,37 @@ public final class DifyItineraryPlannerGateway implements ItineraryPlannerGatewa
         return value.endsWith("/") ? value.substring(0, value.length() - 1) : value;
     }
 
+    private static boolean isConnectionEstablishmentFailure(Throwable failure) {
+        for (Throwable current = failure; current != null; current = current.getCause()) {
+            if (current instanceof ConnectException
+                    || current instanceof NoRouteToHostException
+                    || current instanceof UnknownHostException) {
+                return true;
+            }
+            if (current instanceof SocketTimeoutException
+                    && current.getMessage() != null
+                    && current.getMessage().toLowerCase(Locale.ROOT).contains("connect")) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean isTimeout(Throwable failure) {
+        for (Throwable current = failure; current != null; current = current.getCause()) {
+            if (current instanceof SocketTimeoutException) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private static PlanningException providerUnavailable() {
         return new PlanningException(PlanningError.PROVIDER_UNAVAILABLE, "AI 规划服务暂不可用");
+    }
+
+    private static PlanningException providerTimeout() {
+        return new PlanningException(PlanningError.PROVIDER_TIMEOUT, "AI 规划服务响应超时");
     }
 
     private static PlanningException invalidContract() {

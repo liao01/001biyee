@@ -17,6 +17,17 @@ class ScanTextTests(unittest.TestCase):
         self.assertTrue(scan_text(Path("web/src/view/login.vue"), f"password: '{value}'"))
         self.assertTrue(scan_text(path, "password: 'unapproved-fixture-value'"))
 
+    def test_dify_fixture_exception_requires_exact_path_and_value(self):
+        path = Path(
+            "business/src/test/java/com/jiawa/lyw/itineraryplanning/infrastructure/"
+            "DifyItineraryPlanningPropertiesTests.java"
+        )
+        value = "TEST-dify-application-key"
+
+        self.assertEqual([], scan_text(path, f'private static final String API_KEY = "{value}";'))
+        self.assertTrue(scan_text(Path("business/src/main/java/Config.java"), f'apiKey = "{value}"'))
+        self.assertTrue(scan_text(path, 'private static final String API_KEY = "unknown-value";'))
+
     def test_detects_secret_assignment_without_exposing_value(self):
         candidate_value = "sk-" + "example-secret-value-123456"
 
@@ -223,6 +234,17 @@ class ScanTextTests(unittest.TestCase):
                 "email-address",
                 {finding.rule_id for finding in findings},
             )
+
+    def test_allows_reserved_test_domain_email_addresses(self):
+        findings = scan_text(
+            Path("business/src/test/java/ExampleTest.java"),
+            'var endpoint = "https://user:secret@dify.example.test";',
+        )
+
+        self.assertNotIn(
+            "email-address",
+            {finding.rule_id for finding in findings},
+        )
 
     def test_still_detects_high_confidence_token_in_package_lock(self):
         candidate_value = "ghp_" + "exampleSecretValue1234567890"

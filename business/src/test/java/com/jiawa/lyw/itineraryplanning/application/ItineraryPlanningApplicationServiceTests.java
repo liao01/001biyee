@@ -137,6 +137,34 @@ class ItineraryPlanningApplicationServiceTests {
         verify(itineraries, never()).applyRevision(any(Long.class), any(Long.class), any());
     }
 
+    @Test
+    void rejectsASelectionThatExceedsBudgetWithoutItsCostSavingOperation() {
+        var saved = service.saveDraft(7, new PlanningCommands.SaveDraft(null, 0, request()));
+        var proposal = new PlanningModels.CandidateProposal(
+                PlanningModels.REVISION_CONTRACT_V1, "替换安排", List.of(
+                        new PlanningModels.DeleteItemOperation("remove-old", "删除旧安排", 1001),
+                        new PlanningModels.AddItemOperation("add-new", "新增体验",
+                                new PlanningModels.ItemFields(LocalDate.of(2026, 10, 3),
+                                        "体验", "体验馆", null, null, null,
+                                        new BigDecimal("2950.00")))
+                ), List.of()
+        );
+        when(gateway.generate(eq(7L), any(), any())).thenReturn(
+                new ItineraryPlannerGateway.Generation(proposal, "budget-run", null, null, 1, null));
+        var generated = service.generate(7, saved.id(), saved.version());
+        assertEquals(ProposalStatus.READY, generated.status());
+        when(itineraries.applyRevision(eq(7L), eq(42L), any())).thenReturn(
+                new ItineraryCommands.CommandResult(42, null, 4, false));
+
+        var failure = assertThrows(PlanningException.class, () -> service.confirm(
+                7, generated.id(), new PlanningCommands.Confirm(
+                        UUID.randomUUID(), UUID.randomUUID(), 3, List.of("add-new"))));
+
+        assertEquals(PlanningError.BUDGET_EXCEEDED, failure.error());
+        assertEquals(ProposalStatus.READY, repository.proposals.get(generated.id()).status());
+        verify(itineraries, never()).applyRevision(any(Long.class), any(Long.class), any());
+    }
+
     private long readyProposal() {
         var saved = service.saveDraft(7, new PlanningCommands.SaveDraft(null, 0, request()));
         when(gateway.generate(eq(7L), any(), any())).thenReturn(new ItineraryPlannerGateway.Generation(

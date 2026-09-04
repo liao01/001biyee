@@ -509,7 +509,7 @@ git commit -m "docs: define Dify itinerary planning contract (#18)"
 ### Step 1：后端与迁移
 
 ```powershell
-python -m unittest discover -s tests -p "test_*.py"
+python -m unittest discover -s tests -t . -p "test_*.py"
 mvn -q -pl business test
 mvn -q -Pdeployment clean package
 python -m scripts.run_backend_integration

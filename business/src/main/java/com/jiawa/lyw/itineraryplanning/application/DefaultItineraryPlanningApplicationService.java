@@ -10,6 +10,8 @@ import com.jiawa.lyw.itineraryplanning.domain.PlanningModels;
 import com.jiawa.lyw.itineraryplanning.domain.PlanningStatus;
 import com.jiawa.lyw.itineraryplanning.domain.ProposalStatus;
 import com.jiawa.lyw.itineraryplanning.domain.RevisionProposalValidator;
+import org.springframework.transaction.annotation.Isolation;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -24,7 +26,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
-public final class DefaultItineraryPlanningApplicationService implements ItineraryPlanningApplicationService {
+public class DefaultItineraryPlanningApplicationService implements ItineraryPlanningApplicationService {
     private final PlanningRepository repository;
     private final ItineraryPlannerGateway planner;
     private final RevisionProposalValidator validator;
@@ -130,6 +132,7 @@ public final class DefaultItineraryPlanningApplicationService implements Itinera
     }
 
     @Override
+    @Transactional(isolation = Isolation.READ_COMMITTED, noRollbackFor = PlanningException.class)
     public ResolutionView confirm(
             long actorMemberId,
             long proposalId,
@@ -157,6 +160,10 @@ public final class DefaultItineraryPlanningApplicationService implements Itinera
         }
         PlanningModels.ValidatedProposal validated = proposal.validatedProposal();
         List<PlanningModels.RevisionOperation> selected = selectedOperations(validated, command.selectedOperationKeys());
+        validator.validate(snapshot, requireRequest(actorMemberId, proposal.requestId()).draft(),
+                new PlanningModels.CandidateProposal(
+                        validated.proposal().contractVersion(), validated.proposal().summary(),
+                        selected, validated.proposal().knowledgeReferenceIds()));
         ItineraryCommands.ApplyRevision revision = toRevision(snapshot, selected);
         String selectionHash = selectionHash(selected.stream().map(
                 PlanningModels.RevisionOperation::operationKey
@@ -179,6 +186,7 @@ public final class DefaultItineraryPlanningApplicationService implements Itinera
     }
 
     @Override
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public ResolutionView reject(long actorMemberId, long proposalId, PlanningCommands.Reject command) {
         if (actorMemberId <= 0 || command == null) {
             throw invalidRequest();

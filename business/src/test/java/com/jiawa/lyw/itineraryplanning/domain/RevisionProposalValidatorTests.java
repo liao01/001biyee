@@ -93,6 +93,18 @@ class RevisionProposalValidatorTests {
     }
 
     @Test
+    void rejectsControlCharactersInPlaceNamesBeforeDisplay() {
+        PlanningModels.CandidateProposal proposal = proposal(List.of(
+                new PlanningModels.AddItemOperation(
+                        "unsafe-place", "控制字符地点",
+                        fields(DAY_TWO, "散步", "西湖\u0001北岸", "09:00", "10:00", "10.00")
+                )
+        ));
+
+        assertError(PlanningError.INVALID_PLACE, proposal);
+    }
+
+    @Test
     void rejectsUnknownTargetsAndIncompleteReorders() {
         PlanningModels.CandidateProposal unknown = proposal(List.of(
                 new PlanningModels.DeleteItemOperation("delete-missing", "删除不存在安排", 9999L)

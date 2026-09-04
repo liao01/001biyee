@@ -108,6 +108,11 @@ KNOWN_NON_SECRET_FIXTURES = {
         "sensitive-member-session-token",
     ),
     (
+        "business/src/test/java/com/jiawa/lyw/itineraryplanning/infrastructure/"
+        "DifyItineraryPlanningPropertiesTests.java",
+        "TEST-dify-application-key",
+    ),
+    (
         "docs/superpowers/plans/2026-08-29-intelligent-travel-platform-phase-0-foundation.md",
         "Secret123",
     ),
@@ -151,6 +156,11 @@ def _is_safe_value(value: str) -> bool:
 def _is_known_non_secret_fixture(path: Path | PurePosixPath, value: str) -> bool:
     normalized = value.strip("\"'")
     return (path.as_posix(), normalized) in KNOWN_NON_SECRET_FIXTURES
+
+
+def _is_reserved_example_email_domain(domain: str) -> bool:
+    normalized = domain.lower()
+    return normalized in RESERVED_EXAMPLE_EMAIL_DOMAINS or normalized.endswith(".test")
 
 
 def _inside_quoted_literal(line: str, position: int) -> bool:
@@ -230,8 +240,7 @@ def scan_text(
             if rule.rule_id == "email-address":
                 email_matches = rule.pattern.findall(line)
                 if email_matches and all(
-                    match.rsplit("@", 1)[-1].lower()
-                    in RESERVED_EXAMPLE_EMAIL_DOMAINS
+                    _is_reserved_example_email_domain(match.rsplit("@", 1)[-1])
                     for match in email_matches
                 ):
                     continue

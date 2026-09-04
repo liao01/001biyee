@@ -150,7 +150,9 @@ public final class RevisionProposalValidator {
         if (item.title() == null || item.title().isBlank() || item.title().trim().length() > 120) {
             throw error(PlanningError.INVALID_OPERATION, "行程项标题无效");
         }
-        if (item.placeName() == null || item.placeName().isBlank() || item.placeName().trim().length() > 200) {
+        if (item.placeName() == null || item.placeName().isBlank()
+                || item.placeName().trim().length() > 200
+                || item.placeName().codePoints().anyMatch(Character::isISOControl)) {
             throw error(PlanningError.INVALID_PLACE, "行程项地点无效");
         }
         if ((item.startTime() == null) != (item.endTime() == null)
