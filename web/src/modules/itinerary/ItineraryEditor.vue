@@ -13,6 +13,14 @@
           <p>{{ formatDateRange(editor.state.snapshot.startDate, editor.state.snapshot.endDate) }} · {{ editor.state.snapshot.timeZone }}</p>
         </div>
         <div class="itinerary-editor-header__status">
+          <button
+            class="travel-primary-button itinerary-planning-toggle"
+            type="button"
+            :aria-label="planningOpen ? '关闭 AI 行程规划' : '打开 AI 行程规划'"
+            :aria-expanded="planningOpen"
+            aria-controls="itinerary-planning-workspace"
+            @click="planningOpen = !planningOpen"
+          >{{ planningOpen ? '收起 AI 规划' : 'AI 帮我规划' }}</button>
           <span :class="['itinerary-status', `itinerary-status--${editor.state.snapshot.status.toLowerCase()}`]">{{ statusLabel(editor.state.snapshot.status) }}</span>
           <span role="status" aria-live="polite" aria-atomic="true">{{ saveLabel }}</span>
         </div>
@@ -27,7 +35,16 @@
         <button v-else class="travel-secondary-button" type="button" aria-label="重试保存" @click="retry">重试</button>
       </div>
 
-      <section class="itinerary-editor-layout">
+      <section :class="['itinerary-editor-layout', { 'has-planning': planningOpen }]">
+        <ItineraryPlanningPanel
+          v-if="planningOpen"
+          id="itinerary-planning-workspace"
+          :itinerary="editor.state.snapshot"
+          :itinerary-api="api"
+          @busy-change="planningBusy = $event"
+          @confirmed="acceptPlanningSnapshot"
+          @close="planningOpen = false"
+        />
         <aside class="itinerary-editor-sidebar">
           <form class="travel-panel itinerary-compact-form" aria-label="基本信息" @submit.prevent="saveOverview">
             <div class="itinerary-section-heading"><h2>基本信息</h2><span>版本 {{ editor.state.snapshot.version }}</span></div>
@@ -133,6 +150,7 @@ import { useRoute } from 'vue-router'
 import { createItineraryEditor } from './itineraryEditor.js'
 import { formatDate, formatDateRange } from './itineraryFormatters.js'
 import { itineraryHttp, itineraryHttpKey } from './itineraryHttp.js'
+import ItineraryPlanningPanel from '../itinerary-planning/ItineraryPlanningPanel.vue'
 import './itinerary.css'
 
 const api = inject(itineraryHttpKey, itineraryHttp)
@@ -144,6 +162,8 @@ const operationError = ref(null)
 const draggedItemId = ref(null)
 const refreshing = ref(false)
 const projectionError = ref(false)
+const planningOpen = ref(false)
+const planningBusy = ref(false)
 const overview = reactive({ title: '', startDate: '', endDate: '', timeZone: '', baseCurrency: '' })
 const destinations = reactive([])
 const blankItem = () => ({ open: false, itemId: null, dayId: '', title: '', placeName: '', startTime: '', endTime: '', notes: '', estimatedCost: null })
@@ -151,7 +171,7 @@ const itemForm = reactive(blankItem())
 const labels = { DRAFT: '草稿', PLANNED: '已计划', IN_PROGRESS: '进行中', COMPLETED: '已完成', CANCELLED: '已取消', ARCHIVED: '已归档' }
 const statusLabel = (status) => labels[status] || status
 const totalItems = computed(() => editor.value?.state.snapshot.days.reduce((sum, day) => sum + day.items.length, 0) || 0)
-const mutationsDisabled = computed(() => projectionError.value || refreshing.value || ['saving', 'error', 'conflict'].includes(editor.value?.state.status))
+const mutationsDisabled = computed(() => planningBusy.value || projectionError.value || refreshing.value || ['saving', 'error', 'conflict'].includes(editor.value?.state.status))
 const saveLabel = computed(() => refreshing.value ? '正在同步…' : ({ idle: '尚无更改', saving: '保存中…', saved: '已保存', error: '保存失败', conflict: '存在版本冲突' }[editor.value?.state.status] || ''))
 const operationErrorTitle = computed(() => {
   if (editor.value?.state.status === 'conflict') return '行程已在其他位置更新'
@@ -164,16 +184,23 @@ const syncForms = () => {
   Object.assign(overview, { title: snapshot.title, startDate: snapshot.startDate, endDate: snapshot.endDate, timeZone: snapshot.timeZone, baseCurrency: snapshot.baseCurrency })
   destinations.splice(0, destinations.length, ...snapshot.destinations.map((item) => ({ ...item })))
 }
+const activateSnapshot = (snapshot) => {
+  editor.value = createItineraryEditor({ initialSnapshot: snapshot, api, uuid: () => crypto.randomUUID() })
+  syncForms()
+}
 const load = async () => {
   loading.value = true
   loadError.value = ''
   try {
     const snapshot = await api.get(String(route.params.itineraryId))
-    editor.value = createItineraryEditor({ initialSnapshot: snapshot, api, uuid: () => crypto.randomUUID() })
-    syncForms()
+    activateSnapshot(snapshot)
   } catch (error) {
     loadError.value = error.message || '暂时无法打开行程。'
   } finally { loading.value = false }
+}
+const acceptPlanningSnapshot = (snapshot) => {
+  if (snapshot) activateSnapshot(snapshot)
+  planningBusy.value = false
 }
 const run = async (operation) => {
   operationError.value = null

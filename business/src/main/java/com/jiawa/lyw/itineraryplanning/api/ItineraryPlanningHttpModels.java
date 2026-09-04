@@ -1,6 +1,7 @@
 package com.jiawa.lyw.itineraryplanning.api;
 
 import com.jiawa.lyw.itineraryplanning.application.ItineraryPlanningApplicationService;
+import com.jiawa.lyw.itinerary.domain.ItineraryModels;
 import com.jiawa.lyw.itineraryplanning.application.PlanningCommands;
 import com.jiawa.lyw.itineraryplanning.domain.PlanningModels;
 import com.jiawa.lyw.itineraryplanning.domain.PlanningStatus;
@@ -144,6 +145,13 @@ public final class ItineraryPlanningHttpModels {
                     item.notes(), item.estimatedCost()
             );
         }
+
+        static ItemResponse from(LocalDate date, ItineraryModels.Item item) {
+            return item == null ? null : new ItemResponse(
+                    date, item.title(), item.placeName(), item.startTime(), item.endTime(),
+                    item.notes(), item.estimatedCost()
+            );
+        }
     }
 
     public record ItemReferenceResponse(String existingItemId, String addedByOperationKey) {
@@ -161,32 +169,61 @@ public final class ItineraryPlanningHttpModels {
             String summary,
             String targetItemId,
             LocalDate targetDate,
-            ItemResponse item,
-            List<ItemReferenceResponse> itemReferences,
+            ItemResponse beforeItem,
+            ItemResponse afterItem,
+            List<ItemReferenceResponse> beforeItemReferences,
+            List<ItemReferenceResponse> afterItemReferences,
             Set<String> dependencies
     ) {
         static OperationResponse from(
                 PlanningModels.RevisionOperation operation,
-                Set<String> dependencies
+                Set<String> dependencies,
+                ItineraryModels.Snapshot snapshot
         ) {
             String targetItemId = null;
             LocalDate targetDate = null;
-            PlanningModels.ItemFields item = null;
-            List<ItemReferenceResponse> references = List.of();
+            ItemResponse beforeItem = null;
+            ItemResponse afterItem = null;
+            List<ItemReferenceResponse> beforeReferences = List.of();
+            List<ItemReferenceResponse> afterReferences = List.of();
             if (operation instanceof PlanningModels.AddItemOperation add) {
-                item = add.item(); targetDate = item.date();
+                afterItem = ItemResponse.from(add.item()); targetDate = add.item().date();
             } else if (operation instanceof PlanningModels.UpdateItemOperation update) {
-                targetItemId = Long.toString(update.targetItemId()); item = update.item(); targetDate = item.date();
+                targetItemId = Long.toString(update.targetItemId());
+                ExistingItem existing = findItem(snapshot, update.targetItemId());
+                beforeItem = existing == null ? null : ItemResponse.from(existing.date(), existing.item());
+                afterItem = ItemResponse.from(update.item());
+                targetDate = update.item().date();
             } else if (operation instanceof PlanningModels.DeleteItemOperation delete) {
                 targetItemId = Long.toString(delete.targetItemId());
+                ExistingItem existing = findItem(snapshot, delete.targetItemId());
+                beforeItem = existing == null ? null : ItemResponse.from(existing.date(), existing.item());
+                targetDate = existing == null ? null : existing.date();
             } else if (operation instanceof PlanningModels.ReorderDayItemsOperation reorder) {
                 targetDate = reorder.date();
-                references = reorder.itemReferences().stream().map(ItemReferenceResponse::from).toList();
+                beforeReferences = snapshot.days().stream()
+                        .filter(day -> day.date().equals(reorder.date()))
+                        .findFirst().stream().flatMap(day -> day.items().stream())
+                        .filter(item -> !item.deleted())
+                        .map(item -> new ItemReferenceResponse(Long.toString(item.id()), null))
+                        .toList();
+                afterReferences = reorder.itemReferences().stream().map(ItemReferenceResponse::from).toList();
             }
             return new OperationResponse(
                     operation.operationKey(), operation.type(), operation.summary(), targetItemId,
-                    targetDate, ItemResponse.from(item), references, dependencies
+                    targetDate, beforeItem, afterItem, beforeReferences, afterReferences, dependencies
             );
+        }
+
+        private static ExistingItem findItem(ItineraryModels.Snapshot snapshot, long itemId) {
+            return snapshot.days().stream()
+                    .flatMap(day -> day.items().stream()
+                            .filter(item -> item.id() == itemId && !item.deleted())
+                            .map(item -> new ExistingItem(day.date(), item)))
+                    .findFirst().orElse(null);
+        }
+
+        private record ExistingItem(LocalDate date, ItineraryModels.Item item) {
         }
     }
 
@@ -195,6 +232,7 @@ public final class ItineraryPlanningHttpModels {
             String requestId,
             String itineraryId,
             long baseItineraryVersion,
+            long comparedItineraryVersion,
             ProposalStatus status,
             String summary,
             BigDecimal projectedCost,
@@ -202,18 +240,22 @@ public final class ItineraryPlanningHttpModels {
             List<OperationResponse> operations,
             String failureCode
     ) {
-        static ProposalResponse from(ItineraryPlanningApplicationService.ProposalView view) {
+        static ProposalResponse from(
+                ItineraryPlanningApplicationService.ProposalView view,
+                ItineraryModels.Snapshot snapshot
+        ) {
             PlanningModels.ValidatedProposal validated = view.proposal();
             return new ProposalResponse(
                     Long.toString(view.id()), Long.toString(view.requestId()),
-                    Long.toString(view.itineraryId()), view.baseItineraryVersion(), view.status(),
+                    Long.toString(view.itineraryId()), view.baseItineraryVersion(), snapshot.version(), view.status(),
                     validated == null ? null : validated.proposal().summary(),
                     validated == null ? null : validated.projectedCost(),
                     validated == null ? List.of() : validated.proposal().knowledgeReferenceIds(),
                     validated == null ? List.of() : validated.proposal().operations().stream()
                             .map(operation -> OperationResponse.from(
                                     operation,
-                                    validated.dependencies().getOrDefault(operation.operationKey(), Set.of())
+                                    validated.dependencies().getOrDefault(operation.operationKey(), Set.of()),
+                                    snapshot
                             )).toList(),
                     view.failureCode()
             );

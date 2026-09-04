@@ -1,6 +1,7 @@
 package com.jiawa.lyw.itineraryplanning.api;
 
 import com.jiawa.lyw.identity.application.CurrentMemberProvider;
+import com.jiawa.lyw.itinerary.application.ItineraryApplicationService;
 import com.jiawa.lyw.itineraryplanning.application.ItineraryPlanningApplicationService;
 import com.jiawa.lyw.resp.CommonResp;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -22,13 +23,16 @@ import java.util.List;
 public class ItineraryPlanningController {
     private final ItineraryPlanningApplicationService planning;
     private final CurrentMemberProvider currentMember;
+    private final ItineraryApplicationService itineraries;
 
     public ItineraryPlanningController(
             ItineraryPlanningApplicationService planning,
-            CurrentMemberProvider currentMember
+            CurrentMemberProvider currentMember,
+            ItineraryApplicationService itineraries
     ) {
         this.planning = planning;
         this.currentMember = currentMember;
+        this.itineraries = itineraries;
     }
 
     @GetMapping("/request")
@@ -55,9 +59,11 @@ public class ItineraryPlanningController {
             @PathVariable long itineraryId,
             @RequestBody ItineraryPlanningHttpModels.GenerateRequest request
     ) {
-        var current = planning.getRequestForItinerary(currentMember.memberId(), itineraryId);
+        long actorMemberId = currentMember.memberId();
+        var current = planning.getRequestForItinerary(actorMemberId, itineraryId);
+        var proposal = planning.generate(actorMemberId, current.id(), request.expectedVersion());
         return ok(ItineraryPlanningHttpModels.ProposalResponse.from(
-                planning.generate(currentMember.memberId(), current.id(), request.expectedVersion())
+                proposal, itineraries.get(actorMemberId, itineraryId)
         ));
     }
 
@@ -65,9 +71,12 @@ public class ItineraryPlanningController {
     public ResponseEntity<CommonResp<List<ItineraryPlanningHttpModels.ProposalResponse>>> proposals(
             @PathVariable long itineraryId
     ) {
-        var current = planning.getRequestForItinerary(currentMember.memberId(), itineraryId);
-        return ok(planning.listProposals(currentMember.memberId(), current.id()).stream()
-                .map(ItineraryPlanningHttpModels.ProposalResponse::from).toList());
+        long actorMemberId = currentMember.memberId();
+        var current = planning.getRequestForItinerary(actorMemberId, itineraryId);
+        var snapshot = itineraries.get(actorMemberId, itineraryId);
+        return ok(planning.listProposals(actorMemberId, current.id()).stream()
+                .map(proposal -> ItineraryPlanningHttpModels.ProposalResponse.from(proposal, snapshot))
+                .toList());
     }
 
     @GetMapping("/proposals/{proposalId}")
@@ -75,14 +84,17 @@ public class ItineraryPlanningController {
             @PathVariable long itineraryId,
             @PathVariable long proposalId
     ) {
-        var result = planning.getProposal(currentMember.memberId(), proposalId);
+        long actorMemberId = currentMember.memberId();
+        var result = planning.getProposal(actorMemberId, proposalId);
         if (result.itineraryId() != itineraryId) {
             throw new com.jiawa.lyw.itineraryplanning.domain.PlanningException(
                     com.jiawa.lyw.itineraryplanning.domain.PlanningError.PROPOSAL_NOT_FOUND,
                     "修订建议不存在"
             );
         }
-        return ok(ItineraryPlanningHttpModels.ProposalResponse.from(result));
+        return ok(ItineraryPlanningHttpModels.ProposalResponse.from(
+                result, itineraries.get(actorMemberId, itineraryId)
+        ));
     }
 
     @PostMapping("/proposals/{proposalId}/confirm")

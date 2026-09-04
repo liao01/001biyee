@@ -2,6 +2,9 @@ package com.jiawa.lyw.itineraryplanning.api;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jiawa.lyw.identity.application.CurrentMemberProvider;
+import com.jiawa.lyw.itinerary.application.ItineraryApplicationService;
+import com.jiawa.lyw.itinerary.domain.ItineraryModels;
+import com.jiawa.lyw.itinerary.domain.ItineraryStatus;
 import com.jiawa.lyw.itineraryplanning.application.ItineraryPlanningApplicationService;
 import com.jiawa.lyw.itineraryplanning.application.PlanningCommands;
 import com.jiawa.lyw.itineraryplanning.domain.PlanningError;
@@ -42,6 +45,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 class ItineraryPlanningControllerTests {
     private final ItineraryPlanningApplicationService planning = mock(ItineraryPlanningApplicationService.class);
+    private final ItineraryApplicationService itineraries = mock(ItineraryApplicationService.class);
     private final CurrentMemberProvider currentMember = mock(CurrentMemberProvider.class);
     private final ObjectMapper objectMapper = new ObjectMapper().findAndRegisterModules();
     private MockMvc mvc;
@@ -49,7 +53,10 @@ class ItineraryPlanningControllerTests {
     @BeforeEach
     void setUp() {
         when(currentMember.memberId()).thenReturn(7L);
-        mvc = MockMvcBuilders.standaloneSetup(new ItineraryPlanningController(planning, currentMember))
+        when(itineraries.get(7, 42)).thenReturn(itinerarySnapshot());
+        mvc = MockMvcBuilders.standaloneSetup(
+                        new ItineraryPlanningController(planning, currentMember, itineraries)
+                )
                 .setControllerAdvice(new ItineraryPlanningExceptionHandler())
                 .build();
     }
@@ -88,6 +95,9 @@ class ItineraryPlanningControllerTests {
                 .andExpect(jsonPath("$.content.status").value("READY"))
                 .andExpect(jsonPath("$.content.knowledgeReferenceIds[0]").value("kb:guide:1"))
                 .andExpect(jsonPath("$.content.operations[0].targetItemId").value("1001"))
+                .andExpect(jsonPath("$.content.operations[0].beforeItem.title").value("旧安排"))
+                .andExpect(jsonPath("$.content.operations[0].afterItem.title").value("西湖"))
+                .andExpect(jsonPath("$.content.comparedItineraryVersion").value(3))
                 .andExpect(jsonPath("$.content.providerRunId").doesNotExist())
                 .andExpect(jsonPath("$.content.apiKey").doesNotExist())
                 .andExpect(jsonPath("$.content.rawResponse").doesNotExist());
@@ -209,6 +219,19 @@ class ItineraryPlanningControllerTests {
                 ),
                 List.of(new PlanningModels.DestinationInput(
                         "杭州", "CN", ZoneId.of("Asia/Shanghai")
+                ))
+        );
+    }
+
+    private ItineraryModels.Snapshot itinerarySnapshot() {
+        return new ItineraryModels.Snapshot(
+                42, 7, "杭州周末", LocalDate.of(2026, 10, 2), LocalDate.of(2026, 10, 3),
+                ZoneId.of("Asia/Shanghai"), Currency.getInstance("CNY"), ItineraryStatus.DRAFT, 3,
+                List.of(), List.of(new ItineraryModels.Day(
+                        300, LocalDate.of(2026, 10, 2), List.of(new ItineraryModels.Item(
+                                1001, 300, "旧安排", "旧地点", LocalTime.of(8, 0), LocalTime.of(9, 0),
+                                null, new BigDecimal("50.00"), 1024, null
+                        ))
                 ))
         );
     }

@@ -117,6 +117,24 @@ describe('AI 行程规划状态机', () => {
     expect(planning.state.itinerarySnapshot.version).toBe(9)
   })
 
+  it('把后端持久化的失败建议转换为可展示的失败类别', async () => {
+    const failedProposal = {
+      ...proposal(), status: 'FAILED', failureCode: 'INVALID_CONTRACT', operations: [],
+    }
+    const api = {
+      getRequest: vi.fn().mockResolvedValue(request()),
+      listProposals: vi.fn().mockResolvedValue([]),
+      generate: vi.fn().mockResolvedValue(failedProposal),
+    }
+    const planning = createItineraryPlanning({ itineraryId: '42', api, itineraryApi: {}, uuid: vi.fn() })
+    await planning.load()
+
+    await planning.generate()
+
+    expect(planning.state.status).toBe('failed')
+    expect(planning.state.error).toMatchObject({ errorCode: 'INVALID_CONTRACT' })
+  })
+
   it('拒绝失败重试复用决定编号且绝不刷新或修改正式行程', async () => {
     const api = {
       getRequest: vi.fn().mockResolvedValue(request()),

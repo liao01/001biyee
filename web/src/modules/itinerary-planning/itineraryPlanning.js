@@ -112,7 +112,14 @@ export function createItineraryPlanning({ itineraryId, api, itineraryApi, uuid =
           state.proposals = [generated, ...state.proposals.filter((entry) => entry.id !== generated.id)]
           setProposal(generated)
           state.request = await api.getRequest(id)
-          state.status = generated.status === 'READY' ? 'ready' : 'failed'
+          if (generated.status === 'READY') {
+            state.status = 'ready'
+          } else {
+            state.status = 'failed'
+            state.error = Object.assign(new Error('AI 建议生成失败'), {
+              errorCode: generated.failureCode || 'INVALID_CONTRACT',
+            })
+          }
           return generated
         })
         .catch((error) => {
@@ -201,6 +208,7 @@ export function createItineraryPlanning({ itineraryId, api, itineraryApi, uuid =
       if (!rejectAttempt || rejectAttempt.proposalId !== state.proposal.id) {
         rejectAttempt = { proposalId: state.proposal.id, command: { decisionId: uuid() } }
       }
+      state.status = 'confirming'
       state.error = null
       rejecting = api.reject(id, state.proposal.id, rejectAttempt.command)
         .then((resolution) => {

@@ -305,6 +305,10 @@
   gap: var(--travel-space-2);
 }
 
+.itinerary-planning-toggle {
+  min-height: 44px;
+}
+
 .itinerary-editor-header__status [role="status"] {
   color: var(--travel-color-text-secondary);
   font-size: 13px;
@@ -327,6 +331,25 @@
   display: grid;
   gap: var(--travel-space-6);
   grid-template-columns: minmax(270px, 340px) minmax(0, 1fr);
+}
+
+.itinerary-editor-layout.has-planning {
+  grid-template-columns: minmax(250px, 300px) minmax(360px, 1fr) minmax(340px, 400px);
+}
+
+.itinerary-editor-layout.has-planning > .itinerary-editor-sidebar {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.itinerary-editor-layout.has-planning > .itinerary-days {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.itinerary-editor-layout.has-planning > .itinerary-planning-panel {
+  grid-column: 3;
+  grid-row: 1;
 }
 
 .itinerary-editor-sidebar {
@@ -480,8 +503,16 @@
 }
 
 @media (max-width: 1023px) {
-  .itinerary-editor-layout {
+  .itinerary-editor-layout,
+  .itinerary-editor-layout.has-planning {
     grid-template-columns: 1fr;
+  }
+
+  .itinerary-editor-layout.has-planning > .itinerary-editor-sidebar,
+  .itinerary-editor-layout.has-planning > .itinerary-days,
+  .itinerary-editor-layout.has-planning > .itinerary-planning-panel {
+    grid-column: 1;
+    grid-row: auto;
   }
 
   .itinerary-editor-sidebar {
