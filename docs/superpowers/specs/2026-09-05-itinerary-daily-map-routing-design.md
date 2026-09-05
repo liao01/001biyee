@@ -31,6 +31,7 @@
 - `source_place_id`：供应商地点 ID；`AMAP` 必填，`MANUAL` 必须为空。
 - `name`：1–200 个 Unicode 字符。
 - `address`：可为空，非空时最多 500 个字符。
+- `administrative_area_code`：可为空；非空时为高德返回的六位 adcode，用于公交路线城市上下文。
 - `longitude`：`DECIMAL(10,7)`，范围 `[-180, 180]`。
 - `latitude`：`DECIMAL(10,7)`，范围 `[-90, 90]`。
 - `coordinate_system`：本阶段固定为 `GCJ02`。
@@ -120,6 +121,7 @@ CREATE TABLE itinerary_item_place (
     source_place_id VARCHAR(128) NULL,
     name VARCHAR(200) NOT NULL,
     address VARCHAR(500) NULL,
+    administrative_area_code CHAR(6) CHARACTER SET ascii COLLATE ascii_bin NULL,
     longitude DECIMAL(10,7) NOT NULL,
     latitude DECIMAL(10,7) NOT NULL,
     coordinate_system VARCHAR(16) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
@@ -135,6 +137,9 @@ CREATE TABLE itinerary_item_place (
     CONSTRAINT chk_itinerary_item_place_source_id CHECK (
         (source = 'AMAP' AND source_place_id IS NOT NULL)
         OR (source = 'MANUAL' AND source_place_id IS NULL)
+    ),
+    CONSTRAINT chk_itinerary_item_place_area_code CHECK (
+        administrative_area_code IS NULL OR administrative_area_code REGEXP '^[0-9]{6}$'
     ),
     CONSTRAINT chk_itinerary_item_place_longitude CHECK (longitude BETWEEN -180 AND 180),
     CONSTRAINT chk_itinerary_item_place_latitude CHECK (latitude BETWEEN -90 AND 90),
@@ -157,7 +162,7 @@ CREATE TABLE itinerary_item_place (
 - `limit`：默认 10，范围 1–20。
 - 用户必须已认证，但搜索不要求指定行程，避免为每次输入联想读取聚合。
 
-高德适配器使用 Web Service POI 关键词搜索，只请求页面需要的字段。统一候选返回 `source`、`sourcePlaceId`、`name`、`address`、`longitude`、`latitude`、`coordinateSystem` 和可为空的行政区摘要，不返回 Key、原始 `info`、供应商调用栈或完整 JSON。
+高德适配器使用 Web Service POI 关键词搜索，只请求页面需要的字段。统一候选返回 `source`、`sourcePlaceId`、`name`、`address`、`administrativeAreaCode`、`longitude`、`latitude`、`coordinateSystem` 和可为空的行政区摘要，不返回 Key、原始 `info`、供应商调用栈或完整 JSON。
 
 确认命令提交完整统一候选或手工地点。服务端不把前端标记的 `source` 当作权限证据，而是按同一领域规则验证全部字段；允许用户调整自己行程中的地点坐标，因为 `MANUAL` 本来就是正式支持的输入。`AMAP` 必须携带外部 ID，`MANUAL` 禁止伪造外部 ID。
 
@@ -199,6 +204,7 @@ CREATE TABLE itinerary_item_place (
       "sourcePlaceId": "opaque-provider-id",
       "name": "故宫博物院",
       "address": "景山前街4号",
+      "administrativeAreaCode": "110101",
       "longitude": 116.397026,
       "latitude": 39.918058,
       "coordinateSystem": "GCJ02",
@@ -221,6 +227,7 @@ CREATE TABLE itinerary_item_place (
     "sourcePlaceId": "opaque-provider-id",
     "name": "故宫博物院",
     "address": "景山前街4号",
+    "administrativeAreaCode": "110101",
     "longitude": 116.397026,
     "latitude": 39.918058,
     "coordinateSystem": "GCJ02"
@@ -270,8 +277,10 @@ CREATE TABLE itinerary_item_place (
 - `AMAP_CONNECT_TIMEOUT`：生产默认 `1s`。
 - `AMAP_RESPONSE_TIMEOUT`：生产默认 `3s`。
 - `AMAP_ROUTE_CONCURRENCY`：生产默认 `4`。
-- `VITE_AMAP_JS_KEY`：Web 端 JS API Key；会进入浏览器产物，不与 Web Service Key 共用。
-- `VITE_AMAP_JS_SECURITY_SERVICE_URL`：生产代理安全服务地址，不把安全密钥打包到浏览器。
+- `AMAP_JS_KEY`：前端容器运行时注入的 Web 端 JS API Key；容器启动脚本只把这一公开客户端标识写入 `runtime-config.js`，不与 Web Service Key 共用。
+- `AMAP_JS_SECURITY_CODE`：只注入前端 Nginx 容器，由同源 `/_AMapService/` 代理追加到上游请求；不得写入 `runtime-config.js` 或浏览器产物。
+
+本地开发允许使用 `VITE_AMAP_JS_KEY` 和 `VITE_AMAP_JS_SECURITY_CODE` 作为明确标注的非生产回退；生产构建不消费这两个值。前端 `amapLoader` 优先读取 `window.__LYW_RUNTIME_CONFIG__.amapJsKey`，并把安全服务固定为同源 `/_AMapService/`。Nginx 配置由官方镜像启动时只对 `AMAP_JS_SECURITY_CODE` 执行 envsubst，代理访问日志关闭，响应和错误页不得回显上游 URL 或安全密钥。
 
 配置校验在生产启动时拒绝缺失或占位值。测试使用明确带 `TEST-` 前缀的占位配置。`.env.example` 只记录变量名与 `change-me`，不得包含真实值。
 
@@ -300,7 +309,7 @@ CREATE TABLE itinerary_item_place (
 - `UNRESOLVED` 安排项显示“请先设置地点”，不会从文字行程中消失。
 - 地图脚本失败时保留有序地点列表和可用的文字路线卡片，不显示空白无解释区域。
 
-新增 `amapLoader` 作为唯一浏览器加载入口，使用官方 JS API Loader 2.0。`web/index.html` 不再同步加载带 Key 的 URL。Loader 失败可重试一次，并在组件卸载时清理地图实例、Marker 和 Polyline，防止路由切换泄漏。
+新增 `amapLoader` 作为唯一浏览器加载入口，使用官方 JS API Loader 2.0。`web/index.html` 只加载无秘密的同源 `runtime-config.js`，不再同步加载带 Key 的高德 URL。Loader 失败可重试一次，并在组件卸载时清理地图实例、Marker 和 Polyline，防止路由切换泄漏。
 
 ## 安全、隐私与可访问性
 
