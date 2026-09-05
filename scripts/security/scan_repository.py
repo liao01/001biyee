@@ -93,6 +93,35 @@ PINNED_GITHUB_ACTION_PATTERN = re.compile(
     re.I,
 )
 
+KNOWN_NON_SECRET_FIXTURES = {
+    # #16 前端隔离测试的合成输入；只允许精确文件和值，不豁免整个测试目录。
+    ("web/src/store/identityStore.test.js", "TEST-obsolete"),
+    ("web/src/modules/identity/identityForms.test.js", "TEST-password-123"),
+    ("web/src/modules/identity/identityHttp.test.js", "TEST-password-123"),
+    ("web/src/modules/identity/identityHttp.test.js", "TEST-verification"),
+    ("web/src/modules/identity/identityHttp.test.js", "TEST-reset"),
+    ("web/src/modules/identity/identityLinks.test.js", "TEST-verification"),
+    ("web/src/modules/identity/identityLinks.test.js", "TEST-reset"),
+    ("web/src/modules/identity/identitySession.test.js", "TEST-password-123"),
+    (
+        "business/src/test/java/com/jiawa/lyw/security/SensitiveLoggingTests.java",
+        "sensitive-member-session-token",
+    ),
+    (
+        "business/src/test/java/com/jiawa/lyw/itineraryplanning/infrastructure/"
+        "DifyItineraryPlanningPropertiesTests.java",
+        "TEST-dify-application-key",
+    ),
+    (
+        "docs/superpowers/plans/2026-08-29-intelligent-travel-platform-phase-0-foundation.md",
+        "Secret123",
+    ),
+}
+
+NON_SENSITIVE_REFERENCE_SEED_PATTERN = re.compile(
+    r"(?i)^\s*INSERT\s+INTO\s+`?post_category`?\b"
+)
+
 EXCLUDED_PARTS = {
     ".git",
     ".idea",
@@ -122,6 +151,16 @@ def _is_safe_value(value: str) -> bool:
     if not normalized:
         return True
     return any(pattern.fullmatch(normalized) for pattern in SAFE_VALUE_PATTERNS)
+
+
+def _is_known_non_secret_fixture(path: Path | PurePosixPath, value: str) -> bool:
+    normalized = value.strip("\"'")
+    return (path.as_posix(), normalized) in KNOWN_NON_SECRET_FIXTURES
+
+
+def _is_reserved_example_email_domain(domain: str) -> bool:
+    normalized = domain.lower()
+    return normalized in RESERVED_EXAMPLE_EMAIL_DOMAINS or normalized.endswith(".test")
 
 
 def _inside_quoted_literal(line: str, position: int) -> bool:
@@ -181,6 +220,7 @@ def scan_text(
             if (
                 (is_configuration or is_literal)
                 and not _is_safe_value(value)
+                and not _is_known_non_secret_fixture(path, value)
             ):
                 findings.append(
                     Finding(
@@ -200,12 +240,16 @@ def scan_text(
             if rule.rule_id == "email-address":
                 email_matches = rule.pattern.findall(line)
                 if email_matches and all(
-                    match.rsplit("@", 1)[-1].lower()
-                    in RESERVED_EXAMPLE_EMAIL_DOMAINS
+                    _is_reserved_example_email_domain(match.rsplit("@", 1)[-1])
                     for match in email_matches
                 ):
                     continue
             if rule.rule_id == "sql-data-row" and path.suffix.lower() != ".sql":
+                continue
+            if (
+                rule.rule_id == "sql-data-row"
+                and NON_SENSITIVE_REFERENCE_SEED_PATTERN.search(line)
+            ):
                 continue
             if (
                 rule.rule_id == "password-hash"

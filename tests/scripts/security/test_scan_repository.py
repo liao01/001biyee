@@ -10,6 +10,24 @@ from scripts.security.scan_repository import scan_git_refs, scan_paths, scan_tex
 
 
 class ScanTextTests(unittest.TestCase):
+    def test_identity_fixture_exception_requires_exact_path_and_value(self):
+        path = Path("web/src/modules/identity/identitySession.test.js")
+        value = "TEST-password-123"
+        self.assertEqual([], scan_text(path, f"password: '{value}'"))
+        self.assertTrue(scan_text(Path("web/src/view/login.vue"), f"password: '{value}'"))
+        self.assertTrue(scan_text(path, "password: 'unapproved-fixture-value'"))
+
+    def test_dify_fixture_exception_requires_exact_path_and_value(self):
+        path = Path(
+            "business/src/test/java/com/jiawa/lyw/itineraryplanning/infrastructure/"
+            "DifyItineraryPlanningPropertiesTests.java"
+        )
+        value = "TEST-dify-application-key"
+
+        self.assertEqual([], scan_text(path, f'private static final String API_KEY = "{value}";'))
+        self.assertTrue(scan_text(Path("business/src/main/java/Config.java"), f'apiKey = "{value}"'))
+        self.assertTrue(scan_text(path, 'private static final String API_KEY = "unknown-value";'))
+
     def test_detects_secret_assignment_without_exposing_value(self):
         candidate_value = "sk-" + "example-secret-value-123456"
 
@@ -29,6 +47,22 @@ class ScanTextTests(unittest.TestCase):
         )
 
         self.assertEqual([], findings)
+
+    def test_known_historical_fixtures_are_scoped_to_their_documented_paths(self):
+        plan_path = Path(
+            "docs/superpowers/plans/2026-08-29-intelligent-travel-platform-phase-0-foundation.md"
+        )
+        fixture_findings = scan_text(plan_path, "password: 'Secret123'")
+        production_findings = scan_text(
+            Path("application.properties"),
+            "password=Secret123",
+        )
+
+        self.assertEqual([], fixture_findings)
+        self.assertIn(
+            "generic-secret-assignment",
+            {finding.rule_id for finding in production_findings},
+        )
 
     def test_allows_quoted_xml_environment_placeholder(self):
         findings = scan_text(
@@ -59,6 +93,25 @@ class ScanTextTests(unittest.TestCase):
         self.assertNotIn(
             "sql-data-row",
             {finding.rule_id for finding in findings},
+        )
+
+    def test_allows_post_category_reference_seed_but_not_business_rows(self):
+        category_findings = scan_text(
+            Path("sql/migrations/post_categories.sql"),
+            "INSERT INTO post_category (code, name) VALUES ('FOOD', '美食');",
+        )
+        member_findings = scan_text(
+            Path("sql/migrations/member_seed.sql"),
+            "INSERT INTO member (id, name) VALUES (1, 'traveler');",
+        )
+
+        self.assertNotIn(
+            "sql-data-row",
+            {finding.rule_id for finding in category_findings},
+        )
+        self.assertIn(
+            "sql-data-row",
+            {finding.rule_id for finding in member_findings},
         )
 
     def test_allows_empty_password_form_field(self):
@@ -181,6 +234,17 @@ class ScanTextTests(unittest.TestCase):
                 "email-address",
                 {finding.rule_id for finding in findings},
             )
+
+    def test_allows_reserved_test_domain_email_addresses(self):
+        findings = scan_text(
+            Path("business/src/test/java/ExampleTest.java"),
+            'var endpoint = "https://user:secret@dify.example.test";',
+        )
+
+        self.assertNotIn(
+            "email-address",
+            {finding.rule_id for finding in findings},
+        )
 
     def test_still_detects_high_confidence_token_in_package_lock(self):
         candidate_value = "ghp_" + "exampleSecretValue1234567890"

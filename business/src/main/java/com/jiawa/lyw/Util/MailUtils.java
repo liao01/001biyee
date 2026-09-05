@@ -40,6 +40,7 @@ public final class MailUtils {
         properties.put("mail.smtp.host", "smtp.163.com");
         properties.put("mail.smtp.port", "465");
         properties.put("mail.smtp.ssl.enable", "true");
+        properties.put("mail.smtp.ssl.checkserveridentity", "true");
         properties.put("mail.smtp.connectiontimeout", "5000");
         properties.put("mail.smtp.timeout", "5000");
         properties.put("mail.smtp.writetimeout", "5000");
@@ -64,7 +65,7 @@ public final class MailUtils {
             Transport.send(message);
             return true;
         } catch (MessagingException exception) {
-            return false;
+            throw new MailDeliveryException();
         }
     }
 

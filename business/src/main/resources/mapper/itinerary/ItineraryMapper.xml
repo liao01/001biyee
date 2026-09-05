@@ -1,0 +1,166 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.jiawa.lyw.itinerary.infrastructure.ItineraryMapper">
+  <insert id="insertCommand">
+    INSERT INTO itinerary_command
+      (id, command_id, member_id, operation, itinerary_id, expected_version, request_hash, created_at)
+    VALUES
+      (#{id}, #{commandId}, #{memberId}, #{operation}, #{itineraryId}, #{expectedVersion}, #{requestHash}, #{now})
+  </insert>
+
+  <select id="findCommand" resultType="com.jiawa.lyw.itinerary.infrastructure.ItineraryRows$CommandRow">
+    SELECT command_id, member_id, operation, request_hash,
+           result_itinerary_id, result_item_id, result_version
+    FROM itinerary_command
+    WHERE command_id = #{commandId}
+  </select>
+
+  <update id="completeCommand">
+    UPDATE itinerary_command
+    SET result_itinerary_id = #{itineraryId}, result_item_id = #{itemId}, result_version = #{version}
+    WHERE command_id = #{commandId} AND result_itinerary_id IS NULL AND result_version IS NULL
+  </update>
+
+  <insert id="insertItinerary">
+    INSERT INTO itinerary
+      (id, owner_member_id, title, start_date, end_date, time_zone, base_currency,
+       status, version, created_at, updated_at)
+    VALUES
+      (#{id}, #{ownerMemberId}, #{title}, #{startDate}, #{endDate}, #{timeZone},
+       #{baseCurrency}, #{status}, #{version}, #{now}, #{now})
+  </insert>
+
+  <insert id="insertDestination">
+    INSERT INTO itinerary_destination
+      (id, itinerary_id, name, country_code, time_zone, position, created_at, updated_at)
+    VALUES
+      (#{id}, #{itineraryId}, #{name}, #{countryCode}, #{timeZone}, #{position}, #{now}, #{now})
+  </insert>
+
+  <insert id="insertDay">
+    INSERT INTO itinerary_day (id, itinerary_id, day_date, created_at, updated_at)
+    VALUES (#{id}, #{itineraryId}, #{date}, #{now}, #{now})
+  </insert>
+
+  <insert id="insertItem">
+    INSERT INTO itinerary_item
+      (id, itinerary_id, itinerary_day_id, title, place_name, start_time, end_time,
+       notes, estimated_cost, position, created_at, updated_at)
+    VALUES
+      (#{id}, #{itineraryId}, #{dayId}, #{title}, #{placeName}, #{startTime}, #{endTime},
+       #{notes}, #{estimatedCost}, #{position}, #{now}, #{now})
+  </insert>
+
+  <update id="updateItem">
+    UPDATE itinerary_item
+    SET itinerary_day_id = #{dayId}, title = #{title}, place_name = #{placeName},
+        start_time = #{startTime}, end_time = #{endTime}, notes = #{notes},
+        estimated_cost = #{estimatedCost}, position = #{position}, updated_at = #{now}
+    WHERE id = #{itemId} AND itinerary_id = #{itineraryId} AND deleted_at IS NULL
+  </update>
+
+  <update id="softDeleteItem">
+    UPDATE itinerary_item
+    SET deleted_at = #{now}, updated_at = #{now}
+    WHERE id = #{itemId} AND itinerary_id = #{itineraryId} AND deleted_at IS NULL
+  </update>
+
+  <update id="updateItemPosition">
+    UPDATE itinerary_item
+    SET position = #{position}, updated_at = #{now}
+    WHERE id = #{itemId} AND itinerary_id = #{itineraryId}
+      AND itinerary_day_id = #{dayId} AND deleted_at IS NULL
+  </update>
+
+  <select id="findItinerary" resultType="com.jiawa.lyw.itinerary.infrastructure.ItineraryRows$ItineraryRow">
+    SELECT id, owner_member_id, title, start_date, end_date, time_zone,
+           base_currency, status, version
+    FROM itinerary
+    WHERE id = #{itineraryId}
+  </select>
+
+  <select id="findItineraryForUpdate" resultType="com.jiawa.lyw.itinerary.infrastructure.ItineraryRows$ItineraryRow">
+    SELECT id, owner_member_id, title, start_date, end_date, time_zone,
+           base_currency, status, version
+    FROM itinerary
+    WHERE id = #{itineraryId}
+    FOR UPDATE
+  </select>
+
+  <update id="updateOverview">
+    UPDATE itinerary
+    SET title = #{title}, start_date = #{startDate}, end_date = #{endDate},
+        time_zone = #{timeZone}, base_currency = #{baseCurrency},
+        version = #{nextVersion}, updated_at = #{now}
+    WHERE id = #{itineraryId} AND version = #{expectedVersion}
+  </update>
+
+  <update id="bumpVersion">
+    UPDATE itinerary
+    SET version = #{nextVersion}, updated_at = #{now}
+    WHERE id = #{itineraryId} AND version = #{expectedVersion}
+  </update>
+
+  <update id="updateStatus">
+    UPDATE itinerary
+    SET status = #{status}, version = #{nextVersion}, updated_at = #{now}
+    WHERE id = #{itineraryId} AND version = #{expectedVersion}
+  </update>
+
+  <delete id="deleteEmptyDaysOutside">
+    DELETE day_row
+    FROM itinerary_day day_row
+    WHERE day_row.itinerary_id = #{itineraryId}
+      AND (day_row.day_date &lt; #{startDate} OR day_row.day_date &gt; #{endDate})
+      AND NOT EXISTS (
+        SELECT 1 FROM itinerary_item item WHERE item.itinerary_day_id = day_row.id
+      )
+  </delete>
+
+  <delete id="deleteDestinations">
+    DELETE FROM itinerary_destination WHERE itinerary_id = #{itineraryId}
+  </delete>
+
+  <select id="findDestinations" resultType="com.jiawa.lyw.itinerary.infrastructure.ItineraryRows$DestinationRow">
+    SELECT id, name, country_code, time_zone, position
+    FROM itinerary_destination
+    WHERE itinerary_id = #{itineraryId}
+    ORDER BY position, id
+  </select>
+
+  <select id="findDays" resultType="com.jiawa.lyw.itinerary.infrastructure.ItineraryRows$DayRow">
+    SELECT day_row.id, day_row.day_date
+    FROM itinerary_day day_row
+    JOIN itinerary i ON i.id = day_row.itinerary_id
+    WHERE day_row.itinerary_id = #{itineraryId}
+      AND day_row.day_date BETWEEN i.start_date AND i.end_date
+    ORDER BY day_row.day_date, day_row.id
+  </select>
+
+  <select id="findItems" resultType="com.jiawa.lyw.itinerary.infrastructure.ItineraryRows$ItemRow">
+    SELECT id, itinerary_day_id, title, place_name, start_time, end_time,
+           notes, estimated_cost, position, deleted_at
+    FROM itinerary_item
+    WHERE itinerary_id = #{itineraryId} AND deleted_at IS NULL
+    ORDER BY itinerary_day_id, position, id
+  </select>
+
+  <select id="findSummaries" resultType="com.jiawa.lyw.itinerary.infrastructure.ItineraryRows$SummaryRow">
+    SELECT i.id, i.title, i.start_date, i.end_date,
+           (SELECT d.name FROM itinerary_destination d
+            WHERE d.itinerary_id = i.id ORDER BY d.position, d.id LIMIT 1) AS primary_destination,
+           i.status, i.version, i.updated_at
+    FROM itinerary i
+    WHERE i.owner_member_id = #{ownerMemberId}
+      AND i.status IN
+      <foreach collection="statuses" item="status" open="(" separator="," close=")">
+        #{status}
+      </foreach>
+      <if test="cursorUpdatedAt != null and cursorId != null">
+        AND (i.updated_at &lt; #{cursorUpdatedAt}
+             OR (i.updated_at = #{cursorUpdatedAt} AND i.id &lt; #{cursorId}))
+      </if>
+    ORDER BY i.updated_at DESC, i.id DESC
+    LIMIT #{limit}
+  </select>
+</mapper>

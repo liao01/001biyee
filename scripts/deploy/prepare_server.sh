@@ -10,5 +10,10 @@ test "$available_kb" -ge 8388608 || { echo "less than 8GB disk available" >&2; e
 
 install -d -o root -g root -m 755 /opt/lyw /opt/lyw/releases /opt/lyw/backups
 install -d -o root -g root -m 700 /opt/lyw/secrets
-install -d -o root -g root -m 755 /opt/lyw/data/mysql /opt/lyw/data/mongo /opt/lyw/data/redis /opt/lyw/data/uploads
+install -d -o root -g root -m 755 \
+  /opt/lyw/data/mysql \
+  /opt/lyw/data/mongo \
+  /opt/lyw/data/redis \
+  /opt/lyw/data/uploads
+install -d -o 65534 -g 65534 -m 755 /opt/lyw/data/prometheus
 echo "server directories ready"

@@ -6,11 +6,11 @@ services:
     container_name: lyw-mysql
     restart: unless-stopped
     mem_limit: 384m
-    env_file: /opt/lyw/secrets/runtime.env
+    env_file: ${LYW_RUNTIME_ENV_FILE:-/opt/lyw/secrets/runtime.env}
     volumes:
-      - /opt/lyw/data/mysql:/var/lib/mysql
-      - /opt/lyw/current/sql/travel_share.sql:/docker-entrypoint-initdb.d/001-schema.sql:ro
-      - /opt/lyw/current/deploy/mysql/low-memory.cnf:/etc/mysql/conf.d/low-memory.cnf:ro
+      - ${LYW_DATA_ROOT:-/opt/lyw/data}/mysql:/var/lib/mysql
+      - ${LYW_RELEASE_ROOT:-/opt/lyw/current}/sql/travel_share.sql:/docker-entrypoint-initdb.d/001-schema.sql:ro
+      - ${LYW_RELEASE_ROOT:-/opt/lyw/current}/deploy/mysql/low-memory.cnf:/etc/mysql/conf.d/low-memory.cnf:ro
     networks: [lyw_internal]
     healthcheck:
       test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p\"$${MYSQL_ROOT_PASSWORD}\" --silent"]
@@ -24,10 +24,10 @@ services:
     restart: unless-stopped
     mem_limit: 384m
     command: ["mongod", "--wiredTigerCacheSizeGB", "0.25", "--bind_ip_all"]
-    env_file: /opt/lyw/secrets/runtime.env
+    env_file: ${LYW_RUNTIME_ENV_FILE:-/opt/lyw/secrets/runtime.env}
     volumes:
-      - /opt/lyw/data/mongo:/data/db
-      - /opt/lyw/current/deploy/mongo/init.js:/docker-entrypoint-initdb.d/001-app-user.js:ro
+      - ${LYW_DATA_ROOT:-/opt/lyw/data}/mongo:/data/db
+      - ${LYW_RELEASE_ROOT:-/opt/lyw/current}/deploy/mongo/init.js:/docker-entrypoint-initdb.d/001-app-user.js:ro
     networks: [lyw_internal]
     healthcheck:
       test: ["CMD-SHELL", "mongosh --quiet --username \"$${MONGO_INITDB_ROOT_USERNAME}\" --password \"$${MONGO_INITDB_ROOT_PASSWORD}\" --authenticationDatabase admin --eval 'db.adminCommand({ ping: 1 }).ok' | grep 1"]
@@ -40,10 +40,10 @@ services:
     container_name: lyw-redis
     restart: unless-stopped
     mem_limit: 96m
-    env_file: /opt/lyw/secrets/runtime.env
+    env_file: ${LYW_RUNTIME_ENV_FILE:-/opt/lyw/secrets/runtime.env}
     command: ["sh", "-c", "exec redis-server --appendonly yes --requirepass \"$$REDIS_PASSWORD\" --maxmemory 64mb --maxmemory-policy allkeys-lru"]
     volumes:
-      - /opt/lyw/data/redis:/data
+      - ${LYW_DATA_ROOT:-/opt/lyw/data}/redis:/data
     networks: [lyw_internal]
     healthcheck:
       test: ["CMD-SHELL", "redis-cli -a \"$${REDIS_PASSWORD}\" ping 2>/dev/null | grep PONG"]
@@ -60,17 +60,17 @@ services:
     restart: "no"
     network_mode: none
     volumes:
-      - /opt/lyw/data/uploads:/data/uploads
+      - ${LYW_DATA_ROOT:-/opt/lyw/data}/uploads:/data/uploads
 
   lyw-backend:
     build:
-      context: /opt/lyw/current
+      context: ${LYW_RELEASE_ROOT:-/opt/lyw/current}
       dockerfile: deploy/backend/Dockerfile
     image: lyw-backend:${RELEASE_ID:-current}
     container_name: lyw-backend
     restart: unless-stopped
     mem_limit: 512m
-    env_file: /opt/lyw/secrets/runtime.env
+    env_file: ${LYW_RUNTIME_ENV_FILE:-/opt/lyw/secrets/runtime.env}
     environment:
       SPRING_PROFILES_ACTIVE: prod
       JAVA_TOOL_OPTIONS: -Xms128m -Xmx256m -XX:MaxMetaspaceSize=128m
@@ -78,7 +78,7 @@ services:
       REDIS_HOST: lyw-redis
       REDIS_PORT: "6379"
     volumes:
-      - /opt/lyw/data/uploads:/data/uploads
+      - ${LYW_DATA_ROOT:-/opt/lyw/data}/uploads:/data/uploads
     depends_on:
       lyw-storage-init: { condition: service_completed_successfully }
       lyw-mysql: { condition: service_healthy }
@@ -86,7 +86,7 @@ services:
       lyw-redis: { condition: service_healthy }
     networks: [lyw_internal, dify_default]
     healthcheck:
-      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8080/lyw/web/post/categories"]
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8080/lyw/actuator/health/readiness"]
       interval: 15s
       timeout: 8s
       retries: 15
@@ -94,7 +94,7 @@ services:
 
   lyw-frontend:
     build:
-      context: /opt/lyw/current
+      context: ${LYW_RELEASE_ROOT:-/opt/lyw/current}
       dockerfile: deploy/frontend/Dockerfile
     image: lyw-frontend:${RELEASE_ID:-current}
     container_name: lyw-frontend
@@ -106,6 +106,28 @@ services:
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/healthz"]
       interval: 10s
+      timeout: 5s
+      retries: 6
+
+  lyw-prometheus:
+    image: prom/prometheus:v2.55.1
+    container_name: lyw-prometheus
+    restart: unless-stopped
+    mem_limit: 128m
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=15d
+      - --web.enable-lifecycle
+    volumes:
+      - ${LYW_RELEASE_ROOT:-/opt/lyw/current}/deploy/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ${LYW_DATA_ROOT:-/opt/lyw/data}/prometheus:/prometheus
+    depends_on:
+      lyw-backend: { condition: service_healthy }
+    networks: [lyw_internal]
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:9090/-/healthy"]
+      interval: 15s
       timeout: 5s
       retries: 6
 
