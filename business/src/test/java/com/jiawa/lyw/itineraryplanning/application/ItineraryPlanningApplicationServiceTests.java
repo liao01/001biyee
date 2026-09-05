@@ -93,6 +93,46 @@ class ItineraryPlanningApplicationServiceTests {
     }
 
     @Test
+    void unexpectedGenerationFailureConvergesToASafeTerminalState() {
+        var saved = service.saveDraft(7, new PlanningCommands.SaveDraft(null, 0, request()));
+        when(gateway.generate(eq(7L), any(), any())).thenThrow(
+                new IllegalStateException("private provider failure")
+        );
+
+        var proposal = service.generate(7, saved.id(), saved.version());
+
+        assertEquals(ProposalStatus.FAILED, proposal.status());
+        assertEquals(PlanningError.PROVIDER_UNAVAILABLE.name(), proposal.failureCode());
+        assertEquals(PlanningStatus.FAILED, repository.requests.get(saved.id()).status());
+        verify(itineraries, never()).applyRevision(any(Long.class), any(Long.class), any());
+
+        org.mockito.Mockito.doReturn(new ItineraryPlannerGateway.Generation(
+                candidate(), "recovered-run", null, null, 1, null
+        )).when(gateway).generate(eq(7L), any(), any());
+        long failedVersion = service.getRequest(7, saved.id()).version();
+
+        assertEquals(ProposalStatus.READY, service.generate(7, saved.id(), failedVersion).status());
+        assertEquals(PlanningStatus.READY, repository.requests.get(saved.id()).status());
+    }
+
+    @Test
+    void snapshotReadFailureDoesNotClaimGenerationAndTheRequestCanBeRetried() {
+        var saved = service.saveDraft(7, new PlanningCommands.SaveDraft(null, 0, request()));
+        when(itineraries.get(7, 42)).thenThrow(new IllegalStateException("temporary read failure"));
+
+        assertThrows(IllegalStateException.class,
+                () -> service.generate(7, saved.id(), saved.version()));
+
+        assertEquals(PlanningStatus.DRAFT, service.getRequest(7, saved.id()).status());
+        assertEquals(saved.version(), service.getRequest(7, saved.id()).version());
+        verify(gateway, never()).generate(eq(7L), any(), any());
+        org.mockito.Mockito.doReturn(snapshot(3)).when(itineraries).get(7, 42);
+        when(gateway.generate(eq(7L), any(), any())).thenReturn(
+                new ItineraryPlannerGateway.Generation(candidate(), "retry-run", null, null, 1, null));
+        assertEquals(ProposalStatus.READY, service.generate(7, saved.id(), saved.version()).status());
+    }
+
+    @Test
     void confirmationEnforcesDependencyClosureAndReplaysOneAtomicItineraryCommand() {
         long proposalId = readyProposal();
         UUID decisionId = UUID.fromString("00000000-0000-0000-0000-000000000201");

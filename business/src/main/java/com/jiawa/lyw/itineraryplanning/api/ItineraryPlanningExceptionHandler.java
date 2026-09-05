@@ -1,12 +1,14 @@
 package com.jiawa.lyw.itineraryplanning.api;
 
 import com.jiawa.lyw.identity.domain.IdentityException;
+import com.jiawa.lyw.itinerary.domain.ItineraryException;
 import com.jiawa.lyw.itineraryplanning.domain.PlanningError;
 import com.jiawa.lyw.itineraryplanning.domain.PlanningException;
 import com.jiawa.lyw.resp.CommonResp;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -37,6 +39,29 @@ public class ItineraryPlanningExceptionHandler {
     @ExceptionHandler(IdentityException.class)
     public ResponseEntity<CommonResp<ItineraryPlanningHttpModels.ErrorContent>> unauthenticated() {
         return failure(401, null, "请先登录");
+    }
+
+    @ExceptionHandler(DuplicateKeyException.class)
+    public ResponseEntity<CommonResp<ItineraryPlanningHttpModels.ErrorContent>> concurrentResolution() {
+        return failure(409, PlanningError.IDEMPOTENCY_CONFLICT, "该建议已经由另一个决定处理");
+    }
+
+    @ExceptionHandler(ItineraryException.class)
+    public ResponseEntity<CommonResp<ItineraryPlanningHttpModels.ErrorContent>> itineraryConflict(
+            ItineraryException exception
+    ) {
+        return switch (exception.error()) {
+            case VERSION_CONFLICT -> failure(
+                    409, PlanningError.PROPOSAL_EXPIRED, "行程已变化，请重新生成建议"
+            );
+            case IDEMPOTENCY_CONFLICT -> failure(
+                    409, PlanningError.IDEMPOTENCY_CONFLICT, "决定编号已被其他请求使用"
+            );
+            case TIME_CONFLICT -> failure(
+                    400, PlanningError.TIME_CONFLICT, "建议存在时间冲突"
+            );
+            default -> failure(400, PlanningError.INVALID_REQUEST, "规划请求无效");
+        };
     }
 
     @ExceptionHandler({

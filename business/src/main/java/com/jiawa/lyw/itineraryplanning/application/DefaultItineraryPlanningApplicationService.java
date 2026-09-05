@@ -10,6 +10,7 @@ import com.jiawa.lyw.itineraryplanning.domain.PlanningModels;
 import com.jiawa.lyw.itineraryplanning.domain.PlanningStatus;
 import com.jiawa.lyw.itineraryplanning.domain.ProposalStatus;
 import com.jiawa.lyw.itineraryplanning.domain.RevisionProposalValidator;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,6 +27,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
+@Slf4j
 public class DefaultItineraryPlanningApplicationService implements ItineraryPlanningApplicationService {
     private final PlanningRepository repository;
     private final ItineraryPlannerGateway planner;
@@ -89,35 +91,39 @@ public class DefaultItineraryPlanningApplicationService implements ItineraryPlan
         if (actorMemberId <= 0 || requestId <= 0 || expectedRequestVersion < 1) {
             throw invalidRequest();
         }
+        PlanningRepository.RequestRecord pending = requireRequest(actorMemberId, requestId);
+        ItineraryModels.Snapshot snapshot = itineraries.get(actorMemberId, pending.draft().itineraryId());
+        long proposalId = ids.nextId();
         PlanningRepository.RequestRecord claimed = repository.claimGeneration(
                 requestId, actorMemberId, expectedRequestVersion, clock.instant()
         ).orElseThrow(() -> classifyRequestFailure(actorMemberId, requestId, expectedRequestVersion));
 
-        ItineraryModels.Snapshot snapshot = itineraries.get(actorMemberId, claimed.draft().itineraryId());
-        long proposalId = ids.nextId();
+        ItineraryPlannerGateway.Generation generation;
+        PlanningModels.ValidatedProposal validated;
         try {
-            ItineraryPlannerGateway.Generation generation = planner.generate(
+            generation = planner.generate(
                     actorMemberId, claimed.draft(), snapshot
             );
-            PlanningModels.ValidatedProposal validated = validator.validate(
+            validated = validator.validate(
                     snapshot, claimed.draft(), generation.proposal()
             );
-            PlanningRepository.ProposalRecord proposal = new PlanningRepository.ProposalRecord(
-                    proposalId, requestId, snapshot.id(), actorMemberId, snapshot.version(),
-                    ProposalStatus.READY, validated, "DIFY", generation.providerRunId(),
-                    generation.modelName(), generation.workflowVersion(), generation.elapsedMillis(),
-                    generation.totalTokens(), null
-            );
-            return proposalView(repository.saveReadyProposal(proposal, clock.instant()));
         } catch (PlanningException exception) {
-            ProposalStatus status = providerFailure(exception.error())
-                    ? ProposalStatus.FAILED : ProposalStatus.INVALID;
-            PlanningRepository.ProposalRecord failed = new PlanningRepository.ProposalRecord(
-                    proposalId, requestId, snapshot.id(), actorMemberId, snapshot.version(), status,
-                    null, "DIFY", null, null, null, null, null, exception.error().name()
+            return saveGenerationFailure(
+                    proposalId, requestId, snapshot, actorMemberId, exception.error()
             );
-            return proposalView(repository.saveFailedProposal(failed, clock.instant()));
+        } catch (RuntimeException exception) {
+            log.error("行程规划生成发生未分类异常 type={}", exception.getClass().getSimpleName());
+            return saveGenerationFailure(
+                    proposalId, requestId, snapshot, actorMemberId, PlanningError.PROVIDER_UNAVAILABLE
+            );
         }
+        PlanningRepository.ProposalRecord proposal = new PlanningRepository.ProposalRecord(
+                proposalId, requestId, snapshot.id(), actorMemberId, snapshot.version(),
+                ProposalStatus.READY, validated, "DIFY", generation.providerRunId(),
+                generation.modelName(), generation.workflowVersion(), generation.elapsedMillis(),
+                generation.totalTokens(), null
+        );
+        return proposalView(repository.saveReadyProposal(proposal, clock.instant()));
     }
 
     @Override
@@ -360,6 +366,21 @@ public class DefaultItineraryPlanningApplicationService implements ItineraryPlan
                 proposal.baseItineraryVersion(), proposal.status(), proposal.validatedProposal(),
                 proposal.failureCode()
         );
+    }
+
+    private ProposalView saveGenerationFailure(
+            long proposalId,
+            long requestId,
+            ItineraryModels.Snapshot snapshot,
+            long actorMemberId,
+            PlanningError error
+    ) {
+        ProposalStatus status = providerFailure(error) ? ProposalStatus.FAILED : ProposalStatus.INVALID;
+        PlanningRepository.ProposalRecord failed = new PlanningRepository.ProposalRecord(
+                proposalId, requestId, snapshot.id(), actorMemberId, snapshot.version(), status,
+                null, "DIFY", null, null, null, null, null, error.name()
+        );
+        return proposalView(repository.saveFailedProposal(failed, clock.instant()));
     }
 
     private static PlanningRequestView requestView(PlanningRepository.RequestRecord request) {

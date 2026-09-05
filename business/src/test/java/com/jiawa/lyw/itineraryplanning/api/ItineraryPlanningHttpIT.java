@@ -43,6 +43,7 @@ import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.test.context.web.WebAppConfiguration;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
 import org.springframework.web.context.WebApplicationContext;
@@ -57,6 +58,10 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.Set;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -198,6 +203,86 @@ class ItineraryPlanningHttpIT {
         } finally {
             jdbc.execute("DROP TRIGGER IF EXISTS it_test_18_reject_resolution");
         }
+    }
+
+    @Test
+    void concurrentIdenticalConfirmationsConvergeToOneDecisionAndOneItineraryCommand() throws Exception {
+        String access = login();
+        String itineraryId = createItinerary(access);
+        perform(put("/web/itineraries/{id}/planning/request", itineraryId), access, """
+                {"requestId":null,"expectedVersion":0,"draft":{
+                  "startDate":"2026-10-02","endDate":"2026-10-03","budgetAmount":3000.00,
+                  "budgetCurrency":"CNY","partySize":2,
+                  "preferences":{"pace":"BALANCED","tags":["CULTURE"],"notes":null},
+                  "destinations":[{"name":"杭州","countryCode":"CN","timeZone":"Asia/Shanghai"}]
+                }}
+                """).andExpect(status().isOk());
+        String proposalId = perform(post("/web/itineraries/{id}/planning/generate", itineraryId),
+                access, "{\"expectedVersion\":1}").andExpect(status().isOk())
+                .json().path("content").path("id").asText();
+        String body = """
+                {"decisionId":"00000000-0000-0000-0000-000000000701",
+                 "commandId":"00000000-0000-0000-0000-000000000702",
+                 "expectedItineraryVersion":1,"selectedOperationKeys":["add-museum"]}
+                """;
+        CountDownLatch ready = new CountDownLatch(2);
+        CountDownLatch start = new CountDownLatch(1);
+        var pool = Executors.newFixedThreadPool(2);
+        try {
+            var first = pool.submit(() -> concurrentConfirm(
+                    itineraryId, proposalId, access, body, ready, start
+            ));
+            var second = pool.submit(() -> concurrentConfirm(
+                    itineraryId, proposalId, access, body, ready, start
+            ));
+            org.junit.jupiter.api.Assertions.assertTrue(ready.await(5, TimeUnit.SECONDS));
+            start.countDown();
+            MvcResult firstResult = first.get(10, TimeUnit.SECONDS);
+            MvcResult secondResult = second.get(10, TimeUnit.SECONDS);
+
+            assertEquals(200, firstResult.getResponse().getStatus());
+            assertEquals(200, secondResult.getResponse().getStatus());
+            JsonNode firstBody = json.readTree(firstResult.getResponse().getContentAsString());
+            JsonNode secondBody = json.readTree(secondResult.getResponse().getContentAsString());
+            assertEquals(Set.of(false, true), Set.of(
+                    firstBody.path("content").path("replayed").asBoolean(),
+                    secondBody.path("content").path("replayed").asBoolean()
+            ));
+            assertEquals(1, jdbc.queryForObject(
+                    "SELECT COUNT(*) FROM itinerary_revision_resolution", Integer.class
+            ));
+            assertEquals(1, jdbc.queryForObject(
+                    "SELECT COUNT(*) FROM itinerary_command WHERE command_id = "
+                            + "'00000000-0000-0000-0000-000000000702'", Integer.class
+            ));
+            perform(get("/web/itineraries/{id}", itineraryId), access, null)
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.content.version").value(2))
+                    .andExpect(jsonPath("$.content.days[0].items.length()").value(1));
+        } finally {
+            start.countDown();
+            pool.shutdownNow();
+        }
+    }
+
+    private MvcResult concurrentConfirm(
+            String itineraryId,
+            String proposalId,
+            String access,
+            String body,
+            CountDownLatch ready,
+            CountDownLatch start
+    ) throws Exception {
+        ready.countDown();
+        if (!start.await(5, TimeUnit.SECONDS)) {
+            throw new IllegalStateException("concurrent confirmation did not start");
+        }
+        return mvc.perform(post(
+                        "/web/itineraries/{id}/planning/proposals/{proposal}/confirm",
+                        itineraryId, proposalId
+                ).header("Authorization", "Bearer " + access)
+                .contentType("application/json")
+                .content(body)).andReturn();
     }
 
     private String login() throws Exception {

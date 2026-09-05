@@ -20,6 +20,7 @@ import java.util.Currency;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -172,11 +173,22 @@ public class MyBatisPlanningRepository implements PlanningRepository {
         } catch (DuplicateKeyException conflict) {
             ResolutionRecord stored = findResolutionByDecision(resolution.decisionId())
                     .orElseGet(() -> findResolutionByProposal(resolution.proposalId()).orElseThrow(() -> conflict));
-            if (!stored.equals(resolution)) {
+            if (!sameResolution(stored, resolution)) {
                 throw conflict;
             }
             return stored;
         }
+    }
+
+    private static boolean sameResolution(ResolutionRecord stored, ResolutionRecord attempted) {
+        return stored.proposalId() == attempted.proposalId()
+                && stored.memberId() == attempted.memberId()
+                && stored.decisionId().equals(attempted.decisionId())
+                && stored.confirmed() == attempted.confirmed()
+                && stored.selectedOperationsHash().equals(attempted.selectedOperationsHash())
+                && Objects.equals(stored.expectedItineraryVersion(), attempted.expectedItineraryVersion())
+                && Objects.equals(stored.itineraryCommandId(), attempted.itineraryCommandId())
+                && Objects.equals(stored.resultVersion(), attempted.resultVersion());
     }
 
     private void replaceDestinations(long requestId, List<PlanningModels.DestinationInput> destinations) {

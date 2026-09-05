@@ -126,6 +126,33 @@ class PlanningRepositoryIT {
         assertTrue(repository.claimGeneration(100, 7, 2, NOW).isEmpty());
     }
 
+    @Test
+    void replaysTheStoredResolutionWhenOnlyTheGeneratedDatabaseIdDiffers() {
+        repository.createDraft(100, 7, request(), NOW);
+        repository.claimGeneration(100, 7, 1, NOW).orElseThrow();
+        repository.saveReadyProposal(
+                new PlanningRepository.ProposalRecord(
+                        200, 100, 42, 7, 3, ProposalStatus.READY, validated(), "DIFY",
+                        "run-replay", null, null, 1L, null, null
+                ),
+                NOW
+        );
+        UUID decision = UUID.fromString("00000000-0000-0000-0000-000000000311");
+        UUID command = UUID.fromString("00000000-0000-0000-0000-000000000312");
+        PlanningRepository.ResolutionRecord first = new PlanningRepository.ResolutionRecord(
+                300, 200, 7, decision, true, "b".repeat(64), 3L, command, 4L
+        );
+        PlanningRepository.ResolutionRecord retry = new PlanningRepository.ResolutionRecord(
+                301, 200, 7, decision, true, "b".repeat(64), 3L, command, 4L
+        );
+
+        assertEquals(first, repository.saveResolution(first, ProposalStatus.CONFIRMED, NOW));
+        assertEquals(first, repository.saveResolution(retry, ProposalStatus.CONFIRMED, NOW));
+        assertEquals(1, jdbc.queryForObject(
+                "SELECT COUNT(*) FROM itinerary_revision_resolution WHERE proposal_id = 200", Integer.class
+        ));
+    }
+
     private PlanningModels.RequestDraft request() {
         return new PlanningModels.RequestDraft(
                 42, LocalDate.of(2026, 10, 2), LocalDate.of(2026, 10, 3),

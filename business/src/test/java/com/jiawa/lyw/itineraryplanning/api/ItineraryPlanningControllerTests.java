@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jiawa.lyw.identity.application.CurrentMemberProvider;
 import com.jiawa.lyw.itinerary.application.ItineraryApplicationService;
 import com.jiawa.lyw.itinerary.domain.ItineraryModels;
+import com.jiawa.lyw.itinerary.domain.ItineraryError;
+import com.jiawa.lyw.itinerary.domain.ItineraryException;
 import com.jiawa.lyw.itinerary.domain.ItineraryStatus;
 import com.jiawa.lyw.itineraryplanning.application.ItineraryPlanningApplicationService;
 import com.jiawa.lyw.itineraryplanning.application.PlanningCommands;
@@ -15,6 +17,7 @@ import com.jiawa.lyw.itineraryplanning.domain.ProposalStatus;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -169,6 +172,47 @@ class ItineraryPlanningControllerTests {
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.content.errorCode").value("PROVIDER_RATE_LIMITED"))
                 .andExpect(jsonPath("$.message").value("AI 规划请求过多，请稍后重试"));
+    }
+
+    @Test
+    void mapsConcurrentProposalResolutionToAStableConflictWithoutDatabaseDetails() throws Exception {
+        when(planning.getProposal(7, 200)).thenReturn(proposalView());
+        when(planning.confirm(eq(7L), eq(200L), any())).thenThrow(
+                new DuplicateKeyException("private duplicate key details")
+        );
+
+        mvc.perform(post("/web/itineraries/42/planning/proposals/200/confirm")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"decisionId":"00000000-0000-0000-0000-000000000601",
+                                 "commandId":"00000000-0000-0000-0000-000000000602",
+                                 "expectedItineraryVersion":3,
+                                 "selectedOperationKeys":["update-one"]}
+                                """))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.content.errorCode").value("IDEMPOTENCY_CONFLICT"))
+                .andExpect(jsonPath("$.message").value("该建议已经由另一个决定处理"));
+    }
+
+    @Test
+    void mapsAConcurrentItineraryVersionChangeToAnExpiredProposalConflict() throws Exception {
+        when(planning.getProposal(7, 200)).thenReturn(proposalView());
+        when(planning.confirm(eq(7L), eq(200L), any())).thenThrow(
+                new ItineraryException(ItineraryError.VERSION_CONFLICT, "private itinerary details")
+        );
+
+        mvc.perform(post("/web/itineraries/42/planning/proposals/200/confirm")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"decisionId":"00000000-0000-0000-0000-000000000611",
+                                 "commandId":"00000000-0000-0000-0000-000000000612",
+                                 "expectedItineraryVersion":3,
+                                 "selectedOperationKeys":["update-one"]}
+                                """))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.content.errorCode").value("PROPOSAL_EXPIRED"))
+                .andExpect(jsonPath("$.message").value("行程已变化，请重新生成建议"));
     }
 
     @Test
