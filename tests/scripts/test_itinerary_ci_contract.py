@@ -3,8 +3,19 @@
 from pathlib import Path
 import unittest
 
+from tests.scripts.migration_specs import ITINERARY_DAILY_MAP_MIGRATION
+from tests.scripts.mysql_migration_harness import temporary_schema
+
 
 ROOT = Path(__file__).resolve().parents[2]
+
+
+def iter_tests(suite):
+    for test in suite:
+        if isinstance(test, unittest.TestSuite):
+            yield from iter_tests(test)
+        else:
+            yield test
 
 
 class ItineraryCiContractTests(unittest.TestCase):
@@ -46,6 +57,35 @@ class ItineraryCiContractTests(unittest.TestCase):
         self.assertIn("failsafe:integration-test", runner)
         self.assertIn("failsafe:verify", runner)
         self.assertNotIn("-Dit.test=", runner)
+
+    def test_python_discovery_includes_daily_map_migration_contract(self):
+        suite = unittest.defaultTestLoader.discover(
+            str(ROOT / "tests"), top_level_dir=str(ROOT)
+        )
+        discovered = {test.id() for test in iter_tests(suite)}
+
+        self.assertIn(
+            "tests.scripts.test_itinerary_daily_map_migration."
+            "ItineraryDailyMapMigrationTests.test_apply_converges_and_is_repeatable",
+            discovered,
+        )
+
+    def test_empty_database_baseline_excludes_provider_raw_columns(self):
+        with temporary_schema(ITINERARY_DAILY_MAP_MIGRATION) as (mysql, schema):
+            mysql.execute(
+                (ROOT / "sql" / "travel_share.sql").read_text(encoding="utf-8"),
+                database=schema,
+            )
+
+            raw_column_count = mysql.scalar(
+                schema,
+                "SELECT COUNT(*) FROM information_schema.columns "
+                "WHERE table_schema = DATABASE() "
+                "AND table_name = 'itinerary_item_place' "
+                "AND column_name IN ('provider_json', 'amap_json', 'lng', 'lat', 'route_json');",
+            )
+
+            self.assertEqual("0", raw_column_count)
 
 
 if __name__ == "__main__":

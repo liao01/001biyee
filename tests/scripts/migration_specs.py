@@ -30,3 +30,9 @@ ITINERARY_PLANNING_MIGRATION = MigrationSpec(
     apply_variable="apply_itinerary_planning_migration",
     schema_prefix="lyw_itinerary_planning_migration_test",
 )
+
+ITINERARY_DAILY_MAP_MIGRATION = MigrationSpec(
+    name="itinerary_daily_map",
+    apply_variable="apply_itinerary_daily_map_migration",
+    schema_prefix="lyw_itinerary_daily_map_migration_test",
+)

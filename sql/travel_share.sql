@@ -376,6 +376,31 @@ CREATE TABLE `itinerary_command` (
   CONSTRAINT `chk_itinerary_command_hash` CHECK (`request_hash` REGEXP '^[0-9a-f]{64}$')
 ) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '行程命令幂等结果';
 
+CREATE TABLE `itinerary_item_place` (
+  `item_id` bigint NOT NULL,
+  `itinerary_id` bigint NOT NULL,
+  `source` varchar(16) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  `source_place_id` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL,
+  `name` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `address` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL,
+  `administrative_area_code` char(6) CHARACTER SET ascii COLLATE ascii_bin NULL,
+  `longitude` decimal(10, 7) NOT NULL,
+  `latitude` decimal(10, 7) NOT NULL,
+  `coordinate_system` varchar(16) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  `confirmed_at` datetime(3) NOT NULL,
+  `updated_at` datetime(3) NOT NULL,
+  PRIMARY KEY (`item_id`),
+  INDEX `idx_itinerary_item_place_itinerary` (`itinerary_id`, `item_id`),
+  CONSTRAINT `fk_itinerary_item_place_item` FOREIGN KEY (`item_id`) REFERENCES `itinerary_item` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `fk_itinerary_item_place_itinerary` FOREIGN KEY (`itinerary_id`) REFERENCES `itinerary` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT,
+  CONSTRAINT `chk_itinerary_item_place_source` CHECK (`source` IN ('AMAP', 'MANUAL')),
+  CONSTRAINT `chk_itinerary_item_place_source_id` CHECK ((`source` = 'AMAP' AND `source_place_id` IS NOT NULL) OR (`source` = 'MANUAL' AND `source_place_id` IS NULL)),
+  CONSTRAINT `chk_itinerary_item_place_area_code` CHECK (`administrative_area_code` IS NULL OR `administrative_area_code` REGEXP '^[0-9]{6}$'),
+  CONSTRAINT `chk_itinerary_item_place_longitude` CHECK (`longitude` BETWEEN -180 AND 180),
+  CONSTRAINT `chk_itinerary_item_place_latitude` CHECK (`latitude` BETWEEN -90 AND 90),
+  CONSTRAINT `chk_itinerary_item_place_coordinate_system` CHECK (`coordinate_system` = 'GCJ02')
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '行程安排项的正式地点引用';
+
 CREATE TABLE `itinerary_planning_request` (
   `id` bigint NOT NULL,
   `itinerary_id` bigint NOT NULL,
