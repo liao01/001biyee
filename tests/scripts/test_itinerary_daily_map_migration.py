@@ -65,9 +65,9 @@ class ItineraryDailyMapMigrationTests(unittest.TestCase):
     def normalized_check_definitions(self, mysql, schema):
         rows = mysql.execute(
             "SELECT constraint_name, "
-            "LOWER(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE("
+            "REPLACE(REPLACE(REPLACE(REPLACE(REPLACE("
             "check_clause, '`', ''), ' ', ''), '_utf8mb4', ''), "
-            "'_ascii', ''), CHAR(92), '')) "
+            "'_ascii', ''), CHAR(92), '') "
             "FROM information_schema.check_constraints "
             "WHERE constraint_schema = DATABASE() "
             "AND constraint_name LIKE 'chk_itinerary_item_place_%' "
@@ -136,11 +136,11 @@ class ItineraryDailyMapMigrationTests(unittest.TestCase):
             self.assertEqual(
                 {
                     "chk_itinerary_item_place_area_code": "((administrative_area_codeisnull)orregexp_like(administrative_area_code,'^[0-9]{6}$'))",
-                    "chk_itinerary_item_place_coordinate_system": "(coordinate_system='gcj02')",
+                    "chk_itinerary_item_place_coordinate_system": "(coordinate_system='GCJ02')",
                     "chk_itinerary_item_place_latitude": "(latitudebetween-(90)and90)",
                     "chk_itinerary_item_place_longitude": "(longitudebetween-(180)and180)",
-                    "chk_itinerary_item_place_source": "(sourcein('amap','manual'))",
-                    "chk_itinerary_item_place_source_id": "(((source='amap')and(source_place_idisnotnull))or((source='manual')and(source_place_idisnull)))",
+                    "chk_itinerary_item_place_source": "(sourcein('AMAP','MANUAL'))",
+                    "chk_itinerary_item_place_source_id": "(((source='AMAP')and(source_place_idisnotnull))or((source='MANUAL')and(source_place_idisnull)))",
                 },
                 self.normalized_check_definitions(mysql, schema),
             )
@@ -212,6 +212,15 @@ class ItineraryDailyMapMigrationTests(unittest.TestCase):
                 "ALTER TABLE itinerary_item_place "
                 "DROP CHECK chk_itinerary_item_place_source, "
                 "ADD CONSTRAINT chk_itinerary_item_place_source CHECK (source = 'WRONG');",
+                "chk_itinerary_item_place_source.*AMAP.*MANUAL",
+                "missing_check_count",
+            ),
+            (
+                "check literal case",
+                "ALTER TABLE itinerary_item_place "
+                "DROP CHECK chk_itinerary_item_place_source, "
+                "ADD CONSTRAINT chk_itinerary_item_place_source "
+                "CHECK (source IN ('amap', 'manual'));",
                 "chk_itinerary_item_place_source.*AMAP.*MANUAL",
                 "missing_check_count",
             ),

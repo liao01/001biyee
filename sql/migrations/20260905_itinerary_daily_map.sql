@@ -53,16 +53,18 @@ INSERT INTO itinerary_daily_map_expected_foreign_keys VALUES
 DROP TEMPORARY TABLE IF EXISTS itinerary_daily_map_expected_checks;
 CREATE TEMPORARY TABLE itinerary_daily_map_expected_checks (
     constraint_name VARCHAR(64) NOT NULL PRIMARY KEY,
-    normalized_clause VARCHAR(1000) NOT NULL,
+    normalized_clause VARCHAR(1000) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,
+    literal_1 VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL,
+    literal_2 VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL,
     expected_summary VARCHAR(64) NOT NULL
 );
 INSERT INTO itinerary_daily_map_expected_checks VALUES
-    ('chk_itinerary_item_place_source', '(sourcein(''amap'',''manual''))', 'source IN AMAP,MANUAL'),
-    ('chk_itinerary_item_place_source_id', '(((source=''amap'')and(source_place_idisnotnull))or((source=''manual'')and(source_place_idisnull)))', 'source/id pairing'),
-    ('chk_itinerary_item_place_area_code', '((administrative_area_codeisnull)orregexp_like(administrative_area_code,''^[0-9]{6}$''))', 'area code NULL or six digits'),
-    ('chk_itinerary_item_place_longitude', '(longitudebetween-(180)and180)', 'longitude BETWEEN -180 AND 180'),
-    ('chk_itinerary_item_place_latitude', '(latitudebetween-(90)and90)', 'latitude BETWEEN -90 AND 90'),
-    ('chk_itinerary_item_place_coordinate_system', '(coordinate_system=''gcj02'')', 'coordinate_system = GCJ02');
+    ('chk_itinerary_item_place_source', '(sourcein(''AMAP'',''MANUAL''))', 'AMAP', 'MANUAL', 'source IN AMAP,MANUAL'),
+    ('chk_itinerary_item_place_source_id', '(((source=''AMAP'')and(source_place_idisnotnull))or((source=''MANUAL'')and(source_place_idisnull)))', 'AMAP', 'MANUAL', 'source/id pairing'),
+    ('chk_itinerary_item_place_area_code', '((administrative_area_codeisnull)orregexp_like(administrative_area_code,''^[0-9]{6}$''))', '^[0-9]{6}$', NULL, 'area code NULL or six digits'),
+    ('chk_itinerary_item_place_longitude', '(longitudebetween-(180)and180)', NULL, NULL, 'longitude BETWEEN -180 AND 180'),
+    ('chk_itinerary_item_place_latitude', '(latitudebetween-(90)and90)', NULL, NULL, 'latitude BETWEEN -90 AND 90'),
+    ('chk_itinerary_item_place_coordinate_system', '(coordinate_system=''GCJ02'')', 'GCJ02', NULL, 'coordinate_system = GCJ02');
 
 DELIMITER $$
 
@@ -192,14 +194,37 @@ migration: BEGIN
           ON named.constraint_schema = DATABASE()
          AND named.table_name = 'itinerary_item_place'
          AND named.constraint_name = expected.constraint_name
-        LEFT JOIN information_schema.check_constraints actual
+        LEFT JOIN (
+            SELECT parsed.constraint_schema, parsed.constraint_name, parsed.check_clause,
+                   CASE WHEN parsed.quote_count >= 2 THEN
+                       LEFT(parsed.literal_1_raw,
+                            CHAR_LENGTH(parsed.literal_1_raw) -
+                            IF(RIGHT(parsed.literal_1_raw, 1) = CHAR(92), 1, 0))
+                   END AS literal_1,
+                   CASE WHEN parsed.quote_count >= 4 THEN
+                       LEFT(parsed.literal_2_raw,
+                            CHAR_LENGTH(parsed.literal_2_raw) -
+                            IF(RIGHT(parsed.literal_2_raw, 1) = CHAR(92), 1, 0))
+                   END AS literal_2
+            FROM (
+                SELECT checks.*,
+                       CHAR_LENGTH(checks.check_clause) -
+                           CHAR_LENGTH(REPLACE(checks.check_clause, CHAR(39), '')) AS quote_count,
+                       SUBSTRING_INDEX(SUBSTRING_INDEX(checks.check_clause, CHAR(39), 2), CHAR(39), -1) AS literal_1_raw,
+                       SUBSTRING_INDEX(SUBSTRING_INDEX(checks.check_clause, CHAR(39), 4), CHAR(39), -1) AS literal_2_raw
+                FROM information_schema.check_constraints checks
+                WHERE checks.constraint_schema = DATABASE()
+            ) parsed
+        ) actual
           ON actual.constraint_schema = named.constraint_schema
          AND actual.constraint_name = named.constraint_name
         WHERE named.constraint_type <> 'CHECK'
            OR actual.constraint_name IS NULL
-           OR LOWER(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(
+           OR BINARY REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(
                   actual.check_clause, '`', ''), ' ', ''), '_utf8mb4', ''), '_ascii', ''),
-                  CHAR(92), '')) <> expected.normalized_clause
+                  CHAR(92), '') <> BINARY expected.normalized_clause
+           OR NOT (BINARY actual.literal_1 <=> BINARY expected.literal_1)
+           OR NOT (BINARY actual.literal_2 <=> BINARY expected.literal_2)
         ORDER BY expected.constraint_name
         LIMIT 1;
         IF failure_message IS NOT NULL THEN
@@ -420,13 +445,36 @@ WHERE actual.constraint_name IS NULL
 
 SELECT 'missing_check_count' AS metric, COUNT(*) AS value
 FROM itinerary_daily_map_expected_checks expected
-LEFT JOIN information_schema.check_constraints actual
+LEFT JOIN (
+    SELECT parsed.constraint_schema, parsed.constraint_name, parsed.check_clause,
+           CASE WHEN parsed.quote_count >= 2 THEN
+               LEFT(parsed.literal_1_raw,
+                    CHAR_LENGTH(parsed.literal_1_raw) -
+                    IF(RIGHT(parsed.literal_1_raw, 1) = CHAR(92), 1, 0))
+           END AS literal_1,
+           CASE WHEN parsed.quote_count >= 4 THEN
+               LEFT(parsed.literal_2_raw,
+                    CHAR_LENGTH(parsed.literal_2_raw) -
+                    IF(RIGHT(parsed.literal_2_raw, 1) = CHAR(92), 1, 0))
+           END AS literal_2
+    FROM (
+        SELECT checks.*,
+               CHAR_LENGTH(checks.check_clause) -
+                   CHAR_LENGTH(REPLACE(checks.check_clause, CHAR(39), '')) AS quote_count,
+               SUBSTRING_INDEX(SUBSTRING_INDEX(checks.check_clause, CHAR(39), 2), CHAR(39), -1) AS literal_1_raw,
+               SUBSTRING_INDEX(SUBSTRING_INDEX(checks.check_clause, CHAR(39), 4), CHAR(39), -1) AS literal_2_raw
+        FROM information_schema.check_constraints checks
+        WHERE checks.constraint_schema = DATABASE()
+    ) parsed
+) actual
   ON actual.constraint_schema = DATABASE()
  AND actual.constraint_name = expected.constraint_name
 WHERE actual.constraint_name IS NULL
-   OR LOWER(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(
+   OR BINARY REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(
           actual.check_clause, '`', ''), ' ', ''), '_utf8mb4', ''), '_ascii', ''),
-          CHAR(92), '')) <> expected.normalized_clause;
+          CHAR(92), '') <> BINARY expected.normalized_clause
+   OR NOT (BINARY actual.literal_1 <=> BINARY expected.literal_1)
+   OR NOT (BINARY actual.literal_2 <=> BINARY expected.literal_2);
 
 SELECT 'legacy_column_count' AS metric, COUNT(*) AS value
 FROM information_schema.columns
