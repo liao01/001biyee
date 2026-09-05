@@ -1,16 +1,16 @@
 # 旅行行程核心数据链路
 
-本文记录 #17 手工旅行行程核心的数据口径。MySQL 中的五张规范化表是行程当前状态与命令结果的唯一事实源；Controller 响应、Vue 状态、缓存、日志以及任何 JSON 投影都不是独立事实源，必须能够从这些表和正式领域规则重新构建。
+本文记录手工旅行行程及正式地点引用的数据口径。MySQL 中的六张规范化表是行程当前状态、命令结果与条目地点的唯一事实源；Controller 响应、Vue 状态、缓存、日志以及任何 JSON 投影都不是独立事实源，必须能够从这些表和正式领域规则重新构建。
 
 ## 正式事实源
 
-- 表结构、约束与收敛检查以 [`20260901_itinerary_core.sql`](../../sql/migrations/20260901_itinerary_core.sql) 为正式升级脚本；全新环境初始化由 [`travel_share.sql`](../../sql/travel_share.sql) 提供相同表契约。
+- 行程核心五表的结构、约束与收敛检查以 [`20260901_itinerary_core.sql`](../../sql/migrations/20260901_itinerary_core.sql) 为正式升级脚本；正式地点引用表以 [`20260905_itinerary_daily_map.sql`](../../sql/migrations/20260905_itinerary_daily_map.sql) 为正式升级脚本。全新环境初始化由 [`travel_share.sql`](../../sql/travel_share.sql) 提供相同表契约。
 - 领域不变量和状态行为以 [`ItineraryRules.java`](../../business/src/main/java/com/jiawa/lyw/itinerary/domain/ItineraryRules.java) 为准，本文不复制完整状态枚举或迁移矩阵。
 - 写入事务、幂等和版本判断以 [`DefaultItineraryApplicationService.java`](../../business/src/main/java/com/jiawa/lyw/itinerary/application/DefaultItineraryApplicationService.java) 为准；模块外不得直接调用内部 Mapper。
 - 持久化端口由 [`ItineraryRepository.java`](../../business/src/main/java/com/jiawa/lyw/itinerary/application/ItineraryRepository.java) 定义，MyBatis 映射只负责参数绑定和数据装配。
 - HTTP 边界以 [`ItineraryController.java`](../../business/src/main/java/com/jiawa/lyw/itinerary/api/ItineraryController.java) 为准；可执行行为契约以 [`ItineraryHttpIT.java`](../../business/src/test/java/com/jiawa/lyw/itinerary/api/ItineraryHttpIT.java) 为准。
 
-## 五张正式表
+## 六张正式 MySQL 事实源表
 
 | 表 | 业务事实 | 主要字段口径 |
 | --- | --- | --- |
@@ -19,8 +19,9 @@
 | `itinerary_day` | 日期范围内的日程日 | 所属行程、自然日期及审计时间。同一行程同一日期唯一；创建行程及日期扩展时由应用服务生成。 |
 | `itinerary_item` | 日程日中的有序行程条目 | 同时保存所属行程与日程日、标题、可选地点、成对出现的起止时间、备注、可选预计费用、位置、软删除时间及审计时间。读取只返回未软删除条目。 |
 | `itinerary_command` | 行程命令的幂等保留与结果 | 命令 UUID、执行成员、操作、目标行程、期望版本、规范化请求摘要、结果行程/条目/版本和创建时间。只保存摘要与最小结果，不保存原始 JSON 命令载荷。 |
+| `itinerary_item_place` | 行程条目的正式地点引用 | 保存来源与来源地点 ID、供应商无关的名称/地址/行政区代码、GCJ02 经纬度和确认时间；不保存供应商原始 JSON 或路线响应。条目与行程分别由外键约束，应用层还必须验证二者属于同一聚合。 |
 
-外键保证目的地、日程日和条目属于行程，条目还必须引用一个日程日。写入前，应用服务会从已锁定的聚合快照验证日程日、条目和目的地 ID 的所属关系；不能只依赖请求中的行程 ID。
+外键保证目的地、日程日、条目和正式地点引用属于行程，条目还必须引用一个日程日。写入前，应用服务会从已锁定的聚合快照验证日程日、条目、目的地和地点引用 ID 的所属关系；`itinerary_item_place` 的两个独立外键不能替代 `item_id` 与 `itinerary_id` 的同一聚合校验。
 
 ## 写入、读取与事务边界
 
@@ -40,15 +41,15 @@
 
 ## 迁移、恢复与回滚
 
-升级脚本默认 dry-run，先报告缺失表、额外表、缺失字段、索引、外键和历史字段残留；只有调用方显式设置 `@apply_itinerary_core_migration = 1` 才创建缺失表。脚本使用 `CREATE TABLE IF NOT EXISTS`，可在首次执行、重复执行和前次仅创建部分表后收敛。迁移测试会在随机前缀的隔离 MySQL schema 中验证 dry-run、重复执行、部分恢复以及全新初始化 SQL 与升级脚本的一致性，并在结束时精确删除该 schema。
+两个升级脚本均默认 dry-run。核心脚本只有在调用方显式设置 `@apply_itinerary_core_migration = 1` 时创建缺失表；正式地点脚本只有在显式设置 `@apply_itinerary_daily_map_migration = 1` 时收敛空表的缺失结构。地点脚本通过 MySQL 元数据核验字段完整定义、索引列顺序、外键目标及动作和 CHECK 表达式；同名错误对象会给出精确差异并中止。若既有地点表已有业务行，任何缺失或错误结构都在业务表 DDL 前中止，不自动臆造地点数据。迁移测试在随机前缀的隔离 MySQL schema 中验证 dry-run、重复执行、空表部分恢复、定义漂移拒绝、非空表无副作用失败以及全新初始化契约，并在结束时精确删除该 schema。
 
-该迁移只新增表，不迁移或删除历史业务数据。上线前必须完成数据库备份并保存迁移前 schema 证据；失败时先停止行程写流量并重新执行 dry-run 判断差异。若尚未产生行程数据，可以按外键逆序删除这五张表后恢复应用版本；若已经产生数据，不允许用删表作为回滚，应恢复备份到隔离库、核对行程和命令数量，再以经过评审的前向迁移修复。任何共享或生产数据库操作都需要独立授权，本文不代表已经部署。
+这些迁移不生成、迁移或删除历史业务数据。上线前必须完成数据库备份并保存迁移前 schema 证据；失败时先停止行程写流量并重新执行 dry-run 判断差异。若尚未产生行程数据，可以按外键逆序先删除 `itinerary_item_place`，再删除行程核心五表并恢复应用版本；若已经产生数据，不允许用删表作为回滚，应恢复备份到隔离库、核对行程、地点引用和命令数量，再以经过评审的前向迁移修复。任何共享或生产数据库操作都需要独立授权，本文不代表已经部署。
 
 ## 扩展边界
 
-#18–#32 的修订建议、协作成员、预算与费用、预订参考、地图、执行记录、公开复制、推荐和治理数据不得塞入这五张表的通用 JSON 字段。扩展模块通过正式应用接口或领域事件引用行程 ID；只有属于手工行程核心且需要与版本命令原子一致的事实，才应在后续评审后扩展本聚合。
+#18–#32 的修订建议、协作成员、预算与费用、预订参考、派生路线缓存、执行记录、公开复制、推荐和治理数据不得塞入这六张表的通用 JSON 字段。`itinerary_item_place` 只扩展行程条目的正式地点事实，不承载供应商响应、路线方案或缓存；地图搜索与路线计算通过正式应用接口消费它。其他扩展模块通过正式应用接口或领域事件引用行程 ID；只有属于手工行程且需要与版本命令原子一致的事实，才应在后续评审后扩展该聚合。
 
-#18 的规划请求、修订建议、建议操作和建议确认由独立的[结构化行程规划数据链路](itinerary-planning.md)保存。规划模块只能通过 `ItineraryApplicationService` 读取当前快照和提交原子修订命令；Dify、规划仓储和前端均不得直接写本页定义的五张行程核心表。
+#18 的规划请求、修订建议、建议操作和建议确认由独立的[结构化行程规划数据链路](itinerary-planning.md)保存。规划模块只能通过正式应用接口读取当前快照和提交原子修订命令；Dify、规划仓储和前端均不得直接写本页定义的六张事实源表。
 
 ## 2026-09-02 本地验收记录
 

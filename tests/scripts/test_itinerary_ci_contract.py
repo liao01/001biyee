@@ -1,6 +1,7 @@
 """#17 行程核心的数据文档与持续集成契约。"""
 
 from pathlib import Path
+import re
 import unittest
 
 from tests.scripts.migration_specs import ITINERARY_DAILY_MAP_MIGRATION
@@ -21,18 +22,35 @@ def iter_tests(suite):
 class ItineraryCiContractTests(unittest.TestCase):
     def test_data_document_names_every_normalized_source_table(self):
         document = (ROOT / "docs/data/itinerary.md").read_text(encoding="utf-8")
-        for table in (
-            "itinerary",
-            "itinerary_destination",
-            "itinerary_day",
-            "itinerary_item",
-            "itinerary_command",
-        ):
-            with self.subTest(table=table):
-                self.assertIn(f"`{table}`", document)
-        self.assertIn("唯一事实源", document)
-        self.assertIn("JSON", document)
-        self.assertIn("不", document)
+        documented_tables = {
+            match.group(1)
+            for match in re.finditer(r"^\| `([a-z_]+)` \|", document, re.MULTILINE)
+        }
+        self.assertEqual(
+            {
+                "itinerary",
+                "itinerary_destination",
+                "itinerary_day",
+                "itinerary_item",
+                "itinerary_command",
+                "itinerary_item_place",
+            },
+            documented_tables,
+        )
+
+        migration_links = re.findall(
+            r"\]\(\.\./\.\./(sql/migrations/[0-9a-z_]+\.sql)\)", document
+        )
+        self.assertEqual(
+            {
+                "sql/migrations/20260901_itinerary_core.sql",
+                "sql/migrations/20260905_itinerary_daily_map.sql",
+            },
+            set(migration_links),
+        )
+        for link in migration_links:
+            with self.subTest(link=link):
+                self.assertTrue((ROOT / link).is_file())
 
     def test_domain_language_and_adr_define_the_aggregate_boundary(self):
         context = (ROOT / "CONTEXT.md").read_text(encoding="utf-8")
