@@ -274,7 +274,7 @@ class ItineraryPlanningControllerTests {
                 List.of(), List.of(new ItineraryModels.Day(
                         300, LocalDate.of(2026, 10, 2), List.of(new ItineraryModels.Item(
                                 1001, 300, "旧安排", "旧地点", LocalTime.of(8, 0), LocalTime.of(9, 0),
-                                null, new BigDecimal("50.00"), 1024, null
+                                null, new BigDecimal("50.00"), 1024, null, null
                         ))
                 ))
         );

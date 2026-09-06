@@ -23,7 +23,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
-public class DefaultItineraryApplicationService implements ItineraryApplicationService {
+public class DefaultItineraryApplicationService implements
+        ItineraryApplicationService, ItineraryPlaceApplicationService {
     private static final String CREATE_OPERATION = "CREATE";
     private static final String UPDATE_OVERVIEW_OPERATION = "UPDATE_OVERVIEW";
     private static final String REPLACE_DESTINATIONS_OPERATION = "REPLACE_DESTINATIONS";
@@ -33,6 +34,8 @@ public class DefaultItineraryApplicationService implements ItineraryApplicationS
     private static final String REORDER_ITEMS_OPERATION = "REORDER_ITEMS";
     private static final String APPLY_REVISION_OPERATION = "APPLY_REVISION";
     private static final String TRANSITION_STATUS_OPERATION = "TRANSITION_STATUS";
+    private static final String PUT_ITEM_PLACE_OPERATION = "PUT_ITEM_PLACE";
+    private static final String REMOVE_ITEM_PLACE_OPERATION = "REMOVE_ITEM_PLACE";
     private static final long POSITION_GAP = 1024L;
     private static final int MAX_PAGE_SIZE = 100;
 
@@ -476,6 +479,84 @@ public class DefaultItineraryApplicationService implements ItineraryApplicationS
         return complete(command.commandId(), itineraryId, null, nextVersion);
     }
 
+    @Override
+    @Transactional(isolation = Isolation.READ_COMMITTED)
+    public ItineraryCommands.CommandResult putPlace(
+            long actorMemberId,
+            long itineraryId,
+            long itemId,
+            ItineraryCommands.CommandEnvelope<ItineraryCommands.PutItemPlace> command
+    ) {
+        ItineraryCommands.assertExistingEnvelope(command);
+        String requestHash = hashForItem(PUT_ITEM_PLACE_OPERATION, itineraryId, itemId, command);
+        ItineraryModels.Snapshot current = lockForEdit(actorMemberId, itineraryId);
+        ItineraryCommands.CommandResult replay = replayIfPresent(
+                command.commandId(), actorMemberId, PUT_ITEM_PLACE_OPERATION, requestHash
+        );
+        if (replay != null) {
+            return replay;
+        }
+        assertVersion(current, command.expectedVersion());
+        requirePlaceItem(current, itemId);
+        reserveExistingCommand(
+                command, actorMemberId, itineraryId, PUT_ITEM_PLACE_OPERATION, requestHash
+        );
+
+        Instant now = clock.instant();
+        repository.upsertItemPlace(itineraryId, itemId, command.payload(), now);
+        long nextVersion = bumpVersion(current, now);
+        return complete(command.commandId(), itineraryId, itemId, nextVersion);
+    }
+
+    @Override
+    @Transactional(isolation = Isolation.READ_COMMITTED)
+    public ItineraryCommands.CommandResult removePlace(
+            long actorMemberId,
+            long itineraryId,
+            long itemId,
+            ItineraryCommands.CommandEnvelope<ItineraryCommands.RemoveItemPlace> command
+    ) {
+        ItineraryCommands.assertExistingEnvelope(command);
+        String requestHash = hashForItem(REMOVE_ITEM_PLACE_OPERATION, itineraryId, itemId, command);
+        ItineraryModels.Snapshot current = lockForEdit(actorMemberId, itineraryId);
+        ItineraryCommands.CommandResult replay = replayIfPresent(
+                command.commandId(), actorMemberId, REMOVE_ITEM_PLACE_OPERATION, requestHash
+        );
+        if (replay != null) {
+            return replay;
+        }
+        assertVersion(current, command.expectedVersion());
+        requirePlaceItem(current, itemId);
+        reserveExistingCommand(
+                command, actorMemberId, itineraryId, REMOVE_ITEM_PLACE_OPERATION, requestHash
+        );
+
+        Instant now = clock.instant();
+        repository.deleteItemPlace(itineraryId, itemId);
+        long nextVersion = bumpVersion(current, now);
+        return complete(command.commandId(), itineraryId, itemId, nextVersion);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ItineraryModels.DayMapInput dayMapInput(
+            long actorMemberId,
+            long itineraryId,
+            long dayId
+    ) {
+        if (actorMemberId <= 0 || itineraryId <= 0) {
+            throw notFound();
+        }
+        long ownerMemberId = repository.findOwnerMemberId(itineraryId)
+                .orElseThrow(DefaultItineraryApplicationService::notFound);
+        accessPolicy.assertCanRead(actorMemberId, ownerMemberId);
+        if (dayId <= 0) {
+            throw dayNotFound();
+        }
+        return repository.findDayMapInput(itineraryId, dayId)
+                .orElseThrow(DefaultItineraryApplicationService::dayNotFound);
+    }
+
     private ItineraryCommands.CommandResult replay(
             java.util.UUID commandId,
             long memberId,
@@ -772,7 +853,7 @@ public class DefaultItineraryApplicationService implements ItineraryApplicationS
         ItineraryModels.Item asDomainItem() {
             return new ItineraryModels.Item(
                     id, dayId, title, placeName, startTime, endTime, notes,
-                    estimatedCost, position, null
+                    estimatedCost, position, null, null
             );
         }
 
@@ -807,6 +888,17 @@ public class DefaultItineraryApplicationService implements ItineraryApplicationS
                 .filter(item -> item.id() == itemId)
                 .findFirst()
                 .orElseThrow(DefaultItineraryApplicationService::invalidItem);
+    }
+
+    private static ItineraryModels.Item requirePlaceItem(
+            ItineraryModels.Snapshot snapshot,
+            long itemId
+    ) {
+        return snapshot.days().stream()
+                .flatMap(day -> day.items().stream())
+                .filter(item -> item.id() == itemId && !item.deleted())
+                .findFirst()
+                .orElseThrow(DefaultItineraryApplicationService::itemNotFound);
     }
 
     private static void assertVersion(ItineraryModels.Snapshot snapshot, long expectedVersion) {
@@ -874,6 +966,14 @@ public class DefaultItineraryApplicationService implements ItineraryApplicationS
 
     private static ItineraryException invalidItem() {
         return new ItineraryException(ItineraryError.INVALID_ITEM, "安排信息无效");
+    }
+
+    private static ItineraryException itemNotFound() {
+        return new ItineraryException(ItineraryError.ITINERARY_ITEM_NOT_FOUND, "安排不存在");
+    }
+
+    private static ItineraryException dayNotFound() {
+        return new ItineraryException(ItineraryError.ITINERARY_DAY_NOT_FOUND, "日程日不存在");
     }
 
     private record Cursor(Instant updatedAt, long id) {

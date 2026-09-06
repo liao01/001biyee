@@ -7,6 +7,9 @@ import com.jiawa.lyw.identity.api.IdentityExceptionHandler;
 import com.jiawa.lyw.identity.infrastructure.IdentityConfiguration;
 import com.jiawa.lyw.identity.infrastructure.IdentityMailGateway;
 import com.jiawa.lyw.itinerary.infrastructure.ItineraryConfiguration;
+import com.jiawa.lyw.itinerary.application.ItineraryCommands;
+import com.jiawa.lyw.itinerary.application.ItineraryPlaceApplicationService;
+import com.jiawa.lyw.itinerary.domain.ItineraryModels;
 import com.jiawa.lyw.support.MySqlIntegrationDatabase;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
@@ -40,6 +43,10 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
+import java.math.BigDecimal;
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -63,20 +70,25 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class ItineraryHttpIT {
     private static final MySqlIntegrationDatabase DATABASE = new MySqlIntegrationDatabase();
     private static final String TEST_PREFIX = "IT-TEST-#17-";
+    private static final String PLACE_TEST_PREFIX = "IT-TEST-#19-";
 
     @Autowired
     private WebApplicationContext context;
     @Autowired
     private DataSource dataSource;
+    @Autowired
+    private ItineraryPlaceApplicationService places;
     private MockMvc mvc;
     private JdbcTemplate jdbc;
     private ObjectMapper json;
+    private final Set<Long> placeItineraryIds = ConcurrentHashMap.newKeySet();
 
     @BeforeEach
     void prepareAccounts() {
         mvc = MockMvcBuilders.webAppContextSetup(context).build();
         jdbc = new JdbcTemplate(dataSource);
         json = new ObjectMapper().findAndRegisterModules();
+        placeItineraryIds.clear();
         cleanup();
         String legacyHash = "b406cd63d1530b73" + "464838f07947ccca";
         jdbc.update("INSERT INTO member "
@@ -89,10 +101,14 @@ class ItineraryHttpIT {
 
     @AfterEach
     void removeBatchAndVerify() {
+        cleanupPlaceRows();
         cleanup();
         assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM itinerary", Integer.class));
         assertEquals(0, jdbc.queryForObject(
                 "SELECT COUNT(*) FROM member WHERE name LIKE 'IT-TEST-#17-%'", Integer.class
+        ));
+        assertEquals(0, jdbc.queryForObject(
+                "SELECT COUNT(*) FROM itinerary WHERE title LIKE 'IT-TEST-#19-%'", Integer.class
         ));
     }
 
@@ -221,6 +237,55 @@ class ItineraryHttpIT {
                 .andExpect(jsonPath("$.content.errorCode").value("IDEMPOTENCY_CONFLICT"));
     }
 
+    @Test
+    void existingSnapshotReadReturnsFormalPlaceWithoutOverwritingManualPlaceName() throws Exception {
+        String access = login("owner@example.com");
+        String itineraryId = performJson(
+                post("/web/itineraries"), access,
+                createPlaceBody("00000000-0000-0000-0000-000000000301")
+        ).andExpect(status().isOk()).andReturnJson()
+                .path("content").path("itineraryId").asText();
+        placeItineraryIds.add(Long.parseLong(itineraryId));
+        String dayId = getSnapshot(access, itineraryId)
+                .path("content").path("days").get(0).path("id").asText();
+        JsonNode added = performJson(
+                post("/web/itineraries/{id}/items", itineraryId), access,
+                """
+                {"commandId":"00000000-0000-0000-0000-000000000302","expectedVersion":1,
+                 "payload":{"dayId":"%s","title":"IT-TEST-#19-故宫安排",
+                            "placeName":"保留的人工地点名"}}
+                """.formatted(dayId)
+        ).andExpect(status().isOk()).andReturnJson();
+        long itemId = Long.parseLong(added.path("content").path("itemId").asText());
+
+        places.putPlace(
+                42,
+                Long.parseLong(itineraryId),
+                itemId,
+                new ItineraryCommands.CommandEnvelope<>(
+                        UUID.fromString("00000000-0000-0000-0000-000000000303"),
+                        2,
+                        new ItineraryCommands.PutItemPlace(
+                                ItineraryModels.PlaceSource.AMAP, "B000A", "故宫博物院", "景山前街4号",
+                                "110101", new BigDecimal("116.3970260"),
+                                new BigDecimal("39.9180580"), "GCJ02"
+                        )
+                )
+        );
+
+        performJson(get("/web/itineraries/{id}", itineraryId), access, null)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content.version").value(3))
+                .andExpect(jsonPath("$.content.days[0].items[0].placeName")
+                        .value("保留的人工地点名"))
+                .andExpect(jsonPath("$.content.days[0].items[0].placeReference.source")
+                        .value("AMAP"))
+                .andExpect(jsonPath("$.content.days[0].items[0].placeReference.sourcePlaceId")
+                        .value("B000A"))
+                .andExpect(jsonPath("$.content.days[0].items[0].placeReference.name")
+                        .value("故宫博物院"));
+    }
+
     private String create(String access, String commandId) throws Exception {
         return performJson(post("/web/itineraries"), access, createBody(commandId))
                 .andExpect(status().isOk()).andReturnJson()
@@ -260,6 +325,15 @@ class ItineraryHttpIT {
                 """.formatted(commandId);
     }
 
+    private static String createPlaceBody(String commandId) {
+        return """
+                {"commandId":"%s","expectedVersion":0,"payload":{
+                  "title":"IT-TEST-#19-北京地点行程","startDate":"2026-09-01","endDate":"2026-09-02",
+                  "timeZone":"Asia/Shanghai","baseCurrency":"CNY",
+                  "destinations":[{"name":"北京","countryCode":"CN","timeZone":"Asia/Shanghai"}]}}
+                """.formatted(commandId);
+    }
+
     private static String addItemBody(String commandId, long version, String dayId, String title) {
         return """
                 {"commandId":"%s","expectedVersion":%d,
@@ -269,6 +343,7 @@ class ItineraryHttpIT {
 
     private void cleanup() {
         jdbc.update("DELETE FROM itinerary_command");
+        jdbc.update("DELETE FROM itinerary_item_place");
         jdbc.update("DELETE FROM itinerary_item");
         jdbc.update("DELETE FROM itinerary_day");
         jdbc.update("DELETE FROM itinerary_destination");
@@ -277,6 +352,22 @@ class ItineraryHttpIT {
         jdbc.update("DELETE FROM identity_refresh_session");
         jdbc.update("DELETE FROM member_login_log");
         jdbc.update("DELETE FROM member WHERE name LIKE 'IT-TEST-#17-%'");
+    }
+
+    private void cleanupPlaceRows() {
+        for (long itineraryId : placeItineraryIds) {
+            jdbc.update("DELETE FROM itinerary_item_place WHERE itinerary_id = ?", itineraryId);
+            jdbc.update(
+                    "DELETE FROM itinerary_command WHERE itinerary_id = ? OR result_itinerary_id = ?",
+                    itineraryId,
+                    itineraryId
+            );
+            jdbc.update("DELETE FROM itinerary_item WHERE itinerary_id = ?", itineraryId);
+            jdbc.update("DELETE FROM itinerary_day WHERE itinerary_id = ?", itineraryId);
+            jdbc.update("DELETE FROM itinerary_destination WHERE itinerary_id = ?", itineraryId);
+            jdbc.update("DELETE FROM itinerary WHERE id = ?", itineraryId);
+        }
+        placeItineraryIds.clear();
     }
 
     private final class Result {

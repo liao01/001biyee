@@ -1,6 +1,7 @@
 package com.jiawa.lyw.itinerary.infrastructure;
 
 import com.jiawa.lyw.itinerary.application.ItineraryRepository;
+import com.jiawa.lyw.itinerary.application.ItineraryCommands;
 import com.jiawa.lyw.itinerary.domain.ItineraryModels;
 import com.jiawa.lyw.itinerary.domain.ItineraryStatus;
 
@@ -109,6 +110,49 @@ public final class MyBatisItineraryRepository implements ItineraryRepository {
     }
 
     @Override
+    public void upsertItemPlace(
+            long itineraryId,
+            long itemId,
+            ItineraryCommands.PutItemPlace place,
+            Instant now
+    ) {
+        mapper.upsertItemPlace(itineraryId, itemId, place, now);
+    }
+
+    @Override
+    public int deleteItemPlace(long itineraryId, long itemId) {
+        return mapper.deleteItemPlace(itineraryId, itemId);
+    }
+
+    @Override
+    public Optional<ItineraryModels.DayMapInput> findDayMapInput(long itineraryId, long dayId) {
+        ItineraryRows.DayMapRow day = mapper.findDayMap(itineraryId, dayId);
+        if (day == null) {
+            return Optional.empty();
+        }
+        List<ItineraryModels.MapItem> items = mapper.findDayMapItems(itineraryId, dayId).stream()
+                .map(row -> new ItineraryModels.MapItem(
+                        row.itemId(), row.title(), row.startTime(), row.endTime(), row.placeName(),
+                        placeReference(
+                                row.placeSource(), row.sourcePlaceId(), row.referenceName(),
+                                row.referenceAddress(), row.administrativeAreaCode(), row.longitude(),
+                                row.latitude(), row.coordinateSystem(), row.confirmedAt(),
+                                row.referenceUpdatedAt()
+                        ),
+                        row.position()
+                ))
+                .toList();
+        return Optional.of(new ItineraryModels.DayMapInput(
+                day.itineraryId(), day.dayId(), day.date(), items
+        ));
+    }
+
+    @Override
+    public Optional<Long> findOwnerMemberId(long itineraryId) {
+        return Optional.ofNullable(mapper.findOwnerMemberId(itineraryId));
+    }
+
+    @Override
     public Optional<ItineraryModels.Snapshot> findSnapshot(long itineraryId) {
         ItineraryRows.ItineraryRow itinerary = mapper.findItinerary(itineraryId);
         return assembleSnapshot(itineraryId, itinerary);
@@ -184,7 +228,12 @@ public final class MyBatisItineraryRepository implements ItineraryRepository {
                 .map(row -> new ItineraryModels.Item(
                         row.id(), row.itineraryDayId(), row.title(), row.placeName(),
                         row.startTime(), row.endTime(), row.notes(), row.estimatedCost(),
-                        row.position(), row.deletedAt()
+                        row.position(), row.deletedAt(), placeReference(
+                                row.placeSource(), row.sourcePlaceId(), row.referenceName(),
+                                row.referenceAddress(), row.administrativeAreaCode(), row.longitude(),
+                                row.latitude(), row.coordinateSystem(), row.confirmedAt(),
+                                row.referenceUpdatedAt()
+                        )
                 ))
                 .collect(Collectors.groupingBy(ItineraryModels.Item::dayId));
         List<ItineraryModels.Day> days = mapper.findDays(itineraryId).stream()
@@ -215,5 +264,27 @@ public final class MyBatisItineraryRepository implements ItineraryRepository {
                         row.version(), row.updatedAt()
                 ))
                 .toList();
+    }
+
+    private static ItineraryModels.PlaceReference placeReference(
+            String source,
+            String sourcePlaceId,
+            String name,
+            String address,
+            String administrativeAreaCode,
+            java.math.BigDecimal longitude,
+            java.math.BigDecimal latitude,
+            String coordinateSystem,
+            Instant confirmedAt,
+            Instant updatedAt
+    ) {
+        if (source == null) {
+            return null;
+        }
+        return new ItineraryModels.PlaceReference(
+                ItineraryModels.PlaceSource.valueOf(source), sourcePlaceId, name, address,
+                administrativeAreaCode, longitude, latitude, coordinateSystem,
+                confirmedAt, updatedAt
+        );
     }
 }

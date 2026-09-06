@@ -3,7 +3,6 @@ package com.jiawa.lyw.itinerary.infrastructure;
 import cn.hutool.core.util.IdUtil;
 import com.jiawa.lyw.itinerary.application.DefaultItineraryApplicationService;
 import com.jiawa.lyw.itinerary.application.ItineraryAccessPolicy;
-import com.jiawa.lyw.itinerary.application.ItineraryApplicationService;
 import com.jiawa.lyw.itinerary.application.ItineraryCommandHasher;
 import com.jiawa.lyw.itinerary.application.ItineraryIdGenerator;
 import com.jiawa.lyw.itinerary.application.ItineraryRepository;
@@ -39,7 +38,7 @@ public class ItineraryConfiguration {
     }
 
     @Bean
-    ItineraryApplicationService itineraryApplicationService(
+    DefaultItineraryApplicationService itineraryApplicationService(
             ItineraryRepository repository,
             ItineraryAccessPolicy accessPolicy,
             ItineraryIdGenerator ids,

@@ -55,7 +55,40 @@ public final class ItineraryRows {
             String notes,
             BigDecimal estimatedCost,
             long position,
-            Instant deletedAt
+            Instant deletedAt,
+            String placeSource,
+            String sourcePlaceId,
+            String referenceName,
+            String referenceAddress,
+            String administrativeAreaCode,
+            BigDecimal longitude,
+            BigDecimal latitude,
+            String coordinateSystem,
+            Instant confirmedAt,
+            Instant referenceUpdatedAt
+    ) {
+    }
+
+    public record DayMapRow(long itineraryId, long dayId, LocalDate date) {
+    }
+
+    public record MapItemRow(
+            long itemId,
+            String title,
+            LocalTime startTime,
+            LocalTime endTime,
+            String placeName,
+            long position,
+            String placeSource,
+            String sourcePlaceId,
+            String referenceName,
+            String referenceAddress,
+            String administrativeAreaCode,
+            BigDecimal longitude,
+            BigDecimal latitude,
+            String coordinateSystem,
+            Instant confirmedAt,
+            Instant referenceUpdatedAt
     ) {
     }
 

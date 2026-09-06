@@ -24,7 +24,7 @@ public class ItineraryExceptionHandler {
             ItineraryException exception
     ) {
         int status = switch (exception.error()) {
-            case ITINERARY_NOT_FOUND -> 404;
+            case ITINERARY_NOT_FOUND, ITINERARY_ITEM_NOT_FOUND, ITINERARY_DAY_NOT_FOUND -> 404;
             case VERSION_CONFLICT, IDEMPOTENCY_CONFLICT, INVALID_STATUS_TRANSITION -> 409;
             default -> 400;
         };
@@ -74,9 +74,12 @@ public class ItineraryExceptionHandler {
             case INVALID_ITINERARY -> "行程信息无效";
             case INVALID_DESTINATION -> "目的地信息无效";
             case INVALID_ITEM -> "安排信息无效";
+            case INVALID_PLACE -> "地点信息无效";
             case TIME_CONFLICT -> "安排时间存在冲突";
             case DATE_RANGE_CONTAINS_ITEMS -> "缩短后的日期范围仍包含安排";
             case ITINERARY_NOT_FOUND -> "行程不存在";
+            case ITINERARY_ITEM_NOT_FOUND -> "安排不存在";
+            case ITINERARY_DAY_NOT_FOUND -> "日程日不存在";
             case VERSION_CONFLICT -> "行程已被更新，请重新加载";
             case IDEMPOTENCY_CONFLICT -> "命令已被其他请求使用";
             case INVALID_STATUS_TRANSITION -> "行程状态转换无效";

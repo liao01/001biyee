@@ -66,6 +66,18 @@ public interface ItineraryMapper {
             @Param("now") Instant now
     );
 
+    void upsertItemPlace(
+            @Param("itineraryId") long itineraryId,
+            @Param("itemId") long itemId,
+            @Param("place") com.jiawa.lyw.itinerary.application.ItineraryCommands.PutItemPlace place,
+            @Param("now") Instant now
+    );
+
+    int deleteItemPlace(
+            @Param("itineraryId") long itineraryId,
+            @Param("itemId") long itemId
+    );
+
     ItineraryRows.ItineraryRow findItinerary(@Param("itineraryId") long itineraryId);
 
     ItineraryRows.ItineraryRow findItineraryForUpdate(@Param("itineraryId") long itineraryId);
@@ -110,6 +122,18 @@ public interface ItineraryMapper {
     List<ItineraryRows.DayRow> findDays(@Param("itineraryId") long itineraryId);
 
     List<ItineraryRows.ItemRow> findItems(@Param("itineraryId") long itineraryId);
+
+    ItineraryRows.DayMapRow findDayMap(
+            @Param("itineraryId") long itineraryId,
+            @Param("dayId") long dayId
+    );
+
+    List<ItineraryRows.MapItemRow> findDayMapItems(
+            @Param("itineraryId") long itineraryId,
+            @Param("dayId") long dayId
+    );
+
+    Long findOwnerMemberId(@Param("itineraryId") long itineraryId);
 
     List<ItineraryRows.SummaryRow> findSummaries(
             @Param("ownerMemberId") long ownerMemberId,

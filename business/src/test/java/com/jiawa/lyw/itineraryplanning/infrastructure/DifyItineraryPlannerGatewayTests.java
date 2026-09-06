@@ -491,7 +491,7 @@ class DifyItineraryPlannerGatewayTests {
                                 new ItineraryModels.Item(
                                         100, 10, "已有安排", "西湖", LocalTime.of(9, 0),
                                         LocalTime.of(10, 0), null, new BigDecimal("100.00"),
-                                        1024, null
+                                        1024, null, null
                                 )
                         )),
                         new ItineraryModels.Day(
@@ -524,7 +524,7 @@ class DifyItineraryPlannerGatewayTests {
                 List.of(new ItineraryModels.Day(10, LocalDate.of(2026, 10, 2), List.of(
                         new ItineraryModels.Item(
                                 100, 10, "已有安排", "西湖", null, null,
-                                "PRIVATE-BOOKING-NOTE", BigDecimal.ZERO, 1024, null
+                                "PRIVATE-BOOKING-NOTE", BigDecimal.ZERO, 1024, null, null
                         )
                 )))
         );

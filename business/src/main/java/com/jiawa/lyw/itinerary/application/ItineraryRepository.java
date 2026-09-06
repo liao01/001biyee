@@ -53,6 +53,19 @@ public interface ItineraryRepository {
 
     int updateItemPosition(long itineraryId, long itemId, long dayId, long position, Instant now);
 
+    void upsertItemPlace(
+            long itineraryId,
+            long itemId,
+            ItineraryCommands.PutItemPlace place,
+            Instant now
+    );
+
+    int deleteItemPlace(long itineraryId, long itemId);
+
+    Optional<ItineraryModels.DayMapInput> findDayMapInput(long itineraryId, long dayId);
+
+    Optional<Long> findOwnerMemberId(long itineraryId);
+
     Optional<ItineraryModels.Snapshot> findSnapshot(long itineraryId);
 
     Optional<ItineraryModels.Snapshot> findSnapshotForUpdate(long itineraryId);

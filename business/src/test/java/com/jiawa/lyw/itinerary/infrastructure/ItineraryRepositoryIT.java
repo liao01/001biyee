@@ -3,8 +3,10 @@ package com.jiawa.lyw.itinerary.infrastructure;
 import com.jiawa.lyw.itinerary.application.ItineraryApplicationService;
 import com.jiawa.lyw.itinerary.application.ItineraryCommands;
 import com.jiawa.lyw.itinerary.application.ItineraryIdGenerator;
+import com.jiawa.lyw.itinerary.application.ItineraryPlaceApplicationService;
 import com.jiawa.lyw.itinerary.domain.ItineraryError;
 import com.jiawa.lyw.itinerary.domain.ItineraryException;
+import com.jiawa.lyw.itinerary.domain.ItineraryModels;
 import com.jiawa.lyw.support.MySqlIntegrationDatabase;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
@@ -34,6 +36,7 @@ import java.time.ZoneOffset;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
@@ -51,18 +54,26 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class ItineraryRepositoryIT {
     private static final MySqlIntegrationDatabase DATABASE = new MySqlIntegrationDatabase();
     private static final String TEST_PREFIX = "IT-TEST-#17-";
+    private static final String PLACE_TEST_PREFIX = "IT-TEST-#19-";
+    private static final String PLACE_VERSION_CONFLICT_TRIGGER =
+            "it_test_19_force_place_version_conflict";
 
     @Autowired
     private ItineraryApplicationService itineraries;
+    @Autowired
+    private ItineraryPlaceApplicationService places;
     @Autowired
     private DataSource dataSource;
     @Autowired
     private TestIds ids;
     private JdbcTemplate jdbc;
+    private final Set<Long> placeItineraryIds = ConcurrentHashMap.newKeySet();
 
     @BeforeEach
     void prepareBatch() {
         jdbc = new JdbcTemplate(dataSource);
+        placeItineraryIds.clear();
+        dropPlaceVersionConflictTrigger();
         cleanupRows();
         ids.reset();
         jdbc.update(
@@ -76,7 +87,18 @@ class ItineraryRepositoryIT {
 
     @AfterEach
     void removeBatchAndVerify() {
+        dropPlaceVersionConflictTrigger();
+        cleanupPlaceRows();
         cleanupRows();
+        assertEquals(0, jdbc.queryForObject(
+                "SELECT COUNT(*) FROM itinerary_item_place place_ref "
+                        + "JOIN itinerary i ON i.id = place_ref.itinerary_id "
+                        + "WHERE i.title LIKE 'IT-TEST-#19-%'",
+                Integer.class
+        ));
+        assertEquals(0, jdbc.queryForObject(
+                "SELECT COUNT(*) FROM itinerary WHERE title LIKE 'IT-TEST-#19-%'", Integer.class
+        ));
         assertEquals(0, jdbc.queryForObject(
                 "SELECT COUNT(*) FROM member WHERE name LIKE 'IT-TEST-#17-%'", Integer.class
         ));
@@ -86,6 +108,228 @@ class ItineraryRepositoryIT {
     @AfterAll
     static void removeIsolatedDatabase() {
         DATABASE.close();
+    }
+
+    @Test
+    void formalPlaceCommandsPersistReplaceRemoveAndProtectTheAggregateBoundary() {
+        long itineraryId = itineraries.create(42, placeCreateCommand(
+                "00000000-0000-0000-0000-000000000191", "正式地点"
+        )).itineraryId();
+        placeItineraryIds.add(itineraryId);
+        long dayId = itineraries.get(42, itineraryId).days().get(0).id();
+        long itemId = itineraries.addItem(42, itineraryId, envelope(
+                "00000000-0000-0000-0000-000000000192", 1,
+                new ItineraryCommands.AddItem(
+                        dayId, PLACE_TEST_PREFIX + "故宫行程", "保留的人工地点名",
+                        LocalTime.of(9, 0), LocalTime.of(10, 0), "PRIVATE-NOTE",
+                        new BigDecimal("88.00")
+                )
+        )).itemId();
+        jdbc.update("UPDATE itinerary SET version = 7 WHERE id = ?", itineraryId);
+
+        var putCommand = envelope(
+                "00000000-0000-0000-0000-000000000193", 7, amapPlace("B000A")
+        );
+        var firstPut = places.putPlace(42, itineraryId, itemId, putCommand);
+        assertEquals(8, firstPut.version());
+        assertEquals(itemId, firstPut.itemId());
+        assertEquals(itemId, jdbc.queryForObject(
+                "SELECT result_item_id FROM itinerary_command WHERE command_id = ?",
+                Long.class,
+                putCommand.commandId().toString()
+        ));
+        ItineraryModels.Item persisted = itineraries.get(42, itineraryId)
+                .days().get(0).items().get(0);
+        assertEquals("保留的人工地点名", persisted.placeName());
+        assertEquals("故宫博物院", persisted.placeReference().name());
+        assertEquals(ItineraryModels.PlaceSource.AMAP, persisted.placeReference().source());
+
+        assertEquals(9, places.putPlace(42, itineraryId, itemId, envelope(
+                "00000000-0000-0000-0000-000000000194", 8,
+                new ItineraryCommands.PutItemPlace(
+                        ItineraryModels.PlaceSource.MANUAL, null, "手工入口", null, null,
+                        new BigDecimal("116.3900000"), new BigDecimal("39.9100000"), "GCJ02"
+                )
+        )).version());
+        assertEquals("手工入口", places.dayMapInput(42, itineraryId, dayId)
+                .items().get(0).placeReference().name());
+
+        assertEquals(10, places.removePlace(42, itineraryId, itemId, envelope(
+                "00000000-0000-0000-0000-000000000195", 9,
+                new ItineraryCommands.RemoveItemPlace()
+        )).version());
+        var removeAbsent = envelope(
+                "00000000-0000-0000-0000-000000000196", 10,
+                new ItineraryCommands.RemoveItemPlace()
+        );
+        var removedAgain = places.removePlace(42, itineraryId, itemId, removeAbsent);
+        assertEquals(11, removedAgain.version());
+        assertEquals(itemId, removedAgain.itemId());
+        var replayedRemoval = places.removePlace(42, itineraryId, itemId, removeAbsent);
+        assertEquals(11, replayedRemoval.version());
+        assertEquals(itemId, replayedRemoval.itemId());
+        assertTrue(replayedRemoval.replayed());
+        assertEquals("保留的人工地点名", itineraries.get(42, itineraryId)
+                .days().get(0).items().get(0).placeName());
+        assertEquals(null, itineraries.get(42, itineraryId)
+                .days().get(0).items().get(0).placeReference());
+
+        assertEquals(ItineraryError.IDEMPOTENCY_CONFLICT, assertThrows(
+                ItineraryException.class,
+                () -> places.putPlace(42, itineraryId, itemId, envelope(
+                        putCommand.commandId().toString(), 11, amapPlace("B000B")
+                ))
+        ).error());
+        assertEquals(ItineraryError.VERSION_CONFLICT, assertThrows(
+                ItineraryException.class,
+                () -> places.putPlace(42, itineraryId, itemId, envelope(
+                        "00000000-0000-0000-0000-000000000197", 9, amapPlace("B000C")
+                ))
+        ).error());
+        assertEquals(ItineraryError.ITINERARY_NOT_FOUND, assertThrows(
+                ItineraryException.class,
+                () -> places.putPlace(84, itineraryId, itemId, envelope(
+                        "00000000-0000-0000-0000-000000000198", 11, amapPlace("B000D")
+                ))
+        ).error());
+
+        assertEquals(12, itineraries.deleteItem(42, itineraryId, itemId, envelope(
+                "00000000-0000-0000-0000-000000000199", 11,
+                new ItineraryCommands.DeleteItem()
+        )).version());
+        assertEquals(ItineraryError.ITINERARY_ITEM_NOT_FOUND, assertThrows(
+                ItineraryException.class,
+                () -> places.putPlace(42, itineraryId, itemId, envelope(
+                        "00000000-0000-0000-0000-000000000200", 12, amapPlace("B000E")
+                ))
+        ).error());
+
+        long otherItineraryId = itineraries.create(42, placeCreateCommand(
+                "00000000-0000-0000-0000-000000000201", "跨行程"
+        )).itineraryId();
+        placeItineraryIds.add(otherItineraryId);
+        long otherDayId = itineraries.get(42, otherItineraryId).days().get(0).id();
+        long foreignItemId = itineraries.addItem(42, otherItineraryId, envelope(
+                "00000000-0000-0000-0000-000000000202", 1,
+                new ItineraryCommands.AddItem(
+                        otherDayId, PLACE_TEST_PREFIX + "跨行程条目", null,
+                        null, null, null, null
+                )
+        )).itemId();
+        assertEquals(ItineraryError.ITINERARY_ITEM_NOT_FOUND, assertThrows(
+                ItineraryException.class,
+                () -> places.putPlace(42, itineraryId, foreignItemId, envelope(
+                        "00000000-0000-0000-0000-000000000203", 12, amapPlace("B000F")
+                ))
+        ).error());
+        assertEquals(12, itineraries.get(42, itineraryId).version());
+        assertEquals(0, jdbc.queryForObject(
+                "SELECT COUNT(*) FROM itinerary_command WHERE command_id IN (?, ?, ?, ?)",
+                Integer.class,
+                "00000000-0000-0000-0000-000000000197",
+                "00000000-0000-0000-0000-000000000198",
+                "00000000-0000-0000-0000-000000000200",
+                "00000000-0000-0000-0000-000000000203"
+        ));
+    }
+
+    @Test
+    void concurrentSamePlaceCommandConvergesToOneVersionAndOneReference() throws Exception {
+        long itineraryId = itineraries.create(42, placeCreateCommand(
+                "00000000-0000-0000-0000-000000000204", "并发地点"
+        )).itineraryId();
+        placeItineraryIds.add(itineraryId);
+        long dayId = itineraries.get(42, itineraryId).days().get(0).id();
+        long itemId = itineraries.addItem(42, itineraryId, envelope(
+                "00000000-0000-0000-0000-000000000205", 1,
+                new ItineraryCommands.AddItem(
+                        dayId, PLACE_TEST_PREFIX + "并发安排", "人工地点名",
+                        null, null, null, null
+                )
+        )).itemId();
+        var command = envelope(
+                "00000000-0000-0000-0000-000000000206", 2, amapPlace("B-CONCURRENT")
+        );
+        var executor = Executors.newFixedThreadPool(2);
+        var ready = new CountDownLatch(2);
+        var start = new CountDownLatch(1);
+        java.util.concurrent.Callable<ItineraryCommands.CommandResult> attempt = () -> {
+            ready.countDown();
+            assertTrue(start.await(5, TimeUnit.SECONDS));
+            return places.putPlace(42, itineraryId, itemId, command);
+        };
+        try {
+            var first = executor.submit(attempt);
+            var second = executor.submit(attempt);
+            assertTrue(ready.await(5, TimeUnit.SECONDS));
+            start.countDown();
+            var results = List.of(first.get(10, TimeUnit.SECONDS), second.get(10, TimeUnit.SECONDS));
+
+            assertTrue(results.stream().allMatch(result -> result.version() == 3));
+            assertEquals(1, results.stream().filter(ItineraryCommands.CommandResult::replayed).count());
+            assertEquals(3, itineraries.get(42, itineraryId).version());
+            assertEquals(1, jdbc.queryForObject(
+                    "SELECT COUNT(*) FROM itinerary_item_place WHERE itinerary_id = ? AND item_id = ?",
+                    Integer.class,
+                    itineraryId,
+                    itemId
+            ));
+            assertEquals(1, jdbc.queryForObject(
+                    "SELECT COUNT(*) FROM itinerary_command WHERE command_id = ?",
+                    Integer.class,
+                    command.commandId().toString()
+            ));
+        } finally {
+            start.countDown();
+            executor.shutdownNow();
+            assertTrue(executor.awaitTermination(5, TimeUnit.SECONDS));
+        }
+    }
+
+    @Test
+    void placeWriteVersionConflictRollsBackPlaceAndReservedCommand() {
+        long itineraryId = itineraries.create(42, placeCreateCommand(
+                "00000000-0000-0000-0000-000000000207", "回滚地点"
+        )).itineraryId();
+        placeItineraryIds.add(itineraryId);
+        long dayId = itineraries.get(42, itineraryId).days().get(0).id();
+        long itemId = itineraries.addItem(42, itineraryId, envelope(
+                "00000000-0000-0000-0000-000000000208", 1,
+                new ItineraryCommands.AddItem(
+                        dayId, PLACE_TEST_PREFIX + "回滚安排", null,
+                        null, null, null, null
+                )
+        )).itemId();
+        var command = envelope(
+                "00000000-0000-0000-0000-000000000209", 2, amapPlace("B-ROLLBACK")
+        );
+        jdbc.execute("""
+                CREATE TRIGGER %s
+                BEFORE INSERT ON itinerary_item_place
+                FOR EACH ROW
+                UPDATE itinerary
+                SET version = version + 1
+                WHERE id = NEW.itinerary_id
+                """.formatted(PLACE_VERSION_CONFLICT_TRIGGER));
+
+        ItineraryException conflict = assertThrows(
+                ItineraryException.class,
+                () -> places.putPlace(42, itineraryId, itemId, command)
+        );
+
+        assertEquals(ItineraryError.VERSION_CONFLICT, conflict.error());
+        assertEquals(2, itineraries.get(42, itineraryId).version());
+        assertEquals(0, jdbc.queryForObject(
+                "SELECT COUNT(*) FROM itinerary_item_place WHERE itinerary_id = ? AND item_id = ?",
+                Integer.class,
+                itineraryId,
+                itemId
+        ));
+        assertEquals(0, jdbc.queryForObject(
+                "SELECT COUNT(*) FROM itinerary_command WHERE command_id = ?",
+                Integer.class,
+                command.commandId().toString()
+        ));
     }
 
     @Test
@@ -779,6 +1023,34 @@ class ItineraryRepositoryIT {
         ));
     }
 
+    private static ItineraryCommands.PutItemPlace amapPlace(String sourcePlaceId) {
+        return new ItineraryCommands.PutItemPlace(
+                ItineraryModels.PlaceSource.AMAP, sourcePlaceId, "故宫博物院", "景山前街4号",
+                "110101", new BigDecimal("116.3970260"),
+                new BigDecimal("39.9180580"), "GCJ02"
+        );
+    }
+
+    private static ItineraryCommands.CommandEnvelope<ItineraryCommands.CreateItinerary> placeCreateCommand(
+            String commandId,
+            String title
+    ) {
+        return new ItineraryCommands.CommandEnvelope<>(
+                UUID.fromString(commandId),
+                0,
+                new ItineraryCommands.CreateItinerary(
+                        PLACE_TEST_PREFIX + title,
+                        LocalDate.of(2026, 9, 1),
+                        LocalDate.of(2026, 9, 3),
+                        "Asia/Shanghai",
+                        "CNY",
+                        List.of(new ItineraryCommands.DestinationInput(
+                                null, "北京", "CN", "Asia/Shanghai"
+                        ))
+                )
+        );
+    }
+
     private static ItineraryCommands.CommandEnvelope<ItineraryCommands.CreateItinerary> createCommand(
             UUID commandId,
             String title
@@ -812,6 +1084,7 @@ class ItineraryRepositoryIT {
 
     private void cleanupRows() {
         jdbc.update("DELETE FROM itinerary_command");
+        jdbc.update("DELETE FROM itinerary_item_place");
         jdbc.update("DELETE FROM itinerary_item");
         jdbc.update("DELETE FROM itinerary_day");
         jdbc.update("DELETE FROM itinerary_destination");
@@ -820,6 +1093,26 @@ class ItineraryRepositoryIT {
         jdbc.update("DELETE FROM identity_refresh_session");
         jdbc.update("DELETE FROM member_login_log");
         jdbc.update("DELETE FROM member WHERE name LIKE 'IT-TEST-#17-%'");
+    }
+
+    private void cleanupPlaceRows() {
+        for (long itineraryId : placeItineraryIds) {
+            jdbc.update("DELETE FROM itinerary_item_place WHERE itinerary_id = ?", itineraryId);
+            jdbc.update(
+                    "DELETE FROM itinerary_command WHERE itinerary_id = ? OR result_itinerary_id = ?",
+                    itineraryId,
+                    itineraryId
+            );
+            jdbc.update("DELETE FROM itinerary_item WHERE itinerary_id = ?", itineraryId);
+            jdbc.update("DELETE FROM itinerary_day WHERE itinerary_id = ?", itineraryId);
+            jdbc.update("DELETE FROM itinerary_destination WHERE itinerary_id = ?", itineraryId);
+            jdbc.update("DELETE FROM itinerary WHERE id = ?", itineraryId);
+        }
+        placeItineraryIds.clear();
+    }
+
+    private void dropPlaceVersionConflictTrigger() {
+        jdbc.execute("DROP TRIGGER IF EXISTS " + PLACE_VERSION_CONFLICT_TRIGGER);
     }
 
     @Configuration

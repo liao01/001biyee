@@ -21,6 +21,47 @@ public final class ItineraryModels {
     ) {
     }
 
+    public enum PlaceSource {
+        AMAP,
+        MANUAL
+    }
+
+    public record PlaceReference(
+            PlaceSource source,
+            String sourcePlaceId,
+            String name,
+            String address,
+            String administrativeAreaCode,
+            BigDecimal longitude,
+            BigDecimal latitude,
+            String coordinateSystem,
+            Instant confirmedAt,
+            Instant updatedAt
+    ) {
+    }
+
+    public record MapItem(
+            long itemId,
+            String title,
+            LocalTime startTime,
+            LocalTime endTime,
+            String placeName,
+            PlaceReference placeReference,
+            long position
+    ) {
+    }
+
+    public record DayMapInput(
+            long itineraryId,
+            long dayId,
+            LocalDate date,
+            List<MapItem> items
+    ) {
+        public DayMapInput {
+            items = List.copyOf(items);
+        }
+    }
+
     public record Item(
             long id,
             long dayId,
@@ -31,7 +72,8 @@ public final class ItineraryModels {
             String notes,
             BigDecimal estimatedCost,
             long position,
-            Instant deletedAt
+            Instant deletedAt,
+            PlaceReference placeReference
     ) {
         public boolean deleted() {
             return deletedAt != null;

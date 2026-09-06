@@ -2,6 +2,7 @@ package com.jiawa.lyw.itinerary.application;
 
 import com.jiawa.lyw.itinerary.domain.ItineraryError;
 import com.jiawa.lyw.itinerary.domain.ItineraryException;
+import com.jiawa.lyw.itinerary.domain.ItineraryModels;
 import com.jiawa.lyw.itinerary.domain.ItineraryRules;
 import com.jiawa.lyw.itinerary.domain.ItineraryStatus;
 
@@ -146,6 +147,49 @@ public final class ItineraryCommands {
     }
 
     public record DeleteItem() {
+    }
+
+    public record PutItemPlace(
+            ItineraryModels.PlaceSource source,
+            String sourcePlaceId,
+            String name,
+            String address,
+            String administrativeAreaCode,
+            BigDecimal longitude,
+            BigDecimal latitude,
+            String coordinateSystem
+    ) {
+        public PutItemPlace {
+            sourcePlaceId = optionalText(
+                    sourcePlaceId, 128, ItineraryError.INVALID_PLACE, "地点信息无效"
+            );
+            name = requiredText(name, 200, ItineraryError.INVALID_PLACE, "地点信息无效");
+            address = optionalText(address, 500, ItineraryError.INVALID_PLACE, "地点信息无效");
+            administrativeAreaCode = optionalText(
+                    administrativeAreaCode, 6, ItineraryError.INVALID_PLACE, "地点信息无效"
+            );
+            coordinateSystem = requiredText(
+                    coordinateSystem, 16, ItineraryError.INVALID_PLACE, "地点信息无效"
+            );
+            boolean invalidSourceIdentity = source == null
+                    || (source == ItineraryModels.PlaceSource.AMAP && sourcePlaceId == null)
+                    || (source == ItineraryModels.PlaceSource.MANUAL && sourcePlaceId != null);
+            boolean invalidAreaCode = administrativeAreaCode != null
+                    && !administrativeAreaCode.matches("[0-9]{6}");
+            boolean invalidCoordinates = longitude == null || latitude == null
+                    || longitude.scale() > 7 || latitude.scale() > 7
+                    || longitude.compareTo(new BigDecimal("-180")) < 0
+                    || longitude.compareTo(new BigDecimal("180")) > 0
+                    || latitude.compareTo(new BigDecimal("-90")) < 0
+                    || latitude.compareTo(new BigDecimal("90")) > 0;
+            if (invalidSourceIdentity || invalidAreaCode || invalidCoordinates
+                    || !"GCJ02".equals(coordinateSystem)) {
+                throw invalidPlace();
+            }
+        }
+    }
+
+    public record RemoveItemPlace() {
     }
 
     public record ReorderItems(long dayId, List<Long> itemIds) {
@@ -373,6 +417,10 @@ public final class ItineraryCommands {
 
     private static ItineraryException invalidItem() {
         return new ItineraryException(ItineraryError.INVALID_ITEM, "安排信息无效");
+    }
+
+    private static ItineraryException invalidPlace() {
+        return new ItineraryException(ItineraryError.INVALID_PLACE, "地点信息无效");
     }
 
     private static String revisionKey(String value) {

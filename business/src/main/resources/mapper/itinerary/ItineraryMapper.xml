@@ -72,6 +72,34 @@
       AND itinerary_day_id = #{dayId} AND deleted_at IS NULL
   </update>
 
+  <insert id="upsertItemPlace">
+    INSERT INTO itinerary_item_place
+      (item_id, itinerary_id, source, source_place_id, name, address,
+       administrative_area_code, longitude, latitude, coordinate_system,
+       confirmed_at, updated_at)
+    VALUES
+      (#{itemId}, #{itineraryId}, #{place.source}, #{place.sourcePlaceId}, #{place.name},
+       #{place.address}, #{place.administrativeAreaCode}, #{place.longitude}, #{place.latitude},
+       #{place.coordinateSystem}, #{now}, #{now})
+    ON DUPLICATE KEY UPDATE
+      itinerary_id = VALUES(itinerary_id),
+      source = VALUES(source),
+      source_place_id = VALUES(source_place_id),
+      name = VALUES(name),
+      address = VALUES(address),
+      administrative_area_code = VALUES(administrative_area_code),
+      longitude = VALUES(longitude),
+      latitude = VALUES(latitude),
+      coordinate_system = VALUES(coordinate_system),
+      confirmed_at = VALUES(confirmed_at),
+      updated_at = VALUES(updated_at)
+  </insert>
+
+  <delete id="deleteItemPlace">
+    DELETE FROM itinerary_item_place
+    WHERE itinerary_id = #{itineraryId} AND item_id = #{itemId}
+  </delete>
+
   <select id="findItinerary" resultType="com.jiawa.lyw.itinerary.infrastructure.ItineraryRows$ItineraryRow">
     SELECT id, owner_member_id, title, start_date, end_date, time_zone,
            base_currency, status, version
@@ -138,11 +166,60 @@
   </select>
 
   <select id="findItems" resultType="com.jiawa.lyw.itinerary.infrastructure.ItineraryRows$ItemRow">
-    SELECT id, itinerary_day_id, title, place_name, start_time, end_time,
-           notes, estimated_cost, position, deleted_at
-    FROM itinerary_item
-    WHERE itinerary_id = #{itineraryId} AND deleted_at IS NULL
-    ORDER BY itinerary_day_id, position, id
+    SELECT item.id, item.itinerary_day_id, item.title, item.place_name,
+           item.start_time, item.end_time, item.notes, item.estimated_cost,
+           item.position, item.deleted_at,
+           place_ref.source AS place_source,
+           place_ref.source_place_id,
+           place_ref.name AS reference_name,
+           place_ref.address AS reference_address,
+           place_ref.administrative_area_code,
+           place_ref.longitude,
+           place_ref.latitude,
+           place_ref.coordinate_system,
+           place_ref.confirmed_at,
+           place_ref.updated_at AS reference_updated_at
+    FROM itinerary_item item
+    LEFT JOIN itinerary_item_place place_ref ON place_ref.item_id = item.id
+      AND place_ref.itinerary_id = item.itinerary_id
+    WHERE item.itinerary_id = #{itineraryId} AND item.deleted_at IS NULL
+    ORDER BY item.itinerary_day_id, item.position, item.id
+  </select>
+
+  <select id="findDayMap" resultType="com.jiawa.lyw.itinerary.infrastructure.ItineraryRows$DayMapRow">
+    SELECT i.id AS itinerary_id, day_row.id AS day_id, day_row.day_date AS date
+    FROM itinerary i
+    JOIN itinerary_day day_row ON day_row.itinerary_id = i.id
+    WHERE i.id = #{itineraryId} AND day_row.id = #{dayId}
+      AND day_row.day_date BETWEEN i.start_date AND i.end_date
+  </select>
+
+  <select id="findDayMapItems" resultType="com.jiawa.lyw.itinerary.infrastructure.ItineraryRows$MapItemRow">
+    SELECT item.id AS item_id, item.title, item.start_time, item.end_time,
+           item.place_name, item.position,
+           place_ref.source AS place_source,
+           place_ref.source_place_id,
+           place_ref.name AS reference_name,
+           place_ref.address AS reference_address,
+           place_ref.administrative_area_code,
+           place_ref.longitude,
+           place_ref.latitude,
+           place_ref.coordinate_system,
+           place_ref.confirmed_at,
+           place_ref.updated_at AS reference_updated_at
+    FROM itinerary_item item
+    LEFT JOIN itinerary_item_place place_ref ON place_ref.item_id = item.id
+      AND place_ref.itinerary_id = item.itinerary_id
+    WHERE item.itinerary_id = #{itineraryId}
+      AND item.itinerary_day_id = #{dayId}
+      AND item.deleted_at IS NULL
+    ORDER BY item.position, item.id
+  </select>
+
+  <select id="findOwnerMemberId" resultType="long">
+    SELECT owner_member_id
+    FROM itinerary
+    WHERE id = #{itineraryId}
   </select>
 
   <select id="findSummaries" resultType="com.jiawa.lyw.itinerary.infrastructure.ItineraryRows$SummaryRow">

@@ -159,12 +159,38 @@ public final class ItineraryHttpModels {
             LocalTime endTime,
             String notes,
             BigDecimal estimatedCost,
-            long position
+            long position,
+            PlaceReferenceResponse placeReference
     ) {
         static ItemResponse from(ItineraryModels.Item item) {
             return new ItemResponse(
                     Long.toString(item.id()), Long.toString(item.dayId()), item.title(), item.placeName(),
-                    item.startTime(), item.endTime(), item.notes(), item.estimatedCost(), item.position()
+                    item.startTime(), item.endTime(), item.notes(), item.estimatedCost(), item.position(),
+                    PlaceReferenceResponse.from(item.placeReference())
+            );
+        }
+    }
+
+    public record PlaceReferenceResponse(
+            ItineraryModels.PlaceSource source,
+            String sourcePlaceId,
+            String name,
+            String address,
+            String administrativeAreaCode,
+            BigDecimal longitude,
+            BigDecimal latitude,
+            String coordinateSystem,
+            String confirmedAt,
+            String updatedAt
+    ) {
+        static PlaceReferenceResponse from(ItineraryModels.PlaceReference place) {
+            if (place == null) {
+                return null;
+            }
+            return new PlaceReferenceResponse(
+                    place.source(), place.sourcePlaceId(), place.name(), place.address(),
+                    place.administrativeAreaCode(), place.longitude(), place.latitude(),
+                    place.coordinateSystem(), place.confirmedAt().toString(), place.updatedAt().toString()
             );
         }
     }

@@ -255,7 +255,7 @@ class ItineraryPlanningApplicationServiceTests {
     private ItineraryModels.Snapshot snapshot(long version) {
         ItineraryModels.Item item = new ItineraryModels.Item(
                 1001, 501, "西湖", "西湖", LocalTime.of(9, 0), LocalTime.of(10, 0),
-                null, new BigDecimal("100.00"), 1024, null
+                null, new BigDecimal("100.00"), 1024, null, null
         );
         return new ItineraryModels.Snapshot(
                 42, 7, "杭州", LocalDate.of(2026, 10, 2), LocalDate.of(2026, 10, 3),

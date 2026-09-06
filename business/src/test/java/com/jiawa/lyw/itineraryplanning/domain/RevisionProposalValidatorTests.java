@@ -248,6 +248,7 @@ class RevisionProposalValidatorTests {
                 null,
                 new BigDecimal("100.00"),
                 1024L,
+                null,
                 null
         );
         return new ItineraryModels.Snapshot(

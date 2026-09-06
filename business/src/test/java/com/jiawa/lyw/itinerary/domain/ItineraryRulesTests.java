@@ -198,14 +198,14 @@ class ItineraryRulesTests {
         return new ItineraryModels.Item(
                 id, dayId, "安排", "地点", LocalTime.of(startHour, 0),
                 LocalTime.of(endHour, 0), "备注", new BigDecimal("10.00"),
-                1024, deleted ? Instant.parse("2026-09-01T00:00:00Z") : null
+                1024, deleted ? Instant.parse("2026-09-01T00:00:00Z") : null, null
         );
     }
 
     private static ItineraryModels.Item untimedItem(long id, long dayId) {
         return new ItineraryModels.Item(
                 id, dayId, "自由活动", null, null, null, null,
-                null, 2048, null
+                null, 2048, null, null
         );
     }
 
