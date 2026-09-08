@@ -34,6 +34,27 @@ class ProductionRuntimeSecretsTests {
     }
 
     @Test
+    void productionConfigurationUsesOnlyTheAmapWebServiceSecretContract() throws IOException {
+        String production = Files.readString(REPOSITORY.resolve(
+                "business/src/main/resources/application-prod.properties"));
+        String environment = Files.readString(REPOSITORY.resolve(".env.example"));
+        String yaml = Files.readString(REPOSITORY.resolve(
+                "business/src/main/resources/application.yml.example"));
+
+        for (String required : List.of("AMAP_WEB_SERVICE_BASE_URL", "AMAP_WEB_SERVICE_KEY",
+                "AMAP_CONNECT_TIMEOUT", "AMAP_RESPONSE_TIMEOUT", "AMAP_ROUTE_CONCURRENCY")) {
+            assertTrue(production.contains(required), required);
+            assertTrue(environment.contains(required), required);
+            assertTrue(yaml.contains(required), required);
+        }
+        for (String legacy : List.of("amap.key", "AMAP_API_KEY")) {
+            assertFalse(production.contains(legacy), legacy);
+            assertFalse(environment.contains(legacy), legacy);
+            assertFalse(yaml.contains(legacy), legacy);
+        }
+    }
+
+    @Test
     void legacyAnythingLlmWriteEndpointAndLiteralCredentialsAreAbsent() throws IOException {
         Path sourceRoot = REPOSITORY.resolve("business/src/main/java");
         Path legacyController = sourceRoot.resolve(
@@ -49,6 +70,9 @@ class ProductionRuntimeSecretsTests {
             assertFalse(sources.contains("localhost:3001/api/v1/workspace"));
             assertFalse(sources.contains("/web/customerService/message"));
             assertFalse(sources.matches("(?s).*Authorization.{0,80}Bearer [A-Za-z0-9_-]{20,}.*"));
+            assertFalse(sources.contains("${amap.key}"));
+            assertFalse(sources.contains("AMAP_API_KEY"));
+            assertFalse(sources.contains("&key="));
         }
     }
 

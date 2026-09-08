@@ -74,7 +74,8 @@ class IdentityRedisIT {
                     "--DIFY_ITINERARY_BASE_URL=http://127.0.0.1:1",
                     "--DIFY_ITINERARY_API_KEY=TEST-dify-application-key",
                     "--DIFY_ITINERARY_USER_HASH_KEY=TEST-dify-user-hash-key-at-least-32-bytes",
-                    "--AMAP_API_KEY=change-me")) {
+                    "--AMAP_WEB_SERVICE_BASE_URL=http://127.0.0.1:1",
+                    "--AMAP_WEB_SERVICE_KEY=TEST-amap-web-service-key")) {
                 int port = ((org.springframework.boot.web.servlet.context.ServletWebServerApplicationContext) app).getWebServer().getPort();
                 URI base = URI.create("http://127.0.0.1:" + port + "/lyw/");
                 var client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(3)).build();
