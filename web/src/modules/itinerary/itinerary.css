@@ -477,6 +477,16 @@
   margin: 0;
 }
 
+.itinerary-item__place-reference {
+  color: var(--travel-color-brand-strong) !important;
+  font-weight: 650;
+}
+
+.itinerary-item__place-reference small {
+  color: var(--travel-color-text-secondary);
+  font-weight: 400;
+}
+
 .itinerary-item__actions {
   display: flex;
   flex-wrap: wrap;
@@ -495,6 +505,155 @@
 
 .itinerary-item-form {
   border-color: #ffc4cb;
+}
+
+.place-picker {
+  background: var(--travel-color-bg);
+  border-left: 1px solid var(--travel-color-border);
+  box-shadow: -16px 0 40px rgb(24 30 40 / 18%);
+  box-sizing: border-box;
+  display: grid;
+  gap: var(--travel-space-4);
+  inset: 0 0 0 auto;
+  max-width: 540px;
+  overflow-y: auto;
+  padding: clamp(20px, 4vw, 36px);
+  position: fixed;
+  width: min(100%, 540px);
+  z-index: 20;
+}
+
+.place-picker__header,
+.place-picker__search > div,
+.place-picker__actions {
+  align-items: center;
+  display: flex;
+  gap: var(--travel-space-3);
+  justify-content: space-between;
+}
+
+.place-picker__header h2,
+.place-picker__manual h3 {
+  color: var(--travel-color-text);
+  margin: var(--travel-space-1) 0 0;
+}
+
+.place-picker__header button {
+  background: transparent;
+  border: 0;
+  color: var(--travel-color-text-secondary);
+  cursor: pointer;
+  font: inherit;
+  min-height: 44px;
+  padding: 0 12px;
+}
+
+.place-picker__hint,
+.place-picker__manual > p,
+.place-picker__live {
+  color: var(--travel-color-text-secondary);
+  font-size: 14px;
+  line-height: 1.55;
+  margin: 0;
+}
+
+.place-picker__search {
+  display: grid;
+  gap: var(--travel-space-2);
+}
+
+.place-picker__search label {
+  color: var(--travel-color-text);
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.place-picker__search input {
+  background: var(--travel-color-bg);
+  border: 1px solid #cfd2d9;
+  border-radius: var(--travel-radius-sm);
+  color: var(--travel-color-text);
+  flex: 1;
+  font: inherit;
+  font-size: 16px;
+  min-height: 44px;
+  min-width: 0;
+  padding: 9px 11px;
+}
+
+.place-picker__search button,
+.place-picker__candidates button {
+  background: var(--travel-color-bg);
+  border: 1px solid var(--travel-color-border);
+  border-radius: var(--travel-radius-sm);
+  color: var(--travel-color-text);
+  cursor: pointer;
+  font: inherit;
+  min-height: 44px;
+  padding: 9px 12px;
+}
+
+.place-picker__candidates {
+  display: grid;
+  gap: var(--travel-space-2);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.place-picker__candidates button {
+  display: grid;
+  gap: var(--travel-space-1);
+  text-align: left;
+  width: 100%;
+}
+
+.place-picker__candidates button:hover,
+.place-picker__candidates button.is-selected {
+  background: var(--travel-color-brand-soft);
+  border-color: var(--travel-color-brand);
+}
+
+.place-picker__candidates span,
+.place-picker__preview span,
+.place-picker__preview small {
+  color: var(--travel-color-text-secondary);
+  font-size: 13px;
+}
+
+.place-picker__preview,
+.place-picker__manual {
+  background: var(--travel-color-bg-subtle);
+  border: 1px solid var(--travel-color-border);
+  border-radius: var(--travel-radius-md);
+  display: grid;
+  gap: var(--travel-space-2);
+  padding: var(--travel-space-4);
+}
+
+.place-picker__preview strong {
+  color: var(--travel-color-brand-strong);
+}
+
+.place-picker__manual h3,
+.place-picker__manual p {
+  margin: 0;
+}
+
+.place-picker__error {
+  color: var(--itinerary-danger);
+  font-size: 14px;
+  line-height: 1.55;
+  margin: 0;
+}
+
+.place-picker__actions {
+  background: var(--travel-color-bg);
+  border-top: 1px solid var(--travel-color-border);
+  bottom: 0;
+  margin-top: auto;
+  padding-top: var(--travel-space-4);
+  position: sticky;
 }
 
 .itinerary-page :where(a, button, input, select, textarea):focus-visible {
@@ -549,6 +708,16 @@
 
   .itinerary-item {
     grid-template-columns: 1fr;
+  }
+
+  .place-picker {
+    border-left: 0;
+    border-top: 1px solid var(--travel-color-border);
+    box-shadow: 0 -10px 28px rgb(24 30 40 / 18%);
+    inset: auto 0 0;
+    max-width: none;
+    max-height: min(88dvh, 760px);
+    width: 100%;
   }
 
   .itinerary-item__actions {

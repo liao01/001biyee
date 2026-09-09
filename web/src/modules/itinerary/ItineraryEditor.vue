@@ -114,10 +114,19 @@
                 @drop="dropBefore(day, item.id)"
               >
                 <div class="itinerary-item__time">{{ item.startTime ? `${item.startTime}–${item.endTime}` : '未定时间' }}</div>
-                <div class="itinerary-item__body"><strong>{{ item.title }}</strong><span v-if="item.placeName">{{ item.placeName }}</span><p v-if="item.notes">{{ item.notes }}</p></div>
+                <div class="itinerary-item__body">
+                  <strong>{{ item.title }}</strong>
+                  <span v-if="item.placeName">{{ item.placeName }}</span>
+                  <span v-if="item.placeReference" class="itinerary-item__place-reference">
+                    {{ item.placeReference.name }}<small v-if="item.placeReference.address"> · {{ item.placeReference.address }}</small>
+                  </span>
+                  <p v-if="item.notes">{{ item.notes }}</p>
+                </div>
                 <div class="itinerary-item__actions">
                   <button type="button" :disabled="mutationsDisabled || index === 0" :aria-label="`上移 ${item.title}`" :data-item-id="item.id" data-move="up" @click="moveItem(day, index, -1)">上移</button>
                   <button type="button" :disabled="mutationsDisabled || index === day.items.length - 1" :aria-label="`下移 ${item.title}`" :data-item-id="item.id" data-move="down" @click="moveItem(day, index, 1)">下移</button>
+                  <button type="button" :disabled="mutationsDisabled" :aria-label="`设置地点 ${item.title}`" @click="openPlacePicker(item)">地点</button>
+                  <button v-if="item.placeReference" type="button" :disabled="mutationsDisabled" :aria-label="`移除地点 ${item.title}`" @click="removePlace(item)">移除地点</button>
                   <button type="button" :disabled="mutationsDisabled" :aria-label="`编辑 ${item.title}`" @click="startEdit(item)">编辑</button>
                   <button class="is-danger" type="button" :disabled="mutationsDisabled" :aria-label="`删除 ${item.title}`" @click="removeItem(item)">删除</button>
                 </div>
@@ -140,6 +149,15 @@
           </form>
         </section>
       </section>
+      <PlacePickerDrawer
+        :open="Boolean(placePickerItem)"
+        :item="placePickerItem"
+        :city="editor.state.snapshot.destinations[0]?.name || ''"
+        :map-api="mapApi"
+        :saving="placeSaving"
+        @close="closePlacePicker"
+        @confirm="confirmPlace"
+      />
     </template>
   </main>
 </template>
@@ -150,10 +168,13 @@ import { useRoute } from 'vue-router'
 import { createItineraryEditor } from './itineraryEditor.js'
 import { formatDate, formatDateRange } from './itineraryFormatters.js'
 import { itineraryHttp, itineraryHttpKey } from './itineraryHttp.js'
+import PlacePickerDrawer from '../itinerary-map/PlacePickerDrawer.vue'
+import { itineraryMapHttp, itineraryMapHttpKey } from '../itinerary-map/itineraryMapHttp.js'
 import ItineraryPlanningPanel from '../itinerary-planning/ItineraryPlanningPanel.vue'
 import './itinerary.css'
 
 const api = inject(itineraryHttpKey, itineraryHttp)
+const mapApi = inject(itineraryMapHttpKey, itineraryMapHttp)
 const route = useRoute()
 const loading = ref(true)
 const loadError = ref('')
@@ -164,6 +185,8 @@ const refreshing = ref(false)
 const projectionError = ref(false)
 const planningOpen = ref(false)
 const planningBusy = ref(false)
+const placePickerItem = ref(null)
+const placeSaving = ref(false)
 const overview = reactive({ title: '', startDate: '', endDate: '', timeZone: '', baseCurrency: '' })
 const destinations = reactive([])
 const blankItem = () => ({ open: false, itemId: null, dayId: '', title: '', placeName: '', startTime: '', endTime: '', notes: '', estimatedCost: null })
@@ -185,7 +208,7 @@ const syncForms = () => {
   destinations.splice(0, destinations.length, ...snapshot.destinations.map((item) => ({ ...item })))
 }
 const activateSnapshot = (snapshot) => {
-  editor.value = createItineraryEditor({ initialSnapshot: snapshot, api, uuid: () => crypto.randomUUID() })
+  editor.value = createItineraryEditor({ initialSnapshot: snapshot, api, mapApi, uuid: () => crypto.randomUUID() })
   syncForms()
 }
 const load = async () => {
@@ -246,6 +269,26 @@ const removeItem = async (item) => {
   if (mutationsDisabled.value) return
   if (!window.confirm(`确定删除“${item.title}”吗？此操作会保存到行程。`)) return
   await run(editor.value.deleteItem(item.id))
+}
+const openPlacePicker = (item) => {
+  if (!mutationsDisabled.value) placePickerItem.value = item
+}
+const closePlacePicker = () => {
+  if (!placeSaving.value) placePickerItem.value = null
+}
+const confirmPlace = async (place) => {
+  if (mutationsDisabled.value || !placePickerItem.value) return
+  const item = placePickerItem.value
+  placeSaving.value = true
+  const result = await run(editor.value.putPlace(item.id, place))
+  if (result) await reloadProjection()
+  placeSaving.value = false
+  placePickerItem.value = null
+}
+const removePlace = async (item) => {
+  if (mutationsDisabled.value) return
+  if (!window.confirm(`确定移除“${item.title}”的地图地点吗？安排中的地点名称会保留。`)) return
+  if (await run(editor.value.removePlace(item.id))) await reloadProjection()
 }
 const moveItem = async (day, index, offset) => {
   if (mutationsDisabled.value) return

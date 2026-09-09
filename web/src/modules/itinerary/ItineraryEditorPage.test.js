@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from 'vitest'
 import ItineraryEditor from './ItineraryEditor.vue'
 import { itineraryHttpKey } from './itineraryHttp.js'
 import { itineraryPlanningHttpKey } from '../itinerary-planning/itineraryPlanningHttp.js'
+import { itineraryMapHttpKey } from '../itinerary-map/itineraryMapHttp.js'
 
 const deferred = () => {
   let resolve
@@ -23,7 +24,7 @@ const detail = () => ({
   ] }, { id: '31', date: '2026-09-02', items: [] }],
 })
 
-const mountEditor = async (api, planningApi = null) => {
+const mountEditor = async (api, planningApi = null, mapApi = null) => {
   const router = createRouter({ history: createMemoryHistory(), routes: [
     { path: '/itineraries/:itineraryId', component: ItineraryEditor },
     { path: '/itineraries', component: { template: '<div />' } },
@@ -35,6 +36,7 @@ const mountEditor = async (api, planningApi = null) => {
     global: { plugins: [router], provide: {
       [itineraryHttpKey]: api,
       ...(planningApi ? { [itineraryPlanningHttpKey]: planningApi } : {}),
+      ...(mapApi ? { [itineraryMapHttpKey]: mapApi } : {}),
     } },
   })
   await flushPromises()
@@ -169,5 +171,38 @@ describe('行程编辑器页面', () => {
     expect(api.get).toHaveBeenCalledTimes(2)
     expect(wrapper.get('h1').text()).toContain('AI 确认后的杭州周末')
     expect(wrapper.get('form[aria-label="基本信息"] button[type="submit"]').attributes('disabled')).toBeUndefined()
+  })
+
+  it('可在地点抽屉中搜索并确认地点，保存后展示已确认地点且保留原地点名称', async () => {
+    const selected = {
+      source: 'AMAP', sourcePlaceId: 'B0FFG', name: '西湖', address: '杭州市西湖区龙井路',
+      administrativeAreaCode: '330106', longitude: 120.13026, latitude: 30.23947, coordinateSystem: 'GCJ02',
+    }
+    const refreshed = detail()
+    refreshed.version = 2
+    refreshed.days[0].items[0] = {
+      ...refreshed.days[0].items[0], placeName: '西湖边入口', placeReference: selected,
+    }
+    const api = { get: vi.fn().mockResolvedValueOnce(detail()).mockResolvedValueOnce(refreshed) }
+    const mapApi = {
+      searchPlaces: vi.fn().mockResolvedValue({ items: [selected] }),
+      putPlace: vi.fn().mockResolvedValue({ version: 2 }),
+    }
+    const wrapper = await mountEditor(api, null, mapApi)
+
+    await wrapper.get('button[aria-label="设置地点 西湖散步"]').trigger('click')
+    await wrapper.get('input[aria-label="搜索地点"]').setValue('西湖')
+    await wrapper.get('button[aria-label="搜索地点"]').trigger('click')
+    await flushPromises()
+    await wrapper.get('button[aria-label="选择地点 西湖"]').trigger('click')
+    await wrapper.get('button[aria-label="确认地点"]').trigger('click')
+    await flushPromises()
+
+    expect(mapApi.putPlace).toHaveBeenCalledWith('10', '40', {
+      commandId: expect.any(String), expectedVersion: 1, place: selected,
+    })
+    expect(wrapper.text()).toContain('西湖边入口')
+    expect(wrapper.text()).toContain('杭州市西湖区龙井路')
+    expect(wrapper.find('[role="dialog"]').exists()).toBe(false)
   })
 })

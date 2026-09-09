@@ -16,7 +16,7 @@ const replaceSnapshot = (state, snapshot) => {
   state.snapshot = clone(snapshot)
 }
 
-export function createItineraryEditor({ initialSnapshot, api, uuid }) {
+export function createItineraryEditor({ initialSnapshot, api, mapApi = api, uuid }) {
   let committed = clone(initialSnapshot)
   let queue = []
   let active = null
@@ -171,6 +171,29 @@ export function createItineraryEditor({ initialSnapshot, api, uuid }) {
         day.items = itemIds.map((id) => items.get(String(id))).filter(Boolean)
       },
       invoke: (command) => api.reorderItems(itineraryId, String(dayId), command),
+    }),
+    putPlace: (itemId, place) => enqueue({
+      payload: clone(place),
+      apply: (snapshot) => {
+        const existing = findItem(snapshot, itemId)
+        if (existing) existing.item.placeReference = clone(place)
+      },
+      invoke: (command) => mapApi.putPlace(itineraryId, String(itemId), {
+        commandId: command.commandId,
+        expectedVersion: command.expectedVersion,
+        place: command.payload,
+      }),
+    }),
+    removePlace: (itemId) => enqueue({
+      payload: {},
+      apply: (snapshot) => {
+        const existing = findItem(snapshot, itemId)
+        if (existing) existing.item.placeReference = null
+      },
+      invoke: (command) => mapApi.removePlace(itineraryId, String(itemId), {
+        commandId: command.commandId,
+        expectedVersion: command.expectedVersion,
+      }),
     }),
     transition: (toStatus) => enqueue({
       payload: { toStatus },
