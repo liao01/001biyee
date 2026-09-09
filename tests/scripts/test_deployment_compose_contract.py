@@ -15,6 +15,11 @@ CI_WORKFLOW = PROJECT_ROOT / ".github" / "workflows" / "ci.yml"
 PREPARE_SERVER = PROJECT_ROOT / "scripts" / "deploy" / "prepare_server.sh"
 VERIFY_SERVER = PROJECT_ROOT / "scripts" / "deploy" / "verify_server.sh"
 NGINX_ROUTES = PROJECT_ROOT / "deploy" / "nginx" / "lyw-locations.conf.inc"
+WEB_INDEX = PROJECT_ROOT / "web" / "index.html"
+RUNTIME_CONFIG = PROJECT_ROOT / "web" / "public" / "runtime-config.js"
+FRONTEND_DOCKERFILE = PROJECT_ROOT / "deploy" / "frontend" / "Dockerfile"
+FRONTEND_NGINX_TEMPLATE = PROJECT_ROOT / "deploy" / "frontend" / "default.conf.template"
+FRONTEND_RUNTIME_SCRIPT = PROJECT_ROOT / "deploy" / "frontend" / "40-runtime-config.sh"
 
 
 class DeploymentComposeContractTests(unittest.TestCase):
@@ -104,6 +109,27 @@ class DeploymentComposeContractTests(unittest.TestCase):
 
         self.assertIn("location ^~ /business/lyw/actuator/", routes)
         self.assertIn("return 404;", routes)
+
+    def test_frontend_map_runtime_config_keeps_all_secrets_out_of_public_assets(self):
+        index = WEB_INDEX.read_text(encoding="utf-8")
+        runtime_config = RUNTIME_CONFIG.read_text(encoding="utf-8")
+        compose = COMPOSE_PATH.read_text(encoding="utf-8")
+        dockerfile = FRONTEND_DOCKERFILE.read_text(encoding="utf-8")
+        nginx_template = FRONTEND_NGINX_TEMPLATE.read_text(encoding="utf-8")
+        runtime_script = FRONTEND_RUNTIME_SCRIPT.read_text(encoding="utf-8")
+
+        self.assertNotRegex(index, r"[?&]key=")
+        self.assertNotIn("securityJsCode", index)
+        self.assertNotRegex(index, r"\b[a-fA-F0-9]{32}\b")
+        self.assertEqual("window.__LYW_RUNTIME_CONFIG__ = {};\n", runtime_config)
+        self.assertNotIn("AMAP_JS_SECURITY_CODE", runtime_config)
+        self.assertIn("AMAP_JS_KEY", runtime_script)
+        self.assertNotIn("AMAP_JS_SECURITY_CODE", runtime_script)
+        self.assertIn("AMAP_JS_SECURITY_CODE", nginx_template)
+        self.assertIn("NGINX_ENVSUBST_FILTER", compose)
+        self.assertIn("AMAP_JS_SECURITY_CODE", compose)
+        self.assertIn("COPY --chmod=755 deploy/frontend/40-runtime-config.sh", dockerfile)
+        self.assertIn("/etc/nginx/templates/default.conf.template", dockerfile)
 
 
 if __name__ == "__main__":

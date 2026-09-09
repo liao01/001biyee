@@ -100,6 +100,9 @@ services:
     container_name: lyw-frontend
     restart: unless-stopped
     mem_limit: 64m
+    env_file: ${LYW_RUNTIME_ENV_FILE:-/opt/lyw/secrets/runtime.env}
+    environment:
+      NGINX_ENVSUBST_FILTER: ^AMAP_JS_SECURITY_CODE$$
     depends_on:
       lyw-backend: { condition: service_healthy }
     networks: [lyw_internal, dify_default]

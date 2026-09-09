@@ -205,4 +205,23 @@ describe('行程编辑器页面', () => {
     expect(wrapper.text()).toContain('杭州市西湖区龙井路')
     expect(wrapper.find('[role="dialog"]').exists()).toBe(false)
   })
+
+  it('每日地图默认折叠，展开后才读取该日路线并保留文字路线', async () => {
+    window.__LYW_RUNTIME_CONFIG__ = {}
+    const api = { get: vi.fn().mockResolvedValue(detail()) }
+    const mapApi = { dailyMap: vi.fn().mockResolvedValue({
+      itineraryId: '10', dayId: '30', mode: 'WALKING', degraded: false,
+      stops: [{ sequence: 1, itemId: '40', title: '西湖散步', placeName: '西湖', status: 'RESOLVED', placeReference: { name: '西湖', longitude: 120.13, latitude: 30.23 } }],
+      legs: [],
+    }) }
+    const wrapper = await mountEditor(api, null, mapApi)
+    expect(mapApi.dailyMap).not.toHaveBeenCalled()
+
+    await wrapper.get('button[aria-label="展开第 1 天地图"]').trigger('click')
+    await flushPromises()
+    expect(mapApi.dailyMap).toHaveBeenCalledWith('10', '30', 'WALKING')
+    expect(wrapper.get('[aria-label="每日路线文字说明"]').text()).toContain('1. 西湖散步')
+    expect(wrapper.get('button[aria-label="收起第 1 天地图"]').attributes('aria-expanded')).toBe('true')
+    delete window.__LYW_RUNTIME_CONFIG__
+  })
 })

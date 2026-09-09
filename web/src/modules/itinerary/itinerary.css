@@ -305,6 +305,13 @@
   gap: var(--travel-space-2);
 }
 
+.itinerary-day__header-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--travel-space-1);
+}
+
 .itinerary-planning-toggle {
   min-height: 44px;
 }

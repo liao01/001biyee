@@ -101,7 +101,10 @@
           <article v-for="(day, dayIndex) in editor.state.snapshot.days" :key="day.id" class="travel-panel itinerary-day">
             <header class="itinerary-day__header">
               <div><span>第 {{ dayIndex + 1 }} 天</span><h3>{{ formatDate(day.date) }}</h3></div>
-              <button class="itinerary-text-button" type="button" :disabled="mutationsDisabled" @click="startAdd(day.id)">添加安排</button>
+              <div class="itinerary-day__header-actions">
+                <button class="itinerary-text-button" type="button" :disabled="mutationsDisabled" @click="startAdd(day.id)">添加安排</button>
+                <button class="itinerary-text-button" type="button" :aria-label="`${isDayMapOpen(day.id) ? '收起' : '展开'}第 ${dayIndex + 1} 天地图`" :aria-expanded="isDayMapOpen(day.id)" @click="toggleDayMap(day.id)">{{ isDayMapOpen(day.id) ? '收起地图' : '查看地图' }}</button>
+              </div>
             </header>
             <ol v-if="day.items.length" class="itinerary-items">
               <li
@@ -133,6 +136,7 @@
               </li>
             </ol>
             <div v-else class="itinerary-day__empty">这一天还没有安排，先留给临时起意也很好。</div>
+            <DailyItineraryMap v-if="isDayMapOpen(day.id)" :open="true" :itinerary-id="String(editor.state.snapshot.id)" :day-id="String(day.id)" :map-api="mapApi" />
           </article>
 
           <form v-if="itemForm.open" class="travel-panel itinerary-item-form" aria-label="安排项" @submit.prevent="saveItem">
@@ -169,6 +173,7 @@ import { createItineraryEditor } from './itineraryEditor.js'
 import { formatDate, formatDateRange } from './itineraryFormatters.js'
 import { itineraryHttp, itineraryHttpKey } from './itineraryHttp.js'
 import PlacePickerDrawer from '../itinerary-map/PlacePickerDrawer.vue'
+import DailyItineraryMap from '../itinerary-map/DailyItineraryMap.vue'
 import { itineraryMapHttp, itineraryMapHttpKey } from '../itinerary-map/itineraryMapHttp.js'
 import ItineraryPlanningPanel from '../itinerary-planning/ItineraryPlanningPanel.vue'
 import './itinerary.css'
@@ -187,6 +192,7 @@ const planningOpen = ref(false)
 const planningBusy = ref(false)
 const placePickerItem = ref(null)
 const placeSaving = ref(false)
+const dayMapOpen = reactive({})
 const overview = reactive({ title: '', startDate: '', endDate: '', timeZone: '', baseCurrency: '' })
 const destinations = reactive([])
 const blankItem = () => ({ open: false, itemId: null, dayId: '', title: '', placeName: '', startTime: '', endTime: '', notes: '', estimatedCost: null })
@@ -289,6 +295,11 @@ const removePlace = async (item) => {
   if (mutationsDisabled.value) return
   if (!window.confirm(`确定移除“${item.title}”的地图地点吗？安排中的地点名称会保留。`)) return
   if (await run(editor.value.removePlace(item.id))) await reloadProjection()
+}
+const isDayMapOpen = (dayId) => Boolean(dayMapOpen[String(dayId)])
+const toggleDayMap = (dayId) => {
+  const key = String(dayId)
+  dayMapOpen[key] = !dayMapOpen[key]
 }
 const moveItem = async (day, index, offset) => {
   if (mutationsDisabled.value) return
