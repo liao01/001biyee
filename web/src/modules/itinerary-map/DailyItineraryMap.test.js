@@ -18,9 +18,10 @@ const view = (mode = 'WALKING') => ({
 
 const createAmap = () => {
   const map = { setFitView: vi.fn(), setZoomAndCenter: vi.fn(), destroy: vi.fn() }
-  const Marker = vi.fn(function Marker() { this.setMap = vi.fn() })
-  const Polyline = vi.fn(function Polyline(options) { this.options = options; this.setMap = vi.fn() })
-  return { amap: { Map: vi.fn(() => map), Marker, Polyline }, map, Marker, Polyline }
+  const Marker = vi.fn(class Marker { constructor() { this.setMap = vi.fn() } })
+  const Polyline = vi.fn(class Polyline { constructor(options) { this.options = options; this.setMap = vi.fn() } })
+  const Map = vi.fn(class Map { constructor() { return map } })
+  return { amap: { Map, Marker, Polyline }, map, Marker, Polyline }
 }
 
 describe('每日行程地图', () => {
