@@ -9,6 +9,7 @@
 - 写入事务、幂等和版本判断以 [`DefaultItineraryApplicationService.java`](../../business/src/main/java/com/jiawa/lyw/itinerary/application/DefaultItineraryApplicationService.java) 为准；模块外不得直接调用内部 Mapper。
 - 持久化端口由 [`ItineraryRepository.java`](../../business/src/main/java/com/jiawa/lyw/itinerary/application/ItineraryRepository.java) 定义，MyBatis 映射只负责参数绑定和数据装配。
 - HTTP 边界以 [`ItineraryController.java`](../../business/src/main/java/com/jiawa/lyw/itinerary/api/ItineraryController.java) 为准；可执行行为契约以 [`ItineraryHttpIT.java`](../../business/src/test/java/com/jiawa/lyw/itinerary/api/ItineraryHttpIT.java) 为准。
+- 正式地点引用和可失效路线参考的唯一扩展口径见[每日地图数据链路](itinerary-map.md)；本页不重复维护该模块的字段、缓存或供应商边界。
 
 ## 六张正式 MySQL 事实源表
 

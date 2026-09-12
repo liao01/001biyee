@@ -53,6 +53,7 @@ import { RightOutlined } from '@ant-design/icons-vue';
 import LocationCard from "../../components/card/locationCard.vue";
 import { BASE_URL } from "../../utils/baseUrl";
 import { loadAmap } from '../../modules/itinerary-map/amapLoader.js'
+import { createCommunityMarkerContent } from './communityMarkerContent.js'
 
 const simpleImage = Empty.PRESENTED_IMAGE_SIMPLE;
 let map = null;
@@ -152,13 +153,7 @@ function renderMarkers() {
   locations.value.forEach(loc => {
     if (!loc.longitude || !loc.latitude) return;
 
-    // 自定义 Marker 内容 (HTML)
-    const markerContent = `
-      <div class="custom-marker">
-        <div class="marker-pin"></div>
-        <div class="marker-label">${loc.name}</div>
-      </div>
-    `;
+    const markerContent = createCommunityMarkerContent(loc.name)
 
     const marker = new amap.Marker({
       position: [loc.longitude, loc.latitude],

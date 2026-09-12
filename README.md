@@ -77,11 +77,15 @@ npm ci
 npm run dev
 ```
 
+### 本地地图配置
+
+地图的后端服务密钥、浏览器 JS key 和浏览器安全码是三种不同配置：后端只读取 `AMAP_WEB_SERVICE_KEY`；生产前端容器在启动时从 `AMAP_JS_KEY` 生成公开运行时配置；`AMAP_JS_SECURITY_CODE` 只留在 Nginx 同源代理。请从 [.env.example](.env.example) 的 `change-me` 占位符开始，在被 Git 忽略的本机环境文件或部署平台 Secrets 中提供真实值，绝不把真实值写进 `web/index.html`、源码、构建物或提交记录。完整数据边界与降级行为见[每日地图数据链路](docs/data/itinerary-map.md)。
+
 ## 验证与运行手册
 
 从仓库根运行 `python -m unittest discover -s tests -t . -v`。真实 MySQL 迁移测试会创建并精确清理带批次标识的隔离库；不要向运行器提供生产凭据。
 
-在 `business` 目录运行 `./mvnw test`；在 `web` 目录运行 `npm test` 和 `npm run build`。Docker 可用时，真实邮箱 HTTP/Vue 联调从仓库根运行 `python -m scripts.run_backend_integration --containers`，自动管理隔离测试库。预置 MySQL 模式、前置条件和清理策略见[身份测试说明](docs/data/identity-http.md#本地与-ci-验证)。
+在 `business` 目录运行 `./mvnw test`；在 `web` 目录运行 `npm test` 和 `npm run build`。Docker 可用时，从仓库根运行 `python -m scripts.run_backend_integration --containers`，会运行身份、行程和每日地图的真实 HTTP/Redis 集成测试，并自动管理隔离容器；该模式不读取宿主 MySQL 或 Redis 连接配置。预置 MySQL 模式、前置条件和清理策略见[身份测试说明](docs/data/identity-http.md#本地与-ci-验证)。
 
 - [资源受限部署设计](docs/superpowers/specs/2026-08-30-tencent-lighthouse-constrained-deployment-design.md)：实际拓扑、构建、Nginx 入口和回滚边界。
 - [备份与恢复](docs/runbooks/backup-and-restore.md)：加密冷备、隔离恢复、数据校验与演练记录。

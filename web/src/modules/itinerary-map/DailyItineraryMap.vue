@@ -93,7 +93,8 @@ const drawMap = async (value, sequence) => {
         return polyline
       })
     if (markers.length === 1) {
-      map.setZoomAndCenter?.(14, markers[0].options.position)
+      const reference = stops[0].placeReference
+      map.setZoomAndCenter?.(14, [Number(reference.longitude), Number(reference.latitude)])
     } else if (markers.length > 1) {
       map.setFitView?.(markers)
     }

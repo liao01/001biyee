@@ -18,7 +18,7 @@ const view = (mode = 'WALKING') => ({
 
 const createAmap = () => {
   const map = { setFitView: vi.fn(), setZoomAndCenter: vi.fn(), destroy: vi.fn() }
-  const Marker = vi.fn(function Marker(options) { this.options = options; this.setMap = vi.fn() })
+  const Marker = vi.fn(function Marker() { this.setMap = vi.fn() })
   const Polyline = vi.fn(function Polyline(options) { this.options = options; this.setMap = vi.fn() })
   return { amap: { Map: vi.fn(() => map), Marker, Polyline }, map, Marker, Polyline }
 }

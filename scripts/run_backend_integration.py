@@ -9,6 +9,25 @@ from urllib.parse import quote
 from tests.scripts.mysql_migration_harness import PROJECT_ROOT, load_local_mysql_config
 
 
+CONTAINER_INTEGRATION_TESTS = (
+    "com.jiawa.lyw.itinerary.api.ItineraryHttpIT",
+    "com.jiawa.lyw.itinerarymap.api.ItineraryMapHttpIT",
+    "com.jiawa.lyw.itinerarymap.infrastructure.RedisRouteReferenceCacheIT",
+)
+
+
+def container_test_sources_exist() -> bool:
+    source_root = PROJECT_ROOT / "business" / "src" / "test" / "java"
+    missing = [
+        name for name in CONTAINER_INTEGRATION_TESTS
+        if not (source_root / (name.replace(".", "/") + ".java")).is_file()
+    ]
+    if missing:
+        print("Missing required container integration test source: " + ", ".join(missing), file=sys.stderr)
+        return False
+    return True
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Run isolated identity HTTP integration tests")
     parser.add_argument(
@@ -18,7 +37,11 @@ def main() -> int:
     args = parser.parse_args()
     env = os.environ.copy()
     if args.containers:
+        if not container_test_sources_exist():
+            return 2
         env.pop("LYW_MIGRATION_TEST_DSN", None)
+        env.pop("SPRING_DATASOURCE_URL", None)
+        env.pop("SPRING_DATA_REDIS_URL", None)
         env["LYW_INTEGRATION_CONTAINERS"] = "true"
     else:
         env.pop("LYW_INTEGRATION_CONTAINERS", None)

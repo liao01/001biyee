@@ -113,6 +113,11 @@ KNOWN_NON_SECRET_FIXTURES = {
         "TEST-dify-application-key",
     ),
     (
+        "business/src/test/java/com/jiawa/lyw/itinerarymap/infrastructure/amap/"
+        "AmapMapPropertiesTests.java",
+        "user" + "@restapi.amap.com",
+    ),
+    (
         "docs/superpowers/plans/2026-08-29-intelligent-travel-platform-phase-0-foundation.md",
         "Secret123",
     ),
@@ -121,6 +126,11 @@ KNOWN_NON_SECRET_FIXTURES = {
 NON_SENSITIVE_REFERENCE_SEED_PATTERN = re.compile(
     r"(?i)^\s*INSERT\s+INTO\s+`?post_category`?\b"
 )
+DAILY_MAP_SCHEMA_EXPECTATION_INSERT_PATTERN = re.compile(
+    r"(?i)^\s*INSERT\s+INTO\s+`?itinerary_daily_map_expected_"
+    r"(?:columns|indexes|foreign_keys|checks)`?\b"
+)
+DAILY_MAP_MIGRATION_PATH = "sql/migrations/20260905_itinerary_daily_map.sql"
 
 EXCLUDED_PARTS = {
     ".git",
@@ -191,6 +201,13 @@ def _is_pinned_github_action(path: Path | PurePosixPath, line: str) -> bool:
     )
 
 
+def _is_daily_map_schema_expectation_insert(path: Path | PurePosixPath, line: str) -> bool:
+    return (
+        path.as_posix() == DAILY_MAP_MIGRATION_PATH
+        and DAILY_MAP_SCHEMA_EXPECTATION_INSERT_PATTERN.search(line) is not None
+    )
+
+
 def scan_text(
     path: Path | PurePosixPath,
     text: str,
@@ -241,6 +258,7 @@ def scan_text(
                 email_matches = rule.pattern.findall(line)
                 if email_matches and all(
                     _is_reserved_example_email_domain(match.rsplit("@", 1)[-1])
+                    or _is_known_non_secret_fixture(path, match)
                     for match in email_matches
                 ):
                     continue
@@ -249,6 +267,11 @@ def scan_text(
             if (
                 rule.rule_id == "sql-data-row"
                 and NON_SENSITIVE_REFERENCE_SEED_PATTERN.search(line)
+            ):
+                continue
+            if (
+                rule.rule_id == "sql-data-row"
+                and _is_daily_map_schema_expectation_insert(path, line)
             ):
                 continue
             if (

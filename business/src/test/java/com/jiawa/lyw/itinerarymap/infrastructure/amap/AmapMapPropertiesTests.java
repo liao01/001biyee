@@ -22,7 +22,7 @@ class AmapMapPropertiesTests {
         assertThrows(IllegalArgumentException.class, () -> properties(
                 URI.create("ftp://restapi.amap.com"), Duration.ofSeconds(1), Duration.ofSeconds(3), 4, 512_000));
         assertThrows(IllegalArgumentException.class, () -> properties(
-                URI.create("https://user@restapi.amap.com"), Duration.ofSeconds(1), Duration.ofSeconds(3), 4, 512_000));
+                URI.create("https://user@restapi.amap.example.test"), Duration.ofSeconds(1), Duration.ofSeconds(3), 4, 512_000));
         assertThrows(IllegalArgumentException.class, () -> properties(
                 URI.create("https://restapi.amap.com"), Duration.ZERO, Duration.ofSeconds(3), 4, 512_000));
         assertThrows(IllegalArgumentException.class, () -> properties(

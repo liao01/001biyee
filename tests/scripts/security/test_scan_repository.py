@@ -114,6 +114,26 @@ class ScanTextTests(unittest.TestCase):
             {finding.rule_id for finding in member_findings},
         )
 
+    def test_allows_only_daily_map_migration_schema_expectations(self):
+        migration_path = Path("sql/migrations/20260905_itinerary_daily_map.sql")
+        schema_expectation_findings = scan_text(
+            migration_path,
+            "INSERT INTO itinerary_daily_map_expected_columns VALUES (1, 'item_id');",
+        )
+        business_row_findings = scan_text(
+            migration_path,
+            "INSERT INTO itinerary_item_place (item_id, name) VALUES (1, 'not-schema-data');",
+        )
+
+        self.assertNotIn(
+            "sql-data-row",
+            {finding.rule_id for finding in schema_expectation_findings},
+        )
+        self.assertIn(
+            "sql-data-row",
+            {finding.rule_id for finding in business_row_findings},
+        )
+
     def test_allows_empty_password_form_field(self):
         findings = scan_text(
             Path("web/src/view/login.vue"),
@@ -234,6 +254,26 @@ class ScanTextTests(unittest.TestCase):
                 "email-address",
                 {finding.rule_id for finding in findings},
             )
+
+    def test_allows_only_the_historical_amap_url_userinfo_fixture(self):
+        fixture_path = Path(
+            "business/src/test/java/com/jiawa/lyw/itinerarymap/infrastructure/amap/"
+            "AmapMapPropertiesTests.java"
+        )
+        fixture_value = "user" + "@restapi.amap.com"
+
+        self.assertNotIn(
+            "email-address",
+            {finding.rule_id for finding in scan_text(fixture_path, fixture_value)},
+        )
+        self.assertIn(
+            "email-address",
+            {finding.rule_id for finding in scan_text(Path("README.md"), fixture_value)},
+        )
+        self.assertIn(
+            "email-address",
+            {finding.rule_id for finding in scan_text(fixture_path, "other" + "@restapi.amap.com")},
+        )
 
     def test_allows_reserved_test_domain_email_addresses(self):
         findings = scan_text(

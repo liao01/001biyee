@@ -63,6 +63,51 @@ class ItineraryCiContractTests(unittest.TestCase):
             with self.subTest(phrase=phrase):
                 self.assertIn(phrase, adr)
 
+    def test_daily_map_has_a_single_domain_data_and_configuration_contract(self):
+        context = (ROOT / "CONTEXT.md").read_text(encoding="utf-8")
+        itinerary_document = (ROOT / "docs/data/itinerary.md").read_text(encoding="utf-8")
+        map_document = (ROOT / "docs/data/itinerary-map.md").read_text(encoding="utf-8")
+        web_index = (ROOT / "web/index.html").read_text(encoding="utf-8")
+        integration_runner = (ROOT / "scripts/run_backend_integration.py").read_text(encoding="utf-8")
+        migration_inventory = itinerary_document
+        production_config = (
+            ROOT / "business/src/main/resources/application.properties.example"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn("正式地点引用", context)
+        self.assertIn("路线参考", context)
+        self.assertNotRegex(web_index, r"[?&]key=")
+        self.assertIn("ItineraryMapHttpIT", integration_runner)
+        self.assertIn("RedisRouteReferenceCacheIT", integration_runner)
+        self.assertIn('env.pop("SPRING_DATASOURCE_URL", None)', integration_runner)
+        self.assertIn('env.pop("SPRING_DATA_REDIS_URL", None)', integration_runner)
+        self.assertIn("20260905_itinerary_daily_map.sql", migration_inventory)
+        self.assertIn("AMAP_WEB_SERVICE_KEY", production_config)
+        self.assertNotIn("amap.key", production_config)
+        self.assertNotIn("AMAP_JS_", production_config)
+
+        for phrase in (
+            "itinerary_item_place",
+            "PUT /web/itineraries/{itineraryId}/items/{itemId}/place",
+            "GET /web/itineraries/{itineraryId}/days/{dayId}/map",
+            "itinerary-map:route:v1",
+            "TTL",
+            "失败降级",
+            "社区地图",
+        ):
+            with self.subTest(phrase=phrase):
+                self.assertIn(phrase, map_document)
+
+        source_root = ROOT / "business/src/main/java"
+        for source in source_root.rglob("*.java"):
+            if "itinerarymap/infrastructure/amap" in source.as_posix():
+                continue
+            with self.subTest(source=source):
+                self.assertNotIn(
+                    "itinerarymap.infrastructure.amap.dto",
+                    source.read_text(encoding="utf-8"),
+                )
+
     def test_ci_discovers_migrations_java_it_and_all_web_checks(self):
         workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
         runner = (ROOT / "scripts/run_backend_integration.py").read_text(encoding="utf-8")
