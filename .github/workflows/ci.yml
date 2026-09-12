@@ -132,3 +132,79 @@ jobs:
 
       - name: Audit dependencies
         run: npm audit --audit-level=low --registry=https://registry.npmjs.org
+
+  migration-tests:
+    name: MySQL migrations and application integration
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      mysql:
+        image: mysql:8.4.6
+        env:
+          MYSQL_DATABASE: lyw
+          # This disposable service must allow creating/dropping isolated test databases.
+          MYSQL_ROOT_PASSWORD: change-me
+          MYSQL_ROOT_HOST: "%"
+        ports:
+          - 127.0.0.1:3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -pchange-me --silent"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=12
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install MySQL client
+        run: sudo apt-get update && sudo apt-get install -y default-mysql-client
+
+      - name: Set up Java 17
+        uses: actions/setup-java@dd06d9cba3e5552c54d9f8ea23572deb30010f7c # v6.0.0
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+
+      - name: Run migration and Python regression tests
+        env:
+          LYW_MIGRATION_TEST_DSN: mysql://root:change-me@127.0.0.1:3306/lyw
+        run: python3 -m unittest discover -s tests -t . -v
+
+      - name: Set up Node.js for identity runtime integration
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install locked web test dependencies
+        working-directory: web
+        run: npm ci --registry=https://registry.npmjs.org
+
+      - name: Run isolated identity and itinerary HTTP integration tests
+        env:
+          # 故意给出不可用的宿主配置，测试必须只连接自己创建的数据组件。
+          SPRING_DATA_REDIS_URL: redis://127.0.0.1:1
+          SPRING_DATASOURCE_URL: jdbc:mysql://127.0.0.1:1/lyw_test_must_not_connect
+          # SQL 必须按文件编码读取，不能依赖 runner 的默认字符集。
+          JAVA_TOOL_OPTIONS: -Dfile.encoding=GBK
+        run: python3 -m scripts.run_backend_integration --containers
+
+  compose-contract:
+    name: Compose contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Validate single-server topology
+        env:
+          LYW_RUNTIME_ENV_FILE: ${{ runner.temp }}/lyw-runtime.env
+        run: |
+          touch "$LYW_RUNTIME_ENV_FILE"
+          docker compose -f deploy/compose.yaml config --quiet
+          python3 -m unittest tests.scripts.test_deployment_compose_contract -v

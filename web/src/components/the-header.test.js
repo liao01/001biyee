@@ -17,8 +17,10 @@ vi.mock('../store/index.js', () => ({
 vi.mock('../store/search.js', () => ({
   useSearchStore: () => ({ setKeyword: vi.fn() }),
 }))
-vi.mock('../utils/baseUrl', () => ({ BASE_URL: 'http://example.invalid' }))
-vi.mock('axios', () => ({ default: { get: vi.fn(() => Promise.resolve({ data: {} })) } }))
+vi.mock('axios', async (importOriginal) => {
+  const actual = await importOriginal()
+  return { ...actual, default: { ...actual.default, get: vi.fn(() => Promise.resolve({ data: {} })) } }
+})
 vi.mock('./the-login.vue', () => ({
   default: {
     template: '<div />',

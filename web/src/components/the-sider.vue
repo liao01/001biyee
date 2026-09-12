@@ -4,7 +4,7 @@
       <button
         v-for="item in visibleItems"
         :key="item.path"
-        :class="['travel-sider__item', { 'is-active': selectedKeys.includes(item.path) }]"
+        :class="['travel-sider__item', { 'is-active': isSelected(item.path) }]"
         type="button"
         @click="handleMenuClick(item.path, item.needLogin)"
       >
@@ -23,7 +23,7 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
 import {
-  HomeOutlined, PlusSquareOutlined, RobotOutlined,
+  HomeOutlined, PlusSquareOutlined, RobotOutlined, ScheduleOutlined,
   CompassOutlined, UserOutlined, HistoryOutlined, StarOutlined, BarChartOutlined
 } from '@ant-design/icons-vue'
 import TheLogin from "./the-login.vue"
@@ -47,6 +47,7 @@ const navigationItems = [
   { path: '/Map', label: '地图', icon: CompassOutlined, needLogin: true, mobile: true },
   { path: '/AI2', label: '旅游助手', icon: RobotOutlined, needLogin: true, mobile: true },
   { path: '/UserProfile', label: '我的', icon: UserOutlined, needLogin: true, mobile: true },
+  { path: '/itineraries', label: '我的行程', icon: ScheduleOutlined, needLogin: true },
   { path: '/Userfollow', label: '粉丝数据', icon: BarChartOutlined, needLogin: true },
   { path: '/PostHistory', label: '发布历史', icon: HistoryOutlined, needLogin: true },
   { path: '/CardlistView', label: '浏览历史', icon: HistoryOutlined, needLogin: true },
@@ -58,12 +59,15 @@ const visibleItems = computed(() => props.mobile
   : navigationItems)
 
 const handleMenuClick = (path, needLogin = false) => {
-  if (needLogin && !store.state.member.token) {
+  if (needLogin && !store.state.member.id) {
     if (window.showLogin) window.showLogin()
     return
   }
   router.push(path)
 }
+
+const isSelected = (path) => selectedKeys.value.includes(path)
+  || (path === '/itineraries' && selectedKeys.value.some((selected) => selected.startsWith('/itineraries/')))
 
 watch(() => router.currentRoute.value.path, (newPath) => {
   selectedKeys.value = [newPath]

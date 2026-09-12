@@ -1,0 +1,31 @@
+server {
+    listen 80;
+    server_name _;
+    root /usr/share/nginx/html;
+
+    location = /healthz {
+        access_log off;
+        return 200 "ok\n";
+    }
+
+    location ~ ^/_AMapService/(.*)$ {
+        set $amap_query "jscode=${AMAP_JS_SECURITY_CODE}";
+        if ($args != "") {
+            set $amap_query "$args&jscode=${AMAP_JS_SECURITY_CODE}";
+        }
+        rewrite ^/_AMapService/(.*)$ /$1?$amap_query break;
+        proxy_pass https://restapi.amap.com;
+        proxy_set_header Host restapi.amap.com;
+        proxy_ssl_server_name on;
+    }
+
+    location = /travel { return 301 /travel/; }
+    location /travel/ {
+        try_files $uri $uri/ /travel/index.html;
+    }
+
+    location = /travel-admin { return 301 /travel-admin/; }
+    location /travel-admin/ {
+        try_files $uri $uri/ /travel-admin/index.html;
+    }
+}

@@ -9,7 +9,7 @@ SET @location_column_exists = (
       AND column_name = 'location_id'
 );
 SET @location_column_sql = IF(
-    @location_column_exists = 0,
+    @apply_post_location_compatibility_migration = 1 AND @location_column_exists = 0,
     'ALTER TABLE post ADD COLUMN location_id BIGINT NULL COMMENT ''关联地点ID'' AFTER title',
     'SELECT 1'
 );
@@ -25,7 +25,7 @@ SET @location_index_exists = (
       AND index_name = 'idx_post_location_id'
 );
 SET @location_index_sql = IF(
-    @location_index_exists = 0,
+    @apply_post_location_compatibility_migration = 1 AND @location_index_exists = 0,
     'ALTER TABLE post ADD INDEX idx_post_location_id (location_id)',
     'SELECT 1'
 );
@@ -42,7 +42,7 @@ SET @location_fk_exists = (
       AND constraint_type = 'FOREIGN KEY'
 );
 SET @location_fk_sql = IF(
-    @location_fk_exists = 0,
+    @apply_post_location_compatibility_migration = 1 AND @location_fk_exists = 0,
     'ALTER TABLE post ADD CONSTRAINT fk_post_location_record FOREIGN KEY (location_id) REFERENCES location_record (id) ON DELETE SET NULL ON UPDATE RESTRICT',
     'SELECT 1'
 );

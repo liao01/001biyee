@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.jiawa.lyw.identity.infrastructure.IdentityMapper">
+  <select id="findActiveProfile" resultType="com.jiawa.lyw.identity.domain.MemberProfile">
+    SELECT id, name FROM member
+    WHERE id = #{memberId} AND account_status = 'ACTIVE' AND email_verified_at IS NOT NULL
+  </select>
+  <insert id="insertPendingAccountIfAbsent">
+    INSERT INTO member (id, email, password_hash, password_algorithm, account_status, name, created_at, updated_at)
+    VALUES (#{id}, #{email}, #{hash}, 'BCRYPT', 'PENDING_VERIFICATION', '旅行者', #{now}, #{now})
+    ON DUPLICATE KEY UPDATE id = member.id
+  </insert>
+  <update id="activateAccount">
+    UPDATE member SET account_status = 'ACTIVE', email_verified_at = #{now}, updated_at = #{now}
+    WHERE id = #{memberId} AND account_status = 'PENDING_VERIFICATION'
+  </update>
+  <update id="invalidateOneTimeTokens">
+    UPDATE identity_one_time_token SET used_at = #{now}
+    WHERE member_id = #{memberId} AND purpose = #{purpose} AND used_at IS NULL
+  </update>
+  <insert id="insertOneTimeToken">
+    INSERT INTO identity_one_time_token (id, token_hash, purpose, member_id, email, expires_at, created_at)
+    VALUES (#{id}, #{tokenHash}, #{purpose}, #{memberId}, #{email}, #{expiresAt}, #{now})
+  </insert>
+  <select id="findOneTimeTokenMemberId" resultType="java.lang.Long">
+    SELECT member_id FROM identity_one_time_token WHERE token_hash = #{tokenHash} AND purpose = #{purpose}
+  </select>
+  <update id="consumeOneTimeToken">
+    UPDATE identity_one_time_token SET used_at = #{now}
+    WHERE token_hash = #{tokenHash} AND purpose = #{purpose} AND email = #{email}
+      AND used_at IS NULL AND expires_at &gt; #{now}
+  </update>
+  <select id="findAccountByEmailForUpdate" resultType="com.jiawa.lyw.identity.domain.MemberAccount">
+    SELECT id, email, email_verified_at, password_hash, password_algorithm, name, account_status
+    FROM member WHERE email = #{email} FOR UPDATE
+  </select>
+  <select id="findAccountByIdForUpdate" resultType="com.jiawa.lyw.identity.domain.MemberAccount">
+    SELECT id, email, email_verified_at, password_hash, password_algorithm, name, account_status
+    FROM member WHERE id = #{memberId} FOR UPDATE
+  </select>
+  <select id="findRefreshMemberId" resultType="java.lang.Long">
+    SELECT member_id FROM identity_refresh_session WHERE token_hash = #{tokenHash}
+  </select>
+  <update id="consumeRefreshSession">
+    UPDATE identity_refresh_session SET revoked_at = #{now}
+    WHERE token_hash = #{tokenHash} AND revoked_at IS NULL AND expires_at &gt; #{now}
+  </update>
+  <update id="revokeRefreshSession">
+    UPDATE identity_refresh_session SET revoked_at = #{now}
+    WHERE token_hash = #{tokenHash} AND revoked_at IS NULL
+  </update>
+  <update id="revokeMemberSessions">
+    UPDATE identity_refresh_session SET revoked_at = #{now}
+    WHERE member_id = #{memberId} AND revoked_at IS NULL
+  </update>
+  <update id="upgradePassword">
+    UPDATE member SET password_hash = #{hash}, password_algorithm = 'BCRYPT', password = NULL, updated_at = #{now}
+    WHERE id = #{memberId}
+  </update>
+  <insert id="insertRefreshSession">
+    INSERT INTO identity_refresh_session (id, token_hash, member_id, expires_at, created_at)
+    VALUES (#{id}, #{tokenHash}, #{memberId}, #{expiresAt}, #{now})
+  </insert>
+</mapper>

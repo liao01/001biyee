@@ -1,10 +1,8 @@
 package com.jiawa.lyw.service;
 
 import cn.hutool.core.util.IdUtil;
-import com.alibaba.fastjson.JSONObject;
 import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
-import com.jiawa.lyw.Util.AmapUtils;
 import com.jiawa.lyw.config.StorageProperties;
 import com.jiawa.lyw.domain.LocationImage;
 import com.jiawa.lyw.domain.LocationImageExample;
@@ -15,6 +13,7 @@ import com.jiawa.lyw.exception.BusinessExceptionEnum;
 import com.jiawa.lyw.mapper.LocationImageMapper;
 import com.jiawa.lyw.mapper.LocationRecordMapper;
 import com.jiawa.lyw.mapper.LocationRecordMapperCust;
+import com.jiawa.lyw.location.infrastructure.amap.AmapCommunityGeocodingGateway;
 import com.jiawa.lyw.req.AddressReq;
 import com.jiawa.lyw.req.LocationDelReq;
 import com.jiawa.lyw.req.PageReq;
@@ -36,7 +35,7 @@ import java.util.*;
 public class MapService {
 
     @Autowired
-    private AmapUtils amapUtils;
+    private AmapCommunityGeocodingGateway amapGeocoding;
 
     @Autowired
     private LocationRecordMapper locationRecordMapper;
@@ -65,7 +64,7 @@ public class MapService {
             throw new BusinessException(BusinessExceptionEnum.LOcCATION_HAVE_ERROR);
         }
 
-        JSONObject location = amapUtils.getLocationByAddress(req.getFormattedAddress());
+        AmapCommunityGeocodingGateway.GeocodedAddress location = amapGeocoding.geocode(req.getFormattedAddress());
         if (location == null) {
             throw new BusinessException(BusinessExceptionEnum.Map_NOT_ERROR);
         }
@@ -89,14 +88,14 @@ public class MapService {
     /**
      * 封装高德返回数据到实体对象
      */
-    private LocationRecord buildLocationRecord(JSONObject location) {
+    private LocationRecord buildLocationRecord(AmapCommunityGeocodingGateway.GeocodedAddress location) {
         LocationRecord record = new LocationRecord();
-        record.setFormattedAddress(location.getString("formatted_address"));
-        record.setLongitude(Double.parseDouble(location.getString("longitude")));
-        record.setLatitude(Double.parseDouble(location.getString("latitude")));
-        record.setProvince(location.getString("province"));
-        record.setCity(location.getString("city"));
-        record.setDistrict(location.getString("district"));
+        record.setFormattedAddress(location.formattedAddress());
+        record.setLongitude(location.longitude());
+        record.setLatitude(location.latitude());
+        record.setProvince(location.province());
+        record.setCity(location.city());
+        record.setDistrict(location.district());
         return record;
     }
 

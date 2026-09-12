@@ -10,9 +10,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
 
-@RestController
+/** 历史短信接口兼容审计代码：不注册 Spring Controller，禁止重新接入运行流程。 */
+@Deprecated
 @RequestMapping("/web/sms-code")
 public class SmsCodeController {
     @Autowired

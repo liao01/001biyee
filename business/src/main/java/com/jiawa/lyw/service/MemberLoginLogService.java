@@ -28,7 +28,7 @@ public class MemberLoginLogService {
         memberLoginLog.setId(IdUtil.getSnowflakeNextId());
         memberLoginLog.setMemberId(memberLoginResp.getId());
         memberLoginLog.setLoginTime(now);
-        memberLoginLog.setToken(memberLoginResp.getToken());
+        // 历史统计兼容层不再保存访问令牌；正式会话事实由 identity 管理。
         memberLoginLog.setHeartCount(0);
         memberLoginLog.setLastHeartTime(now);
 
@@ -37,10 +37,9 @@ public class MemberLoginLogService {
 
     public void upadteHeartInfo(){
         MemberLoginResp member = LoginMemberContext.getMember();
-        String token = member.getToken();
         log.info("更新会员心跳，会员id:{}", member.getId());
         MemberLoginLogExample example = new MemberLoginLogExample();
-        example.createCriteria().andTokenEqualTo(token);
+        example.createCriteria().andMemberIdEqualTo(member.getId());
         example.setOrderByClause("id desc");
 
         List<MemberLoginLog> memberLoginLogs = memberLoginLogMapper.selectByExample(example);
@@ -55,7 +54,8 @@ public class MemberLoginLogService {
 
         memberLoginLogDB.setHeartCount(memberLoginLogDB.getHeartCount() + 1);
         memberLoginLogDB.setLastHeartTime(new Date());
+        memberLoginLogDB.setToken(null);
 
-        memberLoginLogMapper.updateByPrimaryKeySelective(memberLoginLogDB);
+        memberLoginLogMapper.updateByPrimaryKey(memberLoginLogDB);
     }
 }

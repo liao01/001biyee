@@ -1,11 +1,13 @@
 import unittest
 from pathlib import Path
 
+from tests.scripts.migration_specs import POST_CATEGORIES_MIGRATION
 from tests.scripts.mysql_migration_harness import run_sql_script, temporary_schema
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 MIGRATION_PATH = PROJECT_ROOT / "sql" / "migrations" / "20260829_post_categories.sql"
+MIGRATION = POST_CATEGORIES_MIGRATION
 
 
 LEGACY_SCHEMA = """
@@ -47,15 +49,15 @@ INSERT INTO post_tag (id, post_id, tag_id) VALUES
 
 class PostCategoryMigrationTests(unittest.TestCase):
     def test_migration_is_idempotent_and_preserves_ambiguous_history(self):
-        with temporary_schema() as (mysql, schema):
+        with temporary_schema(MIGRATION) as (mysql, schema):
             mysql.execute(LEGACY_SCHEMA, database=schema)
 
-            dry_run = run_sql_script(mysql, schema, MIGRATION_PATH, apply=False)
+            dry_run = run_sql_script(mysql, schema, MIGRATION_PATH, MIGRATION, apply=False)
             self.assertIn("conflict_count\t1", dry_run)
             self.assertIn("unmapped_count\t1", dry_run)
 
-            run_sql_script(mysql, schema, MIGRATION_PATH, apply=True)
-            second_run = run_sql_script(mysql, schema, MIGRATION_PATH, apply=True)
+            run_sql_script(mysql, schema, MIGRATION_PATH, MIGRATION, apply=True)
+            second_run = run_sql_script(mysql, schema, MIGRATION_PATH, MIGRATION, apply=True)
 
             codes = set(mysql.execute("SELECT code FROM post_category;", database=schema).splitlines())
             self.assertEqual({"CITY_WALK", "NATURAL_SCENERY", "FOOD"}, codes)

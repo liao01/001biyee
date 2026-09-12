@@ -2,6 +2,10 @@ import argparse
 import re
 from pathlib import Path
 
+from tests.scripts.migration_specs import (
+    POST_CATEGORIES_MIGRATION,
+    POST_LOCATION_COMPATIBILITY_MIGRATION,
+)
 from tests.scripts.mysql_migration_harness import (
     MySqlMigrationHarness,
     load_local_mysql_config,
@@ -25,8 +29,20 @@ def main() -> None:
         raise RuntimeError("本地数据库名包含不安全字符")
 
     with MySqlMigrationHarness(config) as mysql:
-        location_report = run_sql_script(mysql, database, LOCATION_MIGRATION_PATH, apply=True)
-        report = run_sql_script(mysql, database, MIGRATION_PATH, apply=args.apply)
+        location_report = run_sql_script(
+            mysql,
+            database,
+            LOCATION_MIGRATION_PATH,
+            POST_LOCATION_COMPATIBILITY_MIGRATION,
+            apply=args.apply,
+        )
+        report = run_sql_script(
+            mysql,
+            database,
+            MIGRATION_PATH,
+            POST_CATEGORIES_MIGRATION,
+            apply=args.apply,
+        )
         mode = "APPLY" if args.apply else "DRY_RUN"
         print(f"mode\t{mode}")
         print(f"database\t{database}")

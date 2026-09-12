@@ -24,20 +24,21 @@
     </div>
 
     <nav class="travel-header__actions" aria-label="快捷操作">
+      <button v-if="logoutError" type="button" :disabled="loggingOut" @click="logout" title="服务器会话尚未撤销">重试退出</button>
       <a-dropdown :trigger="['click']" placement="bottomRight">
-        <button class="user-trigger" type="button" :aria-label="member.name ? '打开账户菜单' : '登录'">
+        <button class="user-trigger" type="button" :aria-label="member.id ? '打开账户菜单' : '登录'">
           <a-avatar :src="avatarUrl" :size="36">
             <template #icon><UserOutlined /></template>
           </a-avatar>
-          <span class="username">{{ member.name || '登录' }}</span>
+          <span class="username">{{ member.id ? (member.name || '旅行者') : '登录' }}</span>
           <DownOutlined class="drop-icon" />
         </button>
         <template #overlay>
           <a-menu class="user-dropdown-menu">
-            <template v-if="member.name">
+            <template v-if="member.id">
               <a-menu-item @click="goToEdit"><EditOutlined /> 修改资料</a-menu-item>
               <a-menu-divider />
-              <a-menu-item @click="logout" danger><LogoutOutlined /> 退出登录</a-menu-item>
+              <a-menu-item @click="logout" :disabled="loggingOut" danger><LogoutOutlined /> 退出登录</a-menu-item>
             </template>
             <template v-else>
               <a-menu-item @click="showLogin"><LoginOutlined /> 立即登录</a-menu-item>
@@ -63,10 +64,14 @@ import store from '../store/index.js'
 import { useSearchStore } from '../store/search.js'
 import TheLogin from './the-login.vue'
 import { BASE_URL } from "../utils/baseUrl";
+import { useIdentity } from '../modules/identity/identityContext.js'
 
 const router = useRouter()
 const route = useRoute()
 const searchStore = useSearchStore()
+const { identitySession } = useIdentity()
+const loggingOut = ref(false)
+const logoutError = ref(false)
 
 const loginRef = ref(null)
 const searchText = ref('')
@@ -78,7 +83,7 @@ const member = computed(() => store.state.member)
 const showSearch = computed(() => route.path === '/CardList')
 
 const fetchAvatar = async () => {
-  if (!member.value?.name) return
+  if (!member.value?.id) return
   try {
     const { data } = await axios.get(BASE_URL+"/lyw/web/UserProFile/findAvatarUser")
     if (data.success) avatarUrl.value = BASE_URL+`/lyw${data.content}`
@@ -87,13 +92,25 @@ const fetchAvatar = async () => {
 
 const heart = () => axios.get(BASE_URL+'/lyw/web/member/heart').catch(() => {})
 const showLogin = () => loginRef.value?.showModal()
-const logout = () => { store.commit('clearMember'); message.success('已安全退出') }
+const logout = async () => {
+  if (loggingOut.value) return
+  loggingOut.value = true
+  try {
+    await identitySession.logout()
+    logoutError.value = false
+    message.success('已退出登录')
+  } catch {
+    logoutError.value = true
+    message.error('本地身份已清除，但服务器会话撤销失败，请重试退出')
+  } finally { loggingOut.value = false }
+}
 const onSearch = (val) => { searchStore.setKeyword(val) }
 const goToEdit = () => router.push('/UserDetail')
 
-watch(() => member.value?.name, (newName) => {
-  if (newName) {
+watch(() => member.value?.id, (memberId) => {
+  if (memberId) {
     fetchAvatar()
+    heart()
     if (!heartTimer) heartTimer = setInterval(heart, 60000)
   } else {
     avatarUrl.value = '';

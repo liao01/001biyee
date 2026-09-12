@@ -11,6 +11,10 @@ location /travel-admin/ {
   proxy_pass http://$lyw_frontend_upstream;
   include proxy.conf;
 }
+location ^~ /business/lyw/actuator/ {
+  access_log off;
+  return 404;
+}
 location /business/ {
   set $lyw_backend_upstream lyw-backend:8080;
   rewrite ^/business(/.*)$ $1 break;

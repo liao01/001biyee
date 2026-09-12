@@ -46,15 +46,18 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from "vue";
+import { ref, onBeforeUnmount, onMounted, computed } from "vue";
 import axios from "axios";
 import { message, Empty } from "ant-design-vue";
 import { RightOutlined } from '@ant-design/icons-vue';
 import LocationCard from "../../components/card/locationCard.vue";
 import { BASE_URL } from "../../utils/baseUrl";
+import { loadAmap } from '../../modules/itinerary-map/amapLoader.js'
+import { createCommunityMarkerContent } from './communityMarkerContent.js'
 
 const simpleImage = Empty.PRESENTED_IMAGE_SIMPLE;
 let map = null;
+let amap = null;
 const markers = []; // 存储 marker 引用
 
 const locations = ref([]);
@@ -67,19 +70,27 @@ const allLocations = ref([]); // 保存全部地点
 const filteredLocations = computed(() => locations.value);
 
 onMounted(() => {
-  loadLocations();
+  void loadLocations();
 });
 
-function loadLocations() {
+onBeforeUnmount(() => {
+  markers.forEach(marker => marker.setMap?.(null))
+  markers.splice(0, markers.length)
+  map?.destroy?.()
+  map = null
+  amap = null
+})
+
+async function loadLocations() {
   axios.get(BASE_URL+"/lyw/web/location/findLocationAll")
-      .then(res => {
-        if (res.data.success) {
-          locations.value = res.data.content || [];
-          allLocations.value = res.data.content || [];
-          initMap();
-        }
-      })
-      .catch(() => message.error("获取数据失败"));
+    .then(async res => {
+      if (res.data.success) {
+        locations.value = res.data.content || [];
+        allLocations.value = res.data.content || [];
+        await initMap();
+      }
+    })
+    .catch(() => message.error("获取数据失败"));
 }
 
 function handleSearch(value) {
@@ -117,37 +128,37 @@ function resetSearch() {
   renderMarkers();
 }
 
-function initMap() {
-  map = new AMap.Map("mapDiv", {
-    zoom: 5,
-    center: [108.948024, 34.223159], // 默认中国中心
-    viewMode: "3D",
-    pitch: 45, // 倾斜角度，更有立体感
-    mapStyle: "amap://styles/whitesmoke", // 换一个清新亮丽的风格
-  });
-
-  renderMarkers();
+async function initMap() {
+  try {
+    amap = await loadAmap()
+    map = new amap.Map("mapDiv", {
+      zoom: 5,
+      center: [108.948024, 34.223159],
+      viewMode: "3D",
+      pitch: 45,
+      mapStyle: "amap://styles/whitesmoke",
+    });
+    renderMarkers();
+  } catch (error) {
+    message.error(error.message || "地图加载失败")
+  }
 }
 
 function renderMarkers() {
+  if (!map || !amap) return;
   // 清除旧的 markers
   markers.forEach(m => m.setMap(null));
+  markers.splice(0, markers.length);
 
   locations.value.forEach(loc => {
     if (!loc.longitude || !loc.latitude) return;
 
-    // 自定义 Marker 内容 (HTML)
-    const markerContent = `
-      <div class="custom-marker">
-        <div class="marker-pin"></div>
-        <div class="marker-label">${loc.name}</div>
-      </div>
-    `;
+    const markerContent = createCommunityMarkerContent(loc.name)
 
-    const marker = new AMap.Marker({
+    const marker = new amap.Marker({
       position: [loc.longitude, loc.latitude],
       content: markerContent,
-      offset: new AMap.Pixel(-15, -15),
+      offset: new amap.Pixel(-15, -15),
       extData: loc.id
     });
 
@@ -159,6 +170,10 @@ function renderMarkers() {
 
 // 2. 修改聚焦函数
 function focusLocation(loc) {
+  if (!map) {
+    activeLocation.value = loc;
+    return;
+  }
   // 如果当前没有激活的景区，说明是从全局视角跳转的，记录下当前位置
   if (!activeLocation.value) {
     previousView.value = {
@@ -175,6 +190,7 @@ function focusLocation(loc) {
 // 3. 新增关闭弹窗的处理函数
 function handleClose() {
   activeLocation.value = null;
+  if (!map) return;
 
   // 如果有记录之前的视角，则跳回
   if (previousView.value) {

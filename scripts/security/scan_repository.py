@@ -93,6 +93,45 @@ PINNED_GITHUB_ACTION_PATTERN = re.compile(
     re.I,
 )
 
+KNOWN_NON_SECRET_FIXTURES = {
+    # #16 前端隔离测试的合成输入；只允许精确文件和值，不豁免整个测试目录。
+    ("web/src/store/identityStore.test.js", "TEST-obsolete"),
+    ("web/src/modules/identity/identityForms.test.js", "TEST-password-123"),
+    ("web/src/modules/identity/identityHttp.test.js", "TEST-password-123"),
+    ("web/src/modules/identity/identityHttp.test.js", "TEST-verification"),
+    ("web/src/modules/identity/identityHttp.test.js", "TEST-reset"),
+    ("web/src/modules/identity/identityLinks.test.js", "TEST-verification"),
+    ("web/src/modules/identity/identityLinks.test.js", "TEST-reset"),
+    ("web/src/modules/identity/identitySession.test.js", "TEST-password-123"),
+    (
+        "business/src/test/java/com/jiawa/lyw/security/SensitiveLoggingTests.java",
+        "sensitive-member-session-token",
+    ),
+    (
+        "business/src/test/java/com/jiawa/lyw/itineraryplanning/infrastructure/"
+        "DifyItineraryPlanningPropertiesTests.java",
+        "TEST-dify-application-key",
+    ),
+    (
+        "business/src/test/java/com/jiawa/lyw/itinerarymap/infrastructure/amap/"
+        "AmapMapPropertiesTests.java",
+        "user" + "@restapi.amap.com",
+    ),
+    (
+        "docs/superpowers/plans/2026-08-29-intelligent-travel-platform-phase-0-foundation.md",
+        "Secret123",
+    ),
+}
+
+NON_SENSITIVE_REFERENCE_SEED_PATTERN = re.compile(
+    r"(?i)^\s*INSERT\s+INTO\s+`?post_category`?\b"
+)
+DAILY_MAP_SCHEMA_EXPECTATION_INSERT_PATTERN = re.compile(
+    r"(?i)^\s*INSERT\s+INTO\s+`?itinerary_daily_map_expected_"
+    r"(?:columns|indexes|foreign_keys|checks)`?\b"
+)
+DAILY_MAP_MIGRATION_PATH = "sql/migrations/20260905_itinerary_daily_map.sql"
+
 EXCLUDED_PARTS = {
     ".git",
     ".idea",
@@ -124,6 +163,16 @@ def _is_safe_value(value: str) -> bool:
     return any(pattern.fullmatch(normalized) for pattern in SAFE_VALUE_PATTERNS)
 
 
+def _is_known_non_secret_fixture(path: Path | PurePosixPath, value: str) -> bool:
+    normalized = value.strip("\"'")
+    return (path.as_posix(), normalized) in KNOWN_NON_SECRET_FIXTURES
+
+
+def _is_reserved_example_email_domain(domain: str) -> bool:
+    normalized = domain.lower()
+    return normalized in RESERVED_EXAMPLE_EMAIL_DOMAINS or normalized.endswith(".test")
+
+
 def _inside_quoted_literal(line: str, position: int) -> bool:
     quote: str | None = None
     escaped = False
@@ -149,6 +198,13 @@ def _is_pinned_github_action(path: Path | PurePosixPath, line: str) -> bool:
         and parts[-3:-1] == (".github", "workflows")
         and path.suffix.lower() in {".yaml", ".yml"}
         and PINNED_GITHUB_ACTION_PATTERN.fullmatch(line) is not None
+    )
+
+
+def _is_daily_map_schema_expectation_insert(path: Path | PurePosixPath, line: str) -> bool:
+    return (
+        path.as_posix() == DAILY_MAP_MIGRATION_PATH
+        and DAILY_MAP_SCHEMA_EXPECTATION_INSERT_PATTERN.search(line) is not None
     )
 
 
@@ -181,6 +237,7 @@ def scan_text(
             if (
                 (is_configuration or is_literal)
                 and not _is_safe_value(value)
+                and not _is_known_non_secret_fixture(path, value)
             ):
                 findings.append(
                     Finding(
@@ -200,12 +257,22 @@ def scan_text(
             if rule.rule_id == "email-address":
                 email_matches = rule.pattern.findall(line)
                 if email_matches and all(
-                    match.rsplit("@", 1)[-1].lower()
-                    in RESERVED_EXAMPLE_EMAIL_DOMAINS
+                    _is_reserved_example_email_domain(match.rsplit("@", 1)[-1])
+                    or _is_known_non_secret_fixture(path, match)
                     for match in email_matches
                 ):
                     continue
             if rule.rule_id == "sql-data-row" and path.suffix.lower() != ".sql":
+                continue
+            if (
+                rule.rule_id == "sql-data-row"
+                and NON_SENSITIVE_REFERENCE_SEED_PATTERN.search(line)
+            ):
+                continue
+            if (
+                rule.rule_id == "sql-data-row"
+                and _is_daily_map_schema_expectation_insert(path, line)
+            ):
                 continue
             if (
                 rule.rule_id == "password-hash"

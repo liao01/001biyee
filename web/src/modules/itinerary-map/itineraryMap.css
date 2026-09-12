@@ -1,0 +1,93 @@
+.daily-itinerary-map {
+  background: var(--travel-color-bg-subtle);
+  border: 1px solid var(--travel-color-border);
+  border-radius: var(--travel-radius-md);
+  display: grid;
+  gap: var(--travel-space-4);
+  margin: var(--travel-space-4) var(--travel-space-5);
+  padding: var(--travel-space-4);
+}
+
+.daily-itinerary-map__header,
+.daily-itinerary-map__modes {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--travel-space-2);
+  justify-content: space-between;
+}
+
+.daily-itinerary-map__header h3 {
+  color: var(--travel-color-text);
+  font-size: 17px;
+  margin: var(--travel-space-1) 0 0;
+}
+
+.daily-itinerary-map__modes button {
+  background: var(--travel-color-bg);
+  border: 1px solid var(--travel-color-border);
+  border-radius: 999px;
+  color: var(--travel-color-text-secondary);
+  cursor: pointer;
+  font: inherit;
+  min-height: 36px;
+  padding: 0 10px;
+}
+
+.daily-itinerary-map__modes button[aria-pressed="true"] {
+  background: var(--travel-color-brand-soft);
+  border-color: var(--travel-color-brand);
+  color: var(--travel-color-brand-strong);
+  font-weight: 650;
+}
+
+.daily-itinerary-map__canvas {
+  border: 1px solid var(--travel-color-border);
+  border-radius: var(--travel-radius-sm);
+  height: min(42vw, 340px);
+  min-height: 220px;
+  overflow: hidden;
+}
+
+.daily-itinerary-map__status,
+.daily-itinerary-map__degraded,
+.daily-itinerary-map__error {
+  font-size: 14px;
+  line-height: 1.55;
+  margin: 0;
+}
+
+.daily-itinerary-map__status { color: var(--travel-color-text-secondary); }
+.daily-itinerary-map__degraded { color: #654b0b; }
+.daily-itinerary-map__error { color: var(--itinerary-danger); }
+
+.route-leg-list {
+  display: grid;
+  gap: var(--travel-space-3);
+}
+
+.route-leg-list__stops,
+.route-leg-list__legs {
+  display: grid;
+  gap: var(--travel-space-2);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.route-leg-list__stops li,
+.route-leg-list__legs li {
+  background: var(--travel-color-bg);
+  border: 1px solid var(--travel-color-border);
+  border-radius: var(--travel-radius-sm);
+  color: var(--travel-color-text-secondary);
+  display: grid;
+  font-size: 14px;
+  gap: var(--travel-space-1);
+  padding: var(--travel-space-3);
+}
+
+.route-leg-list__stops strong,
+.route-leg-list__legs strong { color: var(--travel-color-text); }
+.route-leg-list__stops small { color: var(--travel-color-text-muted); }
+.route-leg-list__leg--unavailable { border-left: 3px solid var(--itinerary-danger) !important; }

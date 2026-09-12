@@ -62,123 +62,31 @@
 
 ### Task 1: 建立可收敛的邮箱身份迁移
 
-**Files:**
-- Create: `sql/migrations/20260829_member_email_identity.sql`
-- Create: `tests/scripts/test_member_email_identity_migration.py`
-- Modify: `tests/scripts/mysql_migration_harness.py`
-- Modify: `sql/travel_share.sql`
+**执行状态：** 数据库纵切片已实现；#15 的应用身份链路继续在 Task 2–4 实施。
 
-**Interfaces:**
-- Consumes: 当前 `member(id, mobile, password, name, created_at, updated_at)` 和本地回环 MySQL 测试约束。
-- Produces: `member.email`、`member.email_verified_at`、`member.password_hash`、`member.password_algorithm`、`member.account_status`，以及 `identity_one_time_token`、`identity_refresh_session` 表。
+**正式事实源：**
+- 空库结构：`sql/travel_share.sql`。
+- 升级规则：`sql/migrations/20260829_member_email_identity.sql`。
+- 执行、差异报告、兼容边界和恢复策略：`docs/data/identity-migration.md`。
+- 测试参数注册：`tests/scripts/migration_specs.py`，复用 #13 的 `MigrationSpec`。
+- 可执行行为契约：`tests/scripts/test_member_email_identity_migration.py`。
 
-- [ ] **Step 1: 先把迁移测试设施泛化为显式脚本变量**
+**验证：**
+- [x] dry-run 不修改正式表结构和业务数据。
+- [x] 邮箱规范化、冲突归属保护与无法自动迁移账户报告。
+- [x] 重复执行、部分 DDL 恢复、已升级凭据及停用状态保护。
+- [x] 空库结构与迁移结构一致；新账户不依赖历史字段。
+- [x] 一次性令牌与刷新会话只保存摘要。
 
-将 `temporary_schema()` 改为接收安全前缀，将 `run_sql_script()` 改为接收变量名：
+Run: `python -m unittest tests.scripts.test_member_email_identity_migration tests.scripts.test_post_category_migration tests.scripts.test_post_location_compatibility_migration -v`
 
-```python
-@contextlib.contextmanager
-def temporary_schema(prefix: str):
-    if not re.fullmatch(r"[a-z][a-z0-9_]{2,40}", prefix):
-        raise RuntimeError("Unsafe schema prefix")
-    schema = f"{prefix}_{secrets.token_hex(5)}"
-    with MySqlMigrationHarness(load_local_mysql_config()) as harness:
-        harness.execute(f"CREATE DATABASE `{schema}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;")
-        try:
-            yield harness, schema
-        finally:
-            harness.execute(f"DROP DATABASE IF EXISTS `{schema}`;")
-
-def run_sql_script(harness, schema, path, apply_variable, apply):
-    sql = path.read_text(encoding="utf-8")
-    return harness.execute(
-        f"SET @{apply_variable} = {1 if apply else 0};\n{sql}",
-        database=schema,
-        include_headers=True,
-    )
-```
-
-同步更新现有帖子分类迁移测试的调用参数，确保其行为不变。
-
-- [ ] **Step 2: 写邮箱身份迁移的失败测试**
-
-```python
-class MemberEmailIdentityMigrationTests(unittest.TestCase):
-    def test_dry_run_does_not_change_schema(self):
-        with temporary_schema("lyw_identity_migration_test") as (db, schema):
-            seed_legacy_member_table(db, schema)
-            output = run_sql_script(db, schema, MIGRATION, "apply_member_email_identity", False)
-            self.assertIn("eligible_email_rows", output)
-            self.assertIsNone(db.scalar(schema, "SHOW COLUMNS FROM member LIKE 'email';"))
-
-    def test_apply_backfills_only_email_shaped_mobile_values_and_is_repeatable(self):
-        with temporary_schema("lyw_identity_migration_test") as (db, schema):
-            seed_legacy_member_table(db, schema)
-            run_sql_script(db, schema, MIGRATION, "apply_member_email_identity", True)
-            run_sql_script(db, schema, MIGRATION, "apply_member_email_identity", True)
-            self.assertEqual("alice@example.com", db.scalar(schema, "SELECT email FROM member WHERE id=1"))
-            self.assertIsNone(db.scalar(schema, "SELECT email FROM member WHERE id=2"))
-            self.assertEqual("LEGACY_DOUBLE_MD5", db.scalar(schema, "SELECT password_algorithm FROM member WHERE id=1"))
-            self.assertEqual("ACTIVE", db.scalar(schema, "SELECT account_status FROM member WHERE id=1"))
-            self.assertEqual("EMAIL_BINDING_REQUIRED", db.scalar(schema, "SELECT account_status FROM member WHERE id=2"))
-```
-
-- [ ] **Step 3: 运行迁移测试并确认红灯**
-
-Run: `python -m unittest tests.scripts.test_member_email_identity_migration -v`
-
-Expected: FAIL，因为迁移脚本与新列尚不存在；如果本机没有回环 MySQL，测试必须明确报告环境缺失而不是伪造通过。
-
-- [ ] **Step 4: 实现幂等迁移**
-
-迁移必须执行以下确定规则：
-
-```sql
--- dry-run 始终输出可迁移邮箱数和无法自动迁移的旧账号数
-SELECT
-  SUM(mobile LIKE '%@%') AS eligible_email_rows,
-  SUM(mobile NOT LIKE '%@%') AS manual_email_binding_rows
-FROM member;
-
--- apply 分支内：先通过 information_schema 判断列、索引和表是否存在
--- email 只回填形似邮箱的旧 mobile；不为手机号生成虚假邮箱
-UPDATE member
-SET email = LOWER(TRIM(mobile)),
-    password_hash = password,
-    password_algorithm = 'LEGACY_DOUBLE_MD5',
-    email_verified_at = COALESCE(created_at, CURRENT_TIMESTAMP),
-    account_status = 'ACTIVE'
-WHERE email IS NULL AND mobile LIKE '%@%';
-
-UPDATE member
-SET password_hash = password,
-    password_algorithm = 'LEGACY_DOUBLE_MD5',
-    account_status = 'EMAIL_BINDING_REQUIRED'
-WHERE email IS NULL AND mobile NOT LIKE '%@%';
-```
-
-新注册账户使用 `PENDING_VERIFICATION`，验证后切换为 `ACTIVE`；管理员停用账户使用 `DISABLED`。只有 `ACTIVE` 可以登录。`identity_one_time_token` 保存 `token_hash`、`purpose`、`member_id`、`email`、`expires_at`、`used_at`；`identity_refresh_session` 保存 `token_hash`、`member_id`、`expires_at`、`revoked_at`、`created_at`。任何表中都不得保存原始令牌。
-
-- [ ] **Step 5: 同步基础 schema 并运行迁移验证**
-
-Run: `python -m unittest tests.scripts.test_member_email_identity_migration tests.scripts.test_post_category_migration -v`
-
-Expected: 两组迁移测试 PASS；重复 apply 后列、索引和数据数量不变化。
-
-- [ ] **Step 6: 检查差异并按授权提交**
-
-Run: `git diff --check -- sql/travel_share.sql sql/migrations/20260829_member_email_identity.sql tests/scripts/mysql_migration_harness.py tests/scripts/test_member_email_identity_migration.py`
-
-若已获得提交授权：
-
-```bash
-git add sql/travel_share.sql sql/migrations/20260829_member_email_identity.sql tests/scripts/mysql_migration_harness.py tests/scripts/test_member_email_identity_migration.py tests/scripts/test_post_category_migration.py
-git commit -m "feat: add convergent email identity migration"
-```
+仅在已获授权的目标环境执行迁移；本地隔离测试结果不代表已迁移生产数据。
 
 ---
 
 ### Task 2: 建立身份模块接口与架构边界
+
+**执行状态：** 已实现并由架构测试验证。身份接口和领域类型位于 `business/src/main/java/com/jiawa/lyw/identity/`；领域类型不依赖 Spring 或 MyBatis。
 
 **Files:**
 - Modify: `business/pom.xml`
@@ -194,7 +102,7 @@ git commit -m "feat: add convergent email identity migration"
 - Consumes: Task 1 的新身份 schema。
 - Produces: `IdentityApplicationService` 用例入口与 `CurrentMemberProvider.memberId()` 当前用户接口。
 
-- [ ] **Step 1: 添加最小依赖并写边界失败测试**
+- [x] **Step 1: 添加最小依赖并写边界失败测试**
 
 在 `business/pom.xml` 添加 `spring-security-crypto`、`archunit-junit5`（test）、`spring-boot-starter-actuator` 和 `micrometer-registry-prometheus`。测试要求模块外不得直接访问身份基础设施：
 
@@ -208,13 +116,13 @@ class IdentityModuleBoundaryTests {
 }
 ```
 
-- [ ] **Step 2: 运行边界测试确认红灯或缺类型**
+- [x] **Step 2: 运行边界测试确认红灯或缺类型**
 
 Run from `business`: `.\mvnw.cmd -Dtest=IdentityModuleBoundaryTests test`
 
 Expected: FAIL，直到依赖和身份包骨架存在。
 
-- [ ] **Step 3: 定义稳定接口和值对象**
+- [x] **Step 3: 定义稳定接口和值对象**
 
 ```java
 public interface CurrentMemberProvider {
@@ -240,7 +148,7 @@ public interface PasswordHasher {
 
 `MemberAccount` 仅表达 `id`、`email`、`emailVerifiedAt`、`passwordHash`、`passwordAlgorithm`、`name` 和账户状态，不包含 Controller 或 MyBatis 注解。
 
-- [ ] **Step 4: 定义应用服务签名**
+- [x] **Step 4: 定义应用服务签名**
 
 ```java
 public interface IdentityApplicationService {
@@ -254,13 +162,13 @@ public interface IdentityApplicationService {
 }
 ```
 
-- [ ] **Step 5: 运行编译与架构测试**
+- [x] **Step 5: 运行编译与架构测试**
 
 Run from `business`: `.\mvnw.cmd -Dtest=IdentityModuleBoundaryTests test`
 
 Expected: PASS。
 
-- [ ] **Step 6: 按授权提交**
+- [x] **Step 6: 按授权提交**
 
 ```bash
 git add business/pom.xml business/src/main/java/com/jiawa/lyw/identity business/src/test/java/com/jiawa/lyw/architecture/IdentityModuleBoundaryTests.java
@@ -270,6 +178,8 @@ git commit -m "refactor: establish identity module boundary"
 ---
 
 ### Task 3: 实现密码升级、访问令牌和刷新会话
+
+**当前进度：** 已实现 BCrypt、登录事务内的首登升级和旧密码清除、访问令牌签发、刷新轮换与撤销。实际行为测试使用已确认的公开 HTTP + 真实 MySQL 接缝：`IdentityHttpIT`，不再采用下方计划示意中的内部服务测试类。执行命令为 `python -m scripts.run_backend_integration`；数据与配置链路见 `docs/data/identity-http.md`。访问令牌的请求验证和前端切换继续在 Task 5–6 实施。
 
 **Files:**
 - Create: `business/src/main/java/com/jiawa/lyw/identity/infrastructure/BCryptPasswordHasher.java`
@@ -289,7 +199,7 @@ git commit -m "refactor: establish identity module boundary"
 ```java
 @Test
 void legacyDoubleMd5MatchRequiresUpgrade() {
-    var hasher = new BCryptPasswordHasher(new BCryptPasswordEncoder(12));
+    var hasher = new BCryptPasswordHasher();
     var legacy = DigestUtil.md5Hex(DigestUtil.md5Hex("Secret123"));
     var result = hasher.verify("Secret123", legacy, "LEGACY_DOUBLE_MD5");
     assertTrue(result.matches());
@@ -298,7 +208,7 @@ void legacyDoubleMd5MatchRequiresUpgrade() {
 
 @Test
 void newHashesUseBcrypt() {
-    var hasher = new BCryptPasswordHasher(new BCryptPasswordEncoder(12));
+    var hasher = new BCryptPasswordHasher();
     var hash = hasher.hash("Secret123");
     assertTrue(hasher.verify("Secret123", hash, "BCRYPT").matches());
 }
@@ -347,6 +257,8 @@ git commit -m "feat: add secure identity credentials and sessions"
 ---
 
 ### Task 4: 实现注册验证与密码重置邮件链路
+
+**当前进度：** 新增链路已接入实际 MVC 拦截器及 MySQL 事务，使用 `IdentityHttpIT` 验证注册、一次性验证、密码重置和邮件失败回滚。邮件与时间在外部边界替换；未向真实用户投递邮件。实际运行命令与事实源见 `docs/data/identity-http.md`，下方代码及类名保留为原始设计示意。
 
 **Files:**
 - Create: `business/src/main/java/com/jiawa/lyw/identity/infrastructure/VerificationLinkMailer.java`
@@ -483,7 +395,7 @@ public record LoginRequest(@Email @NotBlank String email, @NotBlank String passw
 public record TokenResponse(String accessToken, Instant accessExpiresAt) {}
 ```
 
-注册请求包含 `email` 和 `password`；验证请求包含 `token`；重置申请包含 `email`；重置确认包含 `token` 和 `newPassword`。密码规则为 10–72 个字符，至少包含字母和数字。登录与刷新在响应中写入 `HttpOnly; Secure; SameSite=Lax; Path=/` 的 refresh Cookie，响应体只返回 access token；退出同时撤销服务端会话并清除 Cookie。生产环境 `Secure` 固定为 true，本地纯 HTTP 开发可通过 `IDENTITY_COOKIE_SECURE=false` 显式覆盖。
+请求字段以 `IdentityController` 的记录类型为正式契约；新密码规则以 `PasswordPolicy` 为正式事实源，长度按其 Unicode 字符及 UTF-8 字节规则校验。登录与刷新在响应中写入 `HttpOnly; Secure; SameSite=Lax; Path=/` 的 refresh Cookie，响应体只返回 access token；退出同时撤销服务端会话并清除 Cookie。生产环境 `Secure` 固定为 true，本地纯 HTTP 开发可通过 `IDENTITY_COOKIE_SECURE=false` 显式覆盖。
 
 - [ ] **Step 4: 切换拦截器到标准 Authorization 头**
 
@@ -529,9 +441,9 @@ git commit -m "feat: expose email identity api"
 ```javascript
 it('sends raw password only to the email identity endpoint', async () => {
   mock.onPost('/web/identity/login').reply(200, { success: true, content: tokens })
-  await identityHttp.login({ email: 'alice@example.com', password: 'Secret123' })
+  await identityHttp.login({ email: 'alice@example.com', password: 'change-me' })
   expect(JSON.parse(mock.history.post[0].data)).toEqual({
-    email: 'alice@example.com', password: 'Secret123'
+    email: 'alice@example.com', password: 'change-me'
   })
 })
 ```
@@ -683,6 +595,14 @@ git commit -m "chore: add observable single-server deployment"
 ---
 
 ### Task 8: 建立持续集成与第 0 阶段验收门禁
+
+**执行记录（2026-08-31）：** CI 定义已落地；README 已切换为实际邮箱身份与当前配置入口。[备份恢复手册](../../runbooks/backup-and-restore.md)和[身份事件响应手册](../../runbooks/identity-incident-response.md)已补齐当前拓扑的操作步骤和验证记录，具体能力与未完成范围以这两份手册为准。当前物理备份覆盖上传目录，目标对象存储落地后仍须补齐其恢复方案；未将这一差异标记为完整交付。本文下方最初计划中的示意路径和流程须以当前部署配置及手册为执行依据，不能对现有环境盲目套用。
+
+**追加验证（2026-08-31）：** 独立 MySQL 容器已完成 CI 同镜像的迁移与真实身份联调，资源已精确清理，证据见[迁移复验记录](../../data/identity-migration.md#2026-08-31-docker-恢复后的隔离复验)。该记录不代替远端 CI 或完整部署栈验收。
+
+**后续本地证据（2026-08-31）：** 当前 Compose 拓扑的容器内健康、指标及只读入口已复验，宿主机入口与部分测试存储清理尚未完成，详见[隔离栈记录](../../runbooks/2026-08-31-isolated-stack-verification.md)。Java 身份测试新增 Testcontainers MySQL 模式并接入 CI 定义；同一 HTTP/Vue 契约已在自动管理的数据库中通过，运行命令、清理证据及未覆盖范围见[身份测试说明](../../data/identity-http.md#本地与-ci-验证)。这些局部证据不改变本阶段完成门槛。
+
+**仍未通过的门禁：** 远端 CI、完整部署栈复验、加密异地备份及恢复演练、真实浏览器与生产 HTTPS/邮件验收。不会以本地单元测试、文档存在或脚本语法检查代替运行证据；本 Task 和第 0 阶段仍未全部完成。
 
 **Files:**
 - Create: `.github/workflows/ci.yml`
