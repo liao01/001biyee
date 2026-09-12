@@ -1,5 +1,6 @@
 package com.jiawa.lyw.itinerarymap.infrastructure.amap;
 
+import com.jiawa.lyw.config.AmapWebServiceProperties;
 import com.jiawa.lyw.itinerarymap.infrastructure.amap.dto.AmapResponseModels.AmapProviderException;
 import com.jiawa.lyw.itinerarymap.infrastructure.amap.dto.AmapResponseModels.ProviderFailure;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
@@ -26,12 +27,12 @@ final class AmapHttpExecutor {
     private static final long RETRY_JITTER_MAX_MILLIS = 100;
     private static final long TOTAL_CALL_BUDGET_NANOS = Duration.ofSeconds(7).toNanos();
 
-    private final AmapMapProperties properties;
+    private final AmapWebServiceProperties properties;
     private final RestClient restClient;
     private final LongConsumer sleeper;
     private final LongSupplier jitter;
 
-    AmapHttpExecutor(AmapMapProperties properties, LongConsumer sleeper, LongSupplier jitter) {
+    AmapHttpExecutor(AmapWebServiceProperties properties, LongConsumer sleeper, LongSupplier jitter) {
         this.properties = Objects.requireNonNull(properties, "properties");
         this.sleeper = Objects.requireNonNull(sleeper, "sleeper");
         this.jitter = Objects.requireNonNull(jitter, "jitter");

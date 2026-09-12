@@ -13,7 +13,7 @@ import com.jiawa.lyw.exception.BusinessExceptionEnum;
 import com.jiawa.lyw.mapper.LocationImageMapper;
 import com.jiawa.lyw.mapper.LocationRecordMapper;
 import com.jiawa.lyw.mapper.LocationRecordMapperCust;
-import com.jiawa.lyw.itinerarymap.infrastructure.amap.AmapCommunityGeocodingGateway;
+import com.jiawa.lyw.location.infrastructure.amap.AmapCommunityGeocodingGateway;
 import com.jiawa.lyw.req.AddressReq;
 import com.jiawa.lyw.req.LocationDelReq;
 import com.jiawa.lyw.req.PageReq;

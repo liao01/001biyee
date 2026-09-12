@@ -1,6 +1,7 @@
 package com.jiawa.lyw.itinerarymap.infrastructure.amap;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.jiawa.lyw.config.AmapWebServiceProperties;
 import com.jiawa.lyw.itinerarymap.domain.ItineraryMapModels.Coordinate;
 import com.jiawa.lyw.itinerarymap.domain.ItineraryMapModels.RouteMode;
 import com.jiawa.lyw.itinerarymap.infrastructure.amap.dto.AmapResponseModels.AmapProviderException;
@@ -169,7 +170,7 @@ class AmapRoutePlanningGatewayTests {
     }
 
     private AmapRoutePlanningGateway gateway(List<Long> delays) {
-        var properties = new AmapMapProperties(baseUrl(), KEY, Duration.ofSeconds(1),
+        var properties = new AmapWebServiceProperties(baseUrl(), KEY, Duration.ofSeconds(1),
                 Duration.ofSeconds(1), 4, 524_288);
         return new AmapRoutePlanningGateway(properties, new ObjectMapper(), Clock.fixed(NOW, ZoneOffset.UTC),
                 delays::add, () -> 0L);

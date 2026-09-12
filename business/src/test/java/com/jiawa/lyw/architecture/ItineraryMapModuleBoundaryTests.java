@@ -22,6 +22,11 @@ class ItineraryMapModuleBoundaryTests {
             .should().dependOnClassesThat().resideInAPackage("..itinerary.infrastructure..");
 
     @ArchTest
+    static final ArchRule itineraryMapInfrastructureDoesNotLeakToOtherModules = noClasses()
+            .that().resideOutsideOfPackage("..itinerarymap.infrastructure..")
+            .should().dependOnClassesThat().resideInAPackage("..itinerarymap.infrastructure..");
+
+    @ArchTest
     static final ArchRule mapDomainIsFrameworkIndependent = classes()
             .that().resideInAPackage("..itinerarymap.domain..")
             .should().onlyDependOnClassesThat()

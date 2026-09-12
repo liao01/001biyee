@@ -2,6 +2,7 @@ package com.jiawa.lyw.itinerarymap.infrastructure.amap;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.jiawa.lyw.config.AmapWebServiceProperties;
 import com.jiawa.lyw.itinerarymap.application.RoutePlanningGateway;
 import com.jiawa.lyw.itinerarymap.domain.ItineraryMapModels.Coordinate;
 import com.jiawa.lyw.itinerarymap.domain.ItineraryMapModels.RouteMode;
@@ -26,12 +27,12 @@ public final class AmapRoutePlanningGateway implements RoutePlanningGateway {
     private final Clock clock;
     private final AmapHttpExecutor http;
 
-    public AmapRoutePlanningGateway(AmapMapProperties properties, ObjectMapper objectMapper, Clock clock) {
+    public AmapRoutePlanningGateway(AmapWebServiceProperties properties, ObjectMapper objectMapper, Clock clock) {
         this(properties, objectMapper, clock, AmapRoutePlanningGateway::sleep, () -> (long) (Math.random() * 101));
     }
 
     AmapRoutePlanningGateway(
-            AmapMapProperties properties,
+            AmapWebServiceProperties properties,
             ObjectMapper objectMapper,
             Clock clock,
             LongConsumer sleeper,

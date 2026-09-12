@@ -1,4 +1,4 @@
-package com.jiawa.lyw.itinerarymap.infrastructure.amap;
+package com.jiawa.lyw.config;
 
 import org.junit.jupiter.api.Test;
 
@@ -9,10 +9,10 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-class AmapMapPropertiesTests {
+class AmapWebServicePropertiesTests {
     @Test
     void rejectsUnsafeProductionProperties() {
-        assertThrows(IllegalArgumentException.class, () -> new AmapMapProperties(
+        assertThrows(IllegalArgumentException.class, () -> new AmapWebServiceProperties(
                 URI.create("https://restapi.amap.com?key=leak"), "change-me",
                 Duration.ofSeconds(1), Duration.ofSeconds(3), 4, 512_000));
     }
@@ -35,21 +35,21 @@ class AmapMapPropertiesTests {
 
     @Test
     void redactsSecretFromToString() {
-        AmapMapProperties value = validProperties("TEST-amap-web-service-key");
+        AmapWebServiceProperties value = validProperties("TEST-amap-web-service-key");
 
         assertFalse(value.toString().contains("TEST-amap-web-service-key"));
         assertTrue(value.toString().contains("<redacted>"));
     }
 
-    private static AmapMapProperties validProperties(String key) {
-        return new AmapMapProperties(URI.create("https://restapi.amap.com"), key,
+    private static AmapWebServiceProperties validProperties(String key) {
+        return new AmapWebServiceProperties(URI.create("https://restapi.amap.com"), key,
                 Duration.ofSeconds(1), Duration.ofSeconds(3), 4, 512_000);
     }
 
-    private static AmapMapProperties properties(
+    private static AmapWebServiceProperties properties(
             URI baseUrl, Duration connectTimeout, Duration responseTimeout, int concurrency, int maximum
     ) {
-        return new AmapMapProperties(baseUrl, "TEST-amap-web-service-key", connectTimeout,
+        return new AmapWebServiceProperties(baseUrl, "TEST-amap-web-service-key", connectTimeout,
                 responseTimeout, concurrency, maximum);
     }
 }

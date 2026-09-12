@@ -1,4 +1,4 @@
-package com.jiawa.lyw.itinerarymap.infrastructure.amap;
+package com.jiawa.lyw.config;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
@@ -7,9 +7,9 @@ import java.time.Duration;
 import java.util.Locale;
 import java.util.Set;
 
-/** 高德 Web Service 的唯一后端配置事实源。 */
+/** 高德 Web Service 的唯一后端配置事实源，供行程与旧社区地点适配器共用。 */
 @ConfigurationProperties(prefix = "app.map.amap")
-public record AmapMapProperties(
+public record AmapWebServiceProperties(
         URI baseUrl,
         String apiKey,
         Duration connectTimeout,
@@ -21,7 +21,7 @@ public record AmapMapProperties(
     private static final int MIN_RESPONSE_BYTES = 1_024;
     private static final int MAX_RESPONSE_BYTES = 512 * 1_024;
 
-    public AmapMapProperties {
+    public AmapWebServiceProperties {
         if (baseUrl == null || baseUrl.getScheme() == null
                 || !Set.of("http", "https").contains(baseUrl.getScheme().toLowerCase(Locale.ROOT))
                 || baseUrl.getHost() == null || baseUrl.getUserInfo() != null
@@ -43,7 +43,7 @@ public record AmapMapProperties(
 
     @Override
     public String toString() {
-        return "AmapMapProperties[baseUrl=" + baseUrl + ", apiKey=<redacted>, connectTimeout="
+        return "AmapWebServiceProperties[baseUrl=" + baseUrl + ", apiKey=<redacted>, connectTimeout="
                 + connectTimeout + ", responseTimeout=" + responseTimeout + ", routeConcurrency="
                 + routeConcurrency + ", maxResponseBytes=" + maxResponseBytes + "]";
     }

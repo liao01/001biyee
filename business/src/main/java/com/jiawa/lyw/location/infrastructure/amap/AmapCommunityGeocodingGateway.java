@@ -1,7 +1,8 @@
-package com.jiawa.lyw.itinerarymap.infrastructure.amap;
+package com.jiawa.lyw.location.infrastructure.amap;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.jiawa.lyw.config.AmapWebServiceProperties;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
@@ -12,14 +13,14 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.Objects;
 
-/** 旧社区地点的高德地理编码适配器；供应商 JSON 不离开高德基础设施包。 */
+/** 旧社区地点的高德地理编码适配器；供应商 JSON 不离开地点基础设施包。 */
 @Component
 public final class AmapCommunityGeocodingGateway {
-    private final ObjectProvider<AmapMapProperties> propertiesProvider;
+    private final ObjectProvider<AmapWebServiceProperties> propertiesProvider;
     private final ObjectMapper objectMapper;
 
     public AmapCommunityGeocodingGateway(
-            ObjectProvider<AmapMapProperties> propertiesProvider,
+            ObjectProvider<AmapWebServiceProperties> propertiesProvider,
             ObjectMapper objectMapper
     ) {
         this.propertiesProvider = Objects.requireNonNull(propertiesProvider, "propertiesProvider");
@@ -31,7 +32,7 @@ public final class AmapCommunityGeocodingGateway {
         if (normalized == null || normalized.isEmpty()) {
             return null;
         }
-        AmapMapProperties properties = propertiesProvider.getIfAvailable();
+        AmapWebServiceProperties properties = propertiesProvider.getIfAvailable();
         if (properties == null) {
             return null;
         }
@@ -105,7 +106,7 @@ public final class AmapCommunityGeocodingGateway {
         return value != null && value.isTextual() ? value.textValue() : null;
     }
 
-    private static RestClient restClient(AmapMapProperties properties) {
+    private static RestClient restClient(AmapWebServiceProperties properties) {
         SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
         requestFactory.setConnectTimeout(properties.connectTimeout());
         requestFactory.setReadTimeout(properties.responseTimeout());

@@ -2,6 +2,7 @@ package com.jiawa.lyw.itinerarymap.infrastructure.amap;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.jiawa.lyw.config.AmapWebServiceProperties;
 import com.jiawa.lyw.itinerarymap.application.PlaceSearchGateway;
 import com.jiawa.lyw.itinerarymap.domain.ItineraryMapModels.Coordinate;
 import com.jiawa.lyw.itinerarymap.domain.ItineraryMapModels.PlaceCandidate;
@@ -24,12 +25,12 @@ public final class AmapPlaceSearchGateway implements PlaceSearchGateway {
     private final ObjectMapper objectMapper;
     private final AmapHttpExecutor http;
 
-    public AmapPlaceSearchGateway(AmapMapProperties properties, ObjectMapper objectMapper) {
+    public AmapPlaceSearchGateway(AmapWebServiceProperties properties, ObjectMapper objectMapper) {
         this(properties, objectMapper, AmapPlaceSearchGateway::sleep, () -> (long) (Math.random() * 101));
     }
 
     AmapPlaceSearchGateway(
-            AmapMapProperties properties,
+            AmapWebServiceProperties properties,
             ObjectMapper objectMapper,
             LongConsumer sleeper,
             LongSupplier jitter

@@ -1,6 +1,7 @@
 package com.jiawa.lyw.itinerarymap.infrastructure.amap;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.jiawa.lyw.config.AmapWebServiceProperties;
 import com.jiawa.lyw.itinerarymap.domain.ItineraryMapModels.PlaceSearchQuery;
 import com.jiawa.lyw.itinerarymap.infrastructure.amap.dto.AmapResponseModels.AmapProviderException;
 import com.jiawa.lyw.itinerarymap.infrastructure.amap.dto.AmapResponseModels.ProviderFailure;
@@ -212,7 +213,7 @@ class AmapPlaceSearchGatewayTests {
             unavailablePort = socket.getLocalPort();
         }
         List<Long> delays = new ArrayList<>();
-        AmapMapProperties properties = new AmapMapProperties(
+        AmapWebServiceProperties properties = new AmapWebServiceProperties(
                 URI.create("http://127.0.0.1:" + unavailablePort), KEY,
                 Duration.ofMillis(50), Duration.ofMillis(50), 4, 524_288);
         AmapProviderException exception = assertThrows(AmapProviderException.class,
@@ -243,7 +244,7 @@ class AmapPlaceSearchGatewayTests {
     private AmapPlaceSearchGateway gateway(
             Duration connectTimeout, Duration responseTimeout, int maximum, List<Long> delays
     ) {
-        AmapMapProperties properties = new AmapMapProperties(baseUrl(), KEY, connectTimeout,
+        AmapWebServiceProperties properties = new AmapWebServiceProperties(baseUrl(), KEY, connectTimeout,
                 responseTimeout, 4, maximum);
         return new AmapPlaceSearchGateway(properties, new ObjectMapper(), delays::add, () -> 0L);
     }

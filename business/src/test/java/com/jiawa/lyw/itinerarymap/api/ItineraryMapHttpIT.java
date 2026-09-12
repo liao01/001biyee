@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.dockerjava.api.model.ExposedPort;
 import com.github.dockerjava.api.model.PortBinding;
 import com.github.dockerjava.api.model.Ports;
+import com.jiawa.lyw.config.AmapWebServiceConfiguration;
 import com.jiawa.lyw.identity.api.IdentityController;
 import com.jiawa.lyw.identity.api.IdentityExceptionHandler;
 import com.jiawa.lyw.identity.infrastructure.IdentityConfiguration;
@@ -377,7 +378,8 @@ class ItineraryMapHttpIT {
     @Import({
             IdentityConfiguration.class, IdentityController.class, IdentityExceptionHandler.class,
             ItineraryConfiguration.class, ItineraryController.class, ItineraryExceptionHandler.class,
-            ItineraryMapConfiguration.class, ItineraryMapController.class, ItineraryMapExceptionHandler.class
+            AmapWebServiceConfiguration.class, ItineraryMapConfiguration.class,
+            ItineraryMapController.class, ItineraryMapExceptionHandler.class
     })
     static class Config {
         @Bean
